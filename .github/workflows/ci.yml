@@ -186,11 +186,15 @@ jobs:
         shell: bash
         working-directory: ${{ runner.temp }}
         run: |
-          feed="$RUNNER_TEMP/feed"
+          temp="$RUNNER_TEMP"
+          snap="snap"
+          # Git Bash cannot run 'D:\a\_temp/tool/snap': use a POSIX path and the real file name.
+          if [[ "$RUNNER_OS" == "Windows" ]]; then temp="$(cygpath -u "$RUNNER_TEMP")"; snap="snap.exe"; fi
+          feed="$temp/feed"
           ls "$feed"
           root="$(ls "$feed" | sed -n 's/^Nullean\.Snapshots\.Cli\.\([0-9][^/]*\)\.nupkg$/\1/p')"
           [ -n "$root" ] || { echo "no root package in the feed"; exit 1; }
           echo "version $root"
-          dotnet tool install Nullean.Snapshots.Cli --tool-path "$RUNNER_TEMP/tool" --add-source "$feed" --version "$root"
-          "$GITHUB_WORKSPACE/build/smoke-cli.sh" "$RUNNER_TEMP/tool/snap"
+          dotnet tool install Nullean.Snapshots.Cli --tool-path "$temp/tool" --add-source "$feed" --version "$root"
+          "$GITHUB_WORKSPACE/build/smoke-cli.sh" "$temp/tool/$snap"
           "$GITHUB_WORKSPACE/build/smoke-cli.sh" dotnet dnx "Nullean.Snapshots.Cli@$root" --add-source "$feed" --yes
