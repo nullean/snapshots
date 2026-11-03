@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Reflection;
 
 namespace Nullean.Snapshots.TUnit;
 
@@ -25,19 +26,70 @@ public sealed class TUnitTestIdentity : ISnapshotTestIdentityProvider
 	{
 		get
 		{
-			var details = TestContext.Current?.Metadata.TestDetails;
-			if (details is null)
+			var metadata = TestContext.Current?.Metadata;
+			var details = metadata?.TestDetails;
+			if (metadata is null || details is null)
 				return null;
 			var type = details.ClassType;
 			return new SnapshotTestIdentity(
 				details.TestId,
 				ClassName(type),
 				details.MethodName,
-				[.. details.TestClassArguments, .. details.TestMethodArguments],
+				[
+					.. IsInjected(metadata.ClassDataSource) && IsOnlySource(type) ? [] : details.TestClassArguments,
+					.. IsInjected(metadata.MethodDataSource) && IsOnlySource(TestMethod(details)) ? [] : details.TestMethodArguments,
+				],
 				type.Assembly,
 				TreeNodeFilter(type, details.MethodName));
 		}
 	}
+
+	private static readonly Type[] InjectingGenericSources =
+	[
+		typeof(ClassDataSourceAttribute<>),
+		typeof(ClassDataSourceAttribute<,>),
+		typeof(ClassDataSourceAttribute<,,>),
+		typeof(ClassDataSourceAttribute<,,,>),
+		typeof(ClassDataSourceAttribute<,,,,>),
+	];
+
+	/// <summary>
+	/// True when <paramref name="source"/> injects dependencies rather than supplying test data: a
+	/// <c>ClassDataSource</c> constructs an instance of a type (a fixture), so its arguments do not tell cases apart and
+	/// stay out of the snapshot's arguments hash.
+	/// </summary>
+	internal static bool IsInjected(IDataSourceAttribute? source)
+	{
+		if (source is null)
+			return false;
+		if (source is ClassDataSourceAttribute)
+			return true;
+		var type = source.GetType();
+		return type.IsGenericType && Array.IndexOf(InjectingGenericSources, type.GetGenericTypeDefinition()) >= 0;
+	}
+
+	/// <summary>
+	/// True when <paramref name="member"/> declares a single data source. Two sources on one level make two variants
+	/// of the test that only the injected instance tells apart, so its arguments stay in the hash. Unknown counts as
+	/// more than one.
+	/// </summary>
+	private static bool IsOnlySource(MemberInfo? member)
+	{
+		if (member is null)
+			return false;
+		var count = 0;
+		foreach (var attribute in member.GetCustomAttributes(inherit: true))
+		{
+			if (attribute is IDataSourceAttribute && ++count > 1)
+				return false;
+		}
+
+		return count == 1;
+	}
+
+	/// <summary>The test method, reached through its first parameter: method arguments imply there is one.</summary>
+	private static MethodBase? TestMethod(TestDetails details) =>
+		details.MethodMetadata.Parameters is [var first, ..] ? first.ReflectionInfo.Member as MethodBase : null;
 
 	/// <summary>The class folder name: nested classes joined with <c>.</c>, generic arguments appended with <c>_</c>.</summary>
 	internal static string ClassName(Type type)

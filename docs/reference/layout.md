@@ -19,7 +19,8 @@ tests/Shop.Tests/
   `snap orphans` finds them.
 - **A folder per runtime class**, so `[InheritsTests]` classes that share a base class's methods get their own files.
 - **The arguments hash** (eight hex digits) tells data-driven cases apart. It is stable across machines, cultures and
-  versions.
+  versions. A fixture injected with TUnit's `[ClassDataSource<T>]`, through the constructor or a method parameter, is
+  not test data and stays out of the hash, so a class with a fixture gets plain `{Method}` names.
 
 A snapshot can also belong to a file rather than a test. `Snapshot.MatchFile` keys it by the file's path in the
 project, without the extension, so every runner of that file shares one verified file:

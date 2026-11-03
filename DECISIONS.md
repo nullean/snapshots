@@ -81,6 +81,15 @@ its verified file by the prefix swap. Half-written `*.tmp` files are ignored.
   project* (`buildTransitive`), because a module initializer in the package's own assembly runs only once something
   touches that assembly. `SnapshotsTUnitAutoRegister=false` opts out. Without the adapter the class folder is the test
   file's name and data-driven cases cannot be told apart.
+- **Injected fixtures are not arguments.** When TUnit reports that a side's arguments (`Metadata.ClassDataSource` or
+  `.MethodDataSource`) came from a `ClassDataSource` attribute, any arity, that side is left out of the hash. A
+  `ClassDataSource` constructs an instance of a type; it is a dependency, not data, and it would only be hashed through
+  `ToString()`, its type name, so moving the fixture's namespace would orphan every snapshot of the class (#13).
+  Detected from TUnit's metadata rather than a flag or a "skip objects without `ToString()`" rule, which would rename
+  existing data-driven snapshots and guess where TUnit knows. One exception: when the same level declares more than one
+  data source (two `ClassDataSource` attributes make two variants of each test), the arguments stay in, because the
+  injected instance is all that tells the variants apart. The count comes from `GetCustomAttributes` on the class and on
+  the method (reached through its first parameter); TUnit's own attribute list collapses attributes of the same type.
 - **Duplicates.** A key is owned by the first test id and call-site line that uses it in the run. Another owner fails
   with "pass a name"; the same owner again (a retried test) is fine.
 - **Deterministic builds.** A `[CallerFilePath]` like `/_/tests/Acme.Tests/Rendering/X.cs` is mapped back by matching
