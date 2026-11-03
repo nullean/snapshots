@@ -9,7 +9,7 @@ Non-obvious choices, newest last. Each says what was chosen, and why when the wh
 - Never auto-accept. Accept with `snap accept` or `SNAPSHOT_ACCEPT=1`; with `CI=true` nothing is ever accepted.
 - We own the JSON/YAML tree diff. `SystemTextJson.JsonDiffPatch` is a test-only oracle, never a runtime dependency.
 - The CLI is a native AOT dotnet tool and works on files only; it references no format package.
-- Libraries are AOT/trim-clean, except where a dependency cannot be (AngleSharp, to be confirmed).
+- Libraries are AOT/trim-clean. AngleSharp, the one suspect, turned out clean too (see "HTML").
 
 ## Where snapshots live
 
@@ -105,7 +105,8 @@ its verified file by the prefix swap. Half-written `*.tmp` files are ignored.
   `Nullean.Snapshots.AwesomeAssertions`. Putting `BeHtml` in the AwesomeAssertions package, as the brief had it, would
   make every user carry AngleSharp. `MatchHtmlSnapshot` rather than a `MatchSnapshot` overload, which would be
   ambiguous with the text one when called without arguments.
-- **AOT-clean after all.** AngleSharp 1.9 and AngleSharp.Diffing 1.1 publish with native AOT without a single trim or
+- **AngleSharp 1.7.2 as the minimum**, the lowest that works rather than the latest, so a consumer that pins it (docs-builder does) is not forced to upgrade by a test package.
+- **AOT-clean after all.** AngleSharp 1.7.2 and AngleSharp.Diffing 1.1.1 publish with native AOT without a single trim or
   AOT warning (spiked on osx-arm64, the binary parsed, printed and diffed). The package sets `IsAotCompatible`.
 - **The pipeline:** parse, `Select(css)` (the body by default), `Remove(css)`, `RemoveAttributes(patterns)` with `*`
   wildcards on every element or `RemoveAttributesFrom(css, patterns)`, `Transform(Action<IElement>)`, then
