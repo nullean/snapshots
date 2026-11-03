@@ -34,7 +34,7 @@ check.
 | `Nullean.Snapshots` | store, modes, scrubbers, line diff (DiffPlex), Node tree, TreeDiffer, message formatter |
 | `Nullean.Snapshots.Json` | System.Text.Json to Node |
 | `Nullean.Snapshots.Yaml` | SharpYaml (>= 3.16) to Node, with line:col |
-| `Nullean.Snapshots.Html` | AngleSharp + AngleSharp.Diffing |
+| `Nullean.Snapshots.Html` | AngleSharp + AngleSharp.Diffing, and its AwesomeAssertions extensions |
 | `Nullean.Snapshots.AwesomeAssertions` | `Should().MatchSnapshot()`, `BeHtml`, `BeJson`, `BeYaml` |
 | `Nullean.Snapshots.TUnit` | test identity (class, method, args) |
 | `Nullean.Snapshots.Cli` | tool `snap`, native AOT, file-level only |
@@ -133,5 +133,5 @@ One PR each; done means CI green on linux, windows and macos.
 - TUnit `TestContext`: class, method, args, `--treenode-filter`. *(done: see DECISIONS.md)*
 - AwesomeAssertions 9 custom assertions (`AssertionChain`). *(done)*
 - SharpYaml 3.16 model API, merge keys, anchors, positions, AOT. *(phase 4)*
-- AngleSharp and AngleSharp.Diffing under AOT/trim. *(phase 2)*
+- AngleSharp and AngleSharp.Diffing under AOT/trim. *(done: clean, see DECISIONS.md)*
 - curb's packaging and `dnx` behaviour. *(phase 1)*

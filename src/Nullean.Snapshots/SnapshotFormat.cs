@@ -25,7 +25,15 @@ public abstract class SnapshotFormat
 /// One entry per difference, each the lines that describe it. The failure message shows them in order and applies the
 /// caps, so a format can return every difference it finds.
 /// </param>
-public sealed record SnapshotComparison(bool IsMatch, IReadOnlyList<IReadOnlyList<string>> Differences)
+/// <param name="LineDiff">
+/// Optional unified hunks (<see cref="LineDiff.Hunks"/>) shown after the differences, for formats whose differences
+/// are structural. They share the line cap.
+/// </param>
+public sealed record SnapshotComparison(
+	bool IsMatch,
+	IReadOnlyList<IReadOnlyList<string>> Differences,
+	IReadOnlyList<IReadOnlyList<string>>? LineDiff = null
+)
 {
 	/// <summary>A comparison that found no differences.</summary>
 	public static SnapshotComparison Match { get; } = new(true, []);
