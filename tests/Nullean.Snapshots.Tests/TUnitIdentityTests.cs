@@ -67,3 +67,104 @@ public sealed class FirstDerivedIdentity : InheritedIdentityBase;
 
 [InheritsTests]
 public sealed class SecondDerivedIdentity : InheritedIdentityBase;
+
+/// <summary>A fixture, injected rather than passed as data.</summary>
+public sealed class IdentityFixture;
+
+/// <summary>A second fixture type, for a class with more than one class-level source.</summary>
+public sealed class OtherIdentityFixture;
+
+/// <summary>Constructor-injected fixture, the shape from issue #13: the fixture stays out of the arguments.</summary>
+[ClassDataSource<IdentityFixture>(Shared = SharedType.PerClass)]
+public sealed class InjectedFixtureIdentity(IdentityFixture fixture)
+{
+	[Test]
+	public void FixtureIsNotAnArgument()
+	{
+		fixture.Should().NotBeNull();
+		TUnitTestIdentity.Instance.Current!.Arguments.Should().BeEmpty();
+	}
+
+	[Test]
+	[Arguments(1)]
+	[Arguments(2)]
+	public void MethodDataIsStillAnArgument(int number) =>
+		TUnitTestIdentity.Instance.Current!.Arguments.Should().Equal(number);
+
+	[Test]
+	[Arguments(3)]
+	public void SingleMethodDataIsStillAnArgument(int number) =>
+		TUnitTestIdentity.Instance.Current!.Arguments.Should().Equal(number);
+
+	[Test]
+	[MethodDataSource(nameof(Numbers))]
+	public void MethodDataSourceIsStillAnArgument(int number) =>
+		TUnitTestIdentity.Instance.Current!.Arguments.Should().Equal(number);
+
+	public static IEnumerable<int> Numbers() => [4];
+
+	[Test]
+	[ClassDataSource<OtherIdentityFixture>]
+	public void InjectedMethodParameterIsNotAnArgument(OtherIdentityFixture other)
+	{
+		other.Should().NotBeNull();
+		TUnitTestIdentity.Instance.Current!.Arguments.Should().BeEmpty();
+	}
+}
+
+/// <summary>Constructor data, not a fixture: it still tells cases apart.</summary>
+[Arguments("x")]
+[Arguments("y")]
+public sealed class ClassDataIdentity(string value)
+{
+	[Test]
+	public void ClassDataIsAnArgument() =>
+		TUnitTestIdentity.Instance.Current!.Arguments.Should().Equal(value);
+}
+
+/// <summary>A single constructor data source is still data.</summary>
+[Arguments("z")]
+public sealed class SingleClassDataIdentity(string value)
+{
+	[Test]
+	public void ClassDataIsAnArgument() =>
+		TUnitTestIdentity.Instance.Current!.Arguments.Should().Equal(value);
+}
+
+public class InjectedSourceTests
+{
+	[Test]
+	public void ClassDataSourcesInject()
+	{
+		TUnitTestIdentity.IsInjected(new ClassDataSourceAttribute(typeof(IdentityFixture))).Should().BeTrue();
+		TUnitTestIdentity.IsInjected(new ClassDataSourceAttribute<IdentityFixture>()).Should().BeTrue();
+		TUnitTestIdentity.IsInjected(new ClassDataSourceAttribute<IdentityFixture, IdentityFixture>()).Should().BeTrue();
+		TUnitTestIdentity.IsInjected(new ClassDataSourceAttribute<IdentityFixture, IdentityFixture, IdentityFixture>()).Should().BeTrue();
+		TUnitTestIdentity.IsInjected(new ClassDataSourceAttribute<IdentityFixture, IdentityFixture, IdentityFixture, IdentityFixture>()).Should().BeTrue();
+		TUnitTestIdentity.IsInjected(new ClassDataSourceAttribute<IdentityFixture, IdentityFixture, IdentityFixture, IdentityFixture, IdentityFixture>()).Should().BeTrue();
+	}
+
+	[Test]
+	public void DataSourcesDoNotInject()
+	{
+		TUnitTestIdentity.IsInjected(null).Should().BeFalse();
+		TUnitTestIdentity.IsInjected(new ArgumentsAttribute(1)).Should().BeFalse();
+		TUnitTestIdentity.IsInjected(new MethodDataSourceAttribute("Data")).Should().BeFalse();
+	}
+}
+
+/// <summary>Two fixture sources make two variants of each test; the fixture is all that tells them apart.</summary>
+[ClassDataSource<IdentityFixture>]
+[ClassDataSource<OtherIdentityFixture>]
+public sealed class TwoFixtureSourcesIdentity(object fixture)
+{
+	[Test]
+	public void FixtureStaysAnArgument() =>
+		TUnitTestIdentity.Instance.Current!.Arguments.Should().Equal(fixture);
+
+	[Test]
+	[ClassDataSource<IdentityFixture>]
+	[ClassDataSource<OtherIdentityFixture>]
+	public void InjectedMethodFixtureStaysAnArgument(object other) =>
+		TUnitTestIdentity.Instance.Current!.Arguments.Should().Equal(fixture, other);
+}

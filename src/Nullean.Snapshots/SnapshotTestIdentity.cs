@@ -16,7 +16,10 @@ public interface ISnapshotTestIdentityProvider
 /// tests.
 /// </param>
 /// <param name="MethodName">The test method.</param>
-/// <param name="Arguments">The test's class and method arguments; non-empty arguments add a hash to the file name.</param>
+/// <param name="Arguments">
+/// The test's class and method arguments; non-empty arguments add a hash to the file name. Providers leave out injected
+/// dependencies such as fixtures, which do not tell cases apart.
+/// </param>
 /// <param name="TestAssembly">The test assembly, read for the project's snapshot folders.</param>
 /// <param name="TreeNodeFilter">A <c>--treenode-filter</c> value that selects this test, if the framework has one.</param>
 public sealed record SnapshotTestIdentity(
