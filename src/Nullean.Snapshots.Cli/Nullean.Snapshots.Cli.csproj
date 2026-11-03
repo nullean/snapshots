@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Nullean.Snapshots.Cli</RootNamespace>
+    <!-- Argh's help and usage text read the assembly name, so it is the command people type. -->
+    <AssemblyName>snap</AssemblyName>
+
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>snap</ToolCommandName>
+    <PackageId>Nullean.Snapshots.Cli</PackageId>
+    <Title>snap: review and accept Nullean.Snapshots snapshots</Title>
+    <Description>List, diff, accept and reject pending snapshots from Nullean.Snapshots. Works on files only.</Description>
+    <PackageTags>snapshot;approval;testing;dotnet-tool;cli</PackageTags>
+
+    <!-- Native AOT tool packaging, as nullean/curb does it: one package per RID, each built on a matching runner,
+         plus a framework-dependent 'any' fallback. The root package's DotnetToolSettings.xml maps each RID to its
+         package. Installing needs the .NET 10 SDK. -->
+    <RuntimeIdentifiers>linux-x64;linux-arm64;win-x64;win-arm64;osx-arm64;any</RuntimeIdentifiers>
+    <ToolPackageRuntimeIdentifiers>linux-x64;linux-arm64;win-x64;win-arm64;osx-arm64;any</ToolPackageRuntimeIdentifiers>
+    <RollForward>Major</RollForward>
+    <!-- Argh generates public members without docs; this tool has no public API. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <!-- AOT only when a RID is targeted (dotnet pack -r <rid>); otherwise these would be baked into the portable
+       fallback's runtimeconfig.json. -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != '' and '$(RuntimeIdentifier)' != 'any'">
+    <PublishAot>true</PublishAot>
+    <PublishSelfContained>true</PublishSelfContained>
+    <StripSymbols>true</StripSymbols>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <EventSourceSupport>false</EventSourceSupport>
+    <MetadataUpdaterSupport>false</MetadataUpdaterSupport>
+    <TrimmerSingleWarn>false</TrimmerSingleWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Nullean.Argh" />
+    <ProjectReference Include="../Nullean.Snapshots/Nullean.Snapshots.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Nullean.Snapshots.Cli.Tests" />
+  </ItemGroup>
+
+</Project>

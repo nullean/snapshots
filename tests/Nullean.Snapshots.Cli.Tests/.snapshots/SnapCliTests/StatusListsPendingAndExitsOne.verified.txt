@@ -1,0 +1,5 @@
+3 pending snapshot(s):
+  new      Acme.Tests/Rendering/HtmlTests/RendersList.a1b2c3d4  .txt
+  changed  Acme.Tests/Rendering/HtmlTests/RendersTable          .txt
+  new      Lib/X/Y                                              .txt
+Review with 'snap diff <key>', then 'snap accept <key>' or 'snap reject <key>' (or --all).

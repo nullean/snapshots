@@ -4,7 +4,14 @@
     <PackageReference Include="TUnit" />
     <PackageReference Include="AwesomeAssertions" />
     <PackageReference Include="CsCheck" />
+    <PackageReference Include="TestableIO.System.IO.Abstractions.TestingHelpers" />
     <ProjectReference Include="../../src/Nullean.Snapshots/Nullean.Snapshots.csproj" />
+    <ProjectReference Include="../../src/Nullean.Snapshots.AwesomeAssertions/Nullean.Snapshots.AwesomeAssertions.csproj" />
+    <ProjectReference Include="../../src/Nullean.Snapshots.TUnit/Nullean.Snapshots.TUnit.csproj" />
   </ItemGroup>
+
+  <!-- A package reference would import these by itself; a project reference does not. This project dogfoods both. -->
+  <Import Project="../../src/Nullean.Snapshots/buildTransitive/Nullean.Snapshots.targets" />
+  <Import Project="../../src/Nullean.Snapshots.TUnit/buildTransitive/Nullean.Snapshots.TUnit.targets" />
 
 </Project>

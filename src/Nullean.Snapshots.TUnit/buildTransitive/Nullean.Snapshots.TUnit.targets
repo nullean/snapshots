@@ -1,0 +1,6 @@
+<Project>
+  <!-- Compiles a module initializer into the test project that makes TUnit the snapshot identity source. -->
+  <ItemGroup Condition="'$(SnapshotsTUnitAutoRegister)' != 'false' and '$(Language)' == 'C#'">
+    <Compile Include="$(MSBuildThisFileDirectory)NulleanSnapshotsTUnitRegistration.cs" Visible="false" Link="NulleanSnapshotsTUnitRegistration.cs" />
+  </ItemGroup>
+</Project>

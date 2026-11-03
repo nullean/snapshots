@@ -10,12 +10,18 @@
   <ItemGroup>
     <!-- Runtime dependencies -->
     <PackageVersion Include="DiffPlex" Version="1.9.0" />
+    <PackageVersion Include="System.IO.Abstractions" Version="22.3.0" />
+    <PackageVersion Include="Nullean.ScopedFileSystem" Version="0.5.0" />
+    <PackageVersion Include="Nullean.Argh" Version="0.21.0" />
+    <!-- Adapters build against the latest stable release, which is also their minimum. -->
+    <PackageVersion Include="TUnit.Core" Version="1.78.0" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- Test dependencies. TUnit and AwesomeAssertions track the latest stable release only. -->
     <PackageVersion Include="TUnit" Version="1.78.0" />
     <PackageVersion Include="AwesomeAssertions" Version="9.6.0" />
-    <PackageVersion Include="CsCheck" Version="5.0.0" />
+    <PackageVersion Include="CsCheck" Version="5.0.1" />
+    <PackageVersion Include="TestableIO.System.IO.Abstractions.TestingHelpers" Version="22.3.0" />
   </ItemGroup>
 </Project>

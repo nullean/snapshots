@@ -1,0 +1,25 @@
+<Project>
+  <!--
+    Where a test project's snapshots live. See DECISIONS.md, "Where snapshots live" and "MSBuild integration".
+    Imported after the project body, so values set in the project file or Directory.Build.props win.
+  -->
+  <PropertyGroup>
+    <SnapshotsDirectory Condition="'$(SnapshotsDirectory)' == ''">$(MSBuildProjectDirectory)/.snapshots</SnapshotsDirectory>
+    <SnapshotsReceivedDirectory Condition="'$(SnapshotsReceivedDirectory)' == '' and '$(ArtifactsPath)' != ''">$([MSBuild]::EnsureTrailingSlash('$(ArtifactsPath)')).snapshots/received/$(MSBuildProjectName)</SnapshotsReceivedDirectory>
+    <SnapshotsReceivedDirectory Condition="'$(SnapshotsReceivedDirectory)' == ''">$(MSBuildProjectDirectory)/obj/snapshots/received</SnapshotsReceivedDirectory>
+    <SnapshotsIncludeInProject Condition="'$(SnapshotsIncludeInProject)' == ''">true</SnapshotsIncludeInProject>
+  </PropertyGroup>
+
+  <!-- Default globbing skips dot folders; add the verified files back so they show in the IDE. -->
+  <ItemGroup Condition="'$(SnapshotsIncludeInProject)' == 'true'">
+    <None Include="$(SnapshotsDirectory)/**/*.verified.*" Exclude="@(None)" />
+  </ItemGroup>
+
+  <!-- A test run reads these instead of guessing where the project is. -->
+  <ItemGroup>
+    <AssemblyMetadata Include="Nullean.Snapshots.ProjectDirectory" Value="$(MSBuildProjectDirectory)" />
+    <AssemblyMetadata Include="Nullean.Snapshots.ProjectName" Value="$(MSBuildProjectName)" />
+    <AssemblyMetadata Include="Nullean.Snapshots.SnapshotsDirectory" Value="$(SnapshotsDirectory)" />
+    <AssemblyMetadata Include="Nullean.Snapshots.ReceivedDirectory" Value="$(SnapshotsReceivedDirectory)" />
+  </ItemGroup>
+</Project>

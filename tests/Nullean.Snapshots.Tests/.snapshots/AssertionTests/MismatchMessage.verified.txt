@@ -1,0 +1,11 @@
+Text did not match snapshot: tests/Acme.Tests/.snapshots/Rendering/HtmlTests/RendersTable.verified.txt
+1 difference(s):
+@@ line 1 @@
+ <table>
+-  <tr><td>{kibana}</td></tr>
++  <tr><td>{Kibana}</td></tr>
+   <tr><td>beats</td></tr>
+ </table>
+Received: .artifacts/.snapshots/received/Acme.Tests/Rendering/HtmlTests/RendersTable.received.txt
+Accept:   snap accept Acme.Tests/Rendering/HtmlTests/RendersTable   (or: dnx Nullean.Snapshots.Cli accept Acme.Tests/Rendering/HtmlTests/RendersTable)
+   or:    SNAPSHOT_ACCEPT=1 dotnet test --project tests/Acme.Tests --treenode-filter "/Acme.Tests/Acme.Tests.Rendering/HtmlTests/RendersTable"

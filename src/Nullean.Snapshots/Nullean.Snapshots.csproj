@@ -7,7 +7,22 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="DiffPlex" />
+    <PackageReference Include="System.IO.Abstractions" />
+    <PackageReference Include="Nullean.ScopedFileSystem" />
+  </ItemGroup>
+
+  <!-- buildTransitive, so every package that depends on this one brings the folders and assembly metadata along. -->
+  <ItemGroup>
+    <None Include="buildTransitive/Nullean.Snapshots.targets" Pack="true" PackagePath="buildTransitive/Nullean.Snapshots.targets" />
+    <None Include="buildTransitive/Nullean.Snapshots.targets" Pack="true" PackagePath="build/Nullean.Snapshots.targets" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="Nullean.Snapshots.Tests" />
+    <!-- The CLI ships self-contained with its own copy of this assembly, so the internals cannot drift apart. -->
+    <InternalsVisibleTo Include="snap" />
+    <InternalsVisibleTo Include="Nullean.Snapshots.Cli.Tests" />
   </ItemGroup>
 
 </Project>

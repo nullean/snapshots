@@ -1,0 +1,23 @@
+[
+  {
+    "key": "Acme.Tests/Rendering/HtmlTests/RendersList.a1b2c3d4",
+    "ext": "txt",
+    "state": "new",
+    "verified": null,
+    "received": ".artifacts/.snapshots/received/Acme.Tests/Rendering/HtmlTests/RendersList.a1b2c3d4.received.txt"
+  },
+  {
+    "key": "Acme.Tests/Rendering/HtmlTests/RendersTable",
+    "ext": "txt",
+    "state": "changed",
+    "verified": "tests/Acme.Tests/.snapshots/Rendering/HtmlTests/RendersTable.verified.txt",
+    "received": ".artifacts/.snapshots/received/Acme.Tests/Rendering/HtmlTests/RendersTable.received.txt"
+  },
+  {
+    "key": "Lib/X/Y",
+    "ext": "txt",
+    "state": "new",
+    "verified": null,
+    "received": "src/Lib/obj/snapshots/received/X/Y.received.txt"
+  }
+]

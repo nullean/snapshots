@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Nullean.Snapshots.TUnit</RootNamespace>
+    <Description>TUnit test identity for Nullean.Snapshots: the runtime class, method and arguments of the running test.</Description>
+    <PackageTags>snapshot;approval;testing;tunit</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="TUnit.Core" />
+    <ProjectReference Include="../Nullean.Snapshots/Nullean.Snapshots.csproj" />
+    <InternalsVisibleTo Include="Nullean.Snapshots.Tests" />
+  </ItemGroup>
+
+  <!-- The registration is compiled into the test project, whose module initializer runs when tests start; one in this
+       assembly would only run once something touched it. -->
+  <ItemGroup>
+    <Compile Remove="buildTransitive/**" />
+    <None Include="buildTransitive/*" Pack="true" PackagePath="buildTransitive/" />
+    <None Include="buildTransitive/*" Pack="true" PackagePath="build/" />
+  </ItemGroup>
+
+</Project>
