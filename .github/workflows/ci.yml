@@ -196,5 +196,15 @@ jobs:
           [ -n "$root" ] || { echo "no root package in the feed"; exit 1; }
           echo "version $root"
           dotnet tool install Nullean.Snapshots.Cli --tool-path "$temp/tool" --add-source "$feed" --version "$root"
+          # Which package was installed, and does it start at all?
+          ls -la "$temp/tool"
+          find "$temp/tool/.store" -maxdepth 6 -type d -name 'tools' -print -exec ls -la {} \; || true
+          set +e
+          "$temp/tool/$snap" --version; echo "direct: exit $?"
+          native="$(find "$temp/tool/.store" -type f -name "$snap" | head -1)"
+          echo "native: $native"
+          [ -n "$native" ] && { "$native" --version; echo "native: exit $?"; }
+          if [[ "$RUNNER_OS" == "Windows" ]]; then cmd //c "$(cygpath -w "$temp/tool/$snap") --version"; echo "cmd: exit $?"; fi
+          set -e
           "$GITHUB_WORKSPACE/build/smoke-cli.sh" "$temp/tool/$snap"
           "$GITHUB_WORKSPACE/build/smoke-cli.sh" dotnet dnx "Nullean.Snapshots.Cli@$root" --add-source "$feed" --yes
