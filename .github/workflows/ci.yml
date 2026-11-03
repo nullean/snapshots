@@ -199,3 +199,62 @@ jobs:
           ls -la "$temp/tool"
           "$GITHUB_WORKSPACE/build/smoke-cli.sh" "$temp/tool/$snap"
           "$GITHUB_WORKSPACE/build/smoke-cli.sh" dotnet dnx "Nullean.Snapshots.Cli@$root" --add-source "$feed" --yes
+
+  # Publishing to nuget.org: only from a manual run on a tag, only once every gate above has passed, and only after a
+  # reviewer approves the 'release' environment. Pushing a tag alone runs CI but never publishes.
+  # nuget.org trusts this workflow file (ci.yml) through a trusted publishing policy, so there is no long-lived key.
+  release:
+    if: github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/')
+    needs: [build, aot-pack, tool-pack, tool-smoke]
+    runs-on: ubuntu-latest
+    name: Publish to nuget.org
+    timeout-minutes: 20
+    environment: release
+    permissions:
+      contents: read
+      id-token: write   # trusted publishing: exchange the workflow's OIDC token for a short-lived key
+
+    steps:
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: nupkg-*
+          path: packages
+          merge-multiple: true
+
+      - name: Check every package has the tag's version
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME}"
+          ls packages
+          for package in packages/*.nupkg; do
+            case "$(basename "$package")" in
+              *".$version.nupkg") ;;
+              *) echo "::error::$(basename "$package") does not have version $version"; exit 1 ;;
+            esac
+          done
+
+      - name: Log in to nuget.org (trusted publishing)
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      # The root tool package points at the per-RID ones, so it goes last: nobody can install a root package whose
+      # RID packages are not there yet.
+      - name: Publish
+        shell: bash
+        env:
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+        run: |
+          push() {
+            dotnet nuget push "$1" -k "$NUGET_API_KEY" -s https://api.nuget.org/v3/index.json --skip-duplicate --no-symbols
+          }
+          root="packages/Nullean.Snapshots.Cli.${GITHUB_REF_NAME}.nupkg"
+          for package in packages/*.nupkg; do
+            [ "$package" = "$root" ] || push "$package"
+          done
+          push "$root"
