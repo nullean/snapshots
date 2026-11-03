@@ -5,7 +5,7 @@ Non-obvious choices, newest last. Each says what was chosen, and why when the wh
 ## Fixed at the start
 
 - Name `Nullean.Snapshots`, CLI command `snap`, MIT. .NET 10.
-- Built on AwesomeAssertions; Verify is not used (v33+ adds a build-time sponsorship check).
+- Built on AwesomeAssertions.
 - Never auto-accept. Accept with `snap accept` or `SNAPSHOT_ACCEPT=1`; with `CI=true` nothing is ever accepted.
 - We own the JSON/YAML tree diff. `SystemTextJson.JsonDiffPatch` is a test-only oracle, never a runtime dependency.
 - The CLI is a native AOT dotnet tool and works on files only; it references no format package.

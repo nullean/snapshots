@@ -17,8 +17,7 @@ Where it and [DECISIONS.md](DECISIONS.md) disagree, DECISIONS.md wins; the main 
 Lightweight snapshot (approval) testing on AwesomeAssertions for HTML, JSON, YAML and plain text, plus a small native
 AOT CLI, `snap`. It replaces the custom assertions in elastic/docs-builder
 (`tests/Elastic.Markdown.Tests/PrettyHtmlExtensions.cs`, `tests/Elastic.Authoring.Tests/Framework/HtmlAssertions.cs`,
-about 200 call sites of `ShouldBeHtml` / `ConvertsToHtml`). Verify was rejected: v33+ adds a build-time sponsorship
-check.
+about 200 call sites of `ShouldBeHtml` / `ConvertsToHtml`).
 
 ## Principles
 
