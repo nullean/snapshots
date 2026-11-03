@@ -153,6 +153,27 @@ its verified file by the prefix swap. Half-written `*.tmp` files are ignored.
   doubles, so the agreement property leaves out numbers past double precision; our exact comparison is covered by
   example tests.
 
+## YAML
+
+- **SharpYaml for syntax only.** Its event parser (`Parser.CreateParser`) gives events with 0-based marks, anchors and
+  tags; the tree, positions (made 1-based), anchors and merge keys are built here. It publishes with native AOT
+  without warnings, so `.Yaml` is `IsAotCompatible`.
+- **Our own YAML 1.2 core schema.** SharpYaml's `CoreSchema` keeps YAML 1.1 rules: it types `1_000` and `0b101` as
+  integers and `017` as a float. The 1.2.2 regexes (§10.3.2) are short, so they are written out: `null`/`Null`/`NULL`/
+  `~`/empty, `true`/`True`/`TRUE` and the falses, decimal, `0o` and `0x` integers, floats with `.inf` and `.nan`;
+  anything else plain is a string, and `yes`, `on`, `1_000` are strings. Octal and hex integers carry their decimal
+  value so `0x1F` equals `31`. Quoted and block scalars are strings; `!!str`, `!!int`, `!!float`, `!!bool`, `!!null`
+  tags apply; local tags (`!foo`) are typed as if untagged.
+- **Merge keys:** only a plain `<<` merges. Explicit keys win over merged ones, the first of several merged mappings
+  wins, and merged entries take the place of the `<<` key. Aliases are the anchored node itself. Anchors do not
+  cross documents.
+- **Errors:** a repeated key in one mapping, a non-scalar key, an alias without an anchor and a merge of a non-mapping
+  are `FormatException`s, as invalid YAML is.
+- **Documents.** An empty stream is null. A stream of several documents compares document by document by position,
+  with paths `$doc[n]...`: they are separate files in one, not items to align.
+- **Stored verbatim.** `MatchYamlSnapshot` stores the text as given (comments and layout survive) after the usual
+  line-ending normalisation, and invalid YAML fails the assertion before anything is written.
+
 ## File system access
 
 All snapshot IO goes through `System.IO.Abstractions`, wrapped in `Nullean.ScopedFileSystem`:
