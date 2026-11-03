@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Nullean.Snapshots.Yaml</RootNamespace>
+    <Description>YAML snapshots and inline YAML assertions for Nullean.Snapshots: stored verbatim, compared as trees with the YAML 1.2 core schema, differences pointing at line and column.</Description>
+    <PackageTags>snapshot;approval;testing;yaml;awesomeassertions</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SharpYaml" />
+    <ProjectReference Include="../Nullean.Snapshots/Nullean.Snapshots.csproj" />
+    <ProjectReference Include="../Nullean.Snapshots.AwesomeAssertions/Nullean.Snapshots.AwesomeAssertions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Nullean.Snapshots.Yaml.Tests" />
+  </ItemGroup>
+
+</Project>

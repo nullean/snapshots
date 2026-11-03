@@ -16,6 +16,7 @@
     <!-- The lowest version that works, so consumers are not forced to upgrade: docs-builder pins 1.7.2. -->
     <PackageVersion Include="AngleSharp" Version="1.7.2" />
     <PackageVersion Include="AngleSharp.Diffing" Version="1.1.1" />
+    <PackageVersion Include="SharpYaml" Version="3.16.0" />
     <!-- Adapters build against the latest stable release, which is also their minimum. -->
     <PackageVersion Include="TUnit.Core" Version="1.78.0" />
   </ItemGroup>

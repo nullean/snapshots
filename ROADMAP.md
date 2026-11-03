@@ -126,7 +126,7 @@ One PR each; done means CI green on linux, windows and macos.
 4. **.Yaml**, including cross-format properties and positions.
 5. **snap review** (interactive), `snap orphans` and the manifest.
 6. **Docs**: README, an AGENTS.md snippet ("accept: snap accept <key>; always read the git diff of verified files
-   first"), a landing page on nullean.net. Then 1.0.
+   first"), a landing page on snapshots.nullean.net. Versions stay 0.x: 1.0 waits for the owner's go-ahead.
 
 ## Spikes
 

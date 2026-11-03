@@ -1,0 +1,8 @@
+YAML did not match snapshot: tests/Acme.Tests/.snapshots/Rendering/HtmlTests/RendersTable.verified.yml
+3 difference(s):
+$.items[0].name   expected "kibana"   actual "Kibana"   (verified.yml:3:11)
+$.items[1]        missing in actual   (verified.yml:5:5)
+$.meta.extra      unexpected in actual
+Received: .artifacts/.snapshots/received/Acme.Tests/Rendering/HtmlTests/RendersTable.received.yml
+Accept:   snap accept Acme.Tests/Rendering/HtmlTests/RendersTable   (or: dnx Nullean.Snapshots.Cli accept Acme.Tests/Rendering/HtmlTests/RendersTable)
+   or:    SNAPSHOT_ACCEPT=1 dotnet test --project tests/Acme.Tests --treenode-filter "/Acme.Tests/Acme.Tests.Rendering/HtmlTests/RendersTable"
