@@ -117,9 +117,9 @@ snapshots in this repository.
 One PR each; done means CI green on linux, windows and macos.
 
 0. **Scaffold**: solution, CPM, analyzers, editorconfig, CI, tag-based versioning. *(done, #1)*
-1. **Core + text + .AwesomeAssertions + .TUnit + CLI** (status, diff, accept, reject) with the AOT pack and smoke
+1. *(done, #2)* **Core + text + .AwesomeAssertions + .TUnit + CLI** (status, diff, accept, reject) with the AOT pack and smoke
    pipeline. Prerelease `0.1.0-alpha.N` to a local feed only.
-2. **.Html**, then migrate docs-builder: wrappers keep `PrettyHtmlExtensions` / `HtmlAssertions` method names, keep the
+2. *(.Html done, #3; the docs-builder migration is verified locally and left to the owner)* **.Html**, then migrate docs-builder: wrappers keep `PrettyHtmlExtensions` / `HtmlAssertions` method names, keep the
    H1 strip, `section#elastic-docs-v3` selector and `hx-*` removal in the wrappers, drop DiffPlex and
    AngleSharp.Diffing there, rework docs-builder #4654 to `MatchSnapshot` with `Select("main#content-container")`.
 3. **Node tree + TreeDiffer + .Json** with the full CsCheck suite.

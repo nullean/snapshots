@@ -1,0 +1,8 @@
+JSON did not match snapshot: tests/Acme.Tests/.snapshots/Rendering/HtmlTests/RendersTable.verified.json
+3 difference(s):
+$.Name      expected "kibana"   actual "Kibana"   (verified.json:3:11)
+$.Tags[1]   missing in actual   (verified.json:6:5)
+$.Owner     missing in actual   (verified.json:8:12)
+Received: .artifacts/.snapshots/received/Acme.Tests/Rendering/HtmlTests/RendersTable.received.json
+Accept:   snap accept Acme.Tests/Rendering/HtmlTests/RendersTable   (or: dnx Nullean.Snapshots.Cli accept Acme.Tests/Rendering/HtmlTests/RendersTable)
+   or:    SNAPSHOT_ACCEPT=1 dotnet test --project tests/Acme.Tests --treenode-filter "/Acme.Tests/Acme.Tests.Rendering/HtmlTests/RendersTable"

@@ -5,10 +5,12 @@
     <Project Path="src/Nullean.Snapshots.TUnit/Nullean.Snapshots.TUnit.csproj" />
     <Project Path="src/Nullean.Snapshots.Cli/Nullean.Snapshots.Cli.csproj" />
     <Project Path="src/Nullean.Snapshots.Html/Nullean.Snapshots.Html.csproj" />
+    <Project Path="src/Nullean.Snapshots.Json/Nullean.Snapshots.Json.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Nullean.Snapshots.Tests/Nullean.Snapshots.Tests.csproj" />
     <Project Path="tests/Nullean.Snapshots.Cli.Tests/Nullean.Snapshots.Cli.Tests.csproj" />
     <Project Path="tests/Nullean.Snapshots.Html.Tests/Nullean.Snapshots.Html.Tests.csproj" />
+    <Project Path="tests/Nullean.Snapshots.Json.Tests/Nullean.Snapshots.Json.Tests.csproj" />
   </Folder>
 </Solution>
