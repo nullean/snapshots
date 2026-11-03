@@ -3,7 +3,10 @@ max_toc_depth: 2
 dev_docs: true
 
 branding:
-  icon: images/snapshots-mark.svg
+  icon: images/brand/mark.svg
+  favicon: images/brand/png/mark-32.png
+  og-image: images/brand/png/social-card.png
+  apple-touch-icon: images/brand/png/mark-180.png
 
 toc:
   - file: index.md

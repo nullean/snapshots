@@ -200,10 +200,15 @@ its verified file by the prefix swap. Half-written `*.tmp` files are ignored.
   `index.html` with the hand-written landing page. Published to GitHub Pages at `snapshots.nullean.net` (Pages from
   Actions, custom domain set on the repository, TLS at Cloudflare as for curb).
 - **Pull requests build the site** and upload it as an artifact; only pushes to main deploy.
-- **The hue:** a quiet teal (`#6CC7C2` dark, `#1F6461` light, links at 4.5:1 on paper) with a muted rose second
-  colour, next to curb's amber and argh's lime. The theme is curb's with its palette remapped; warning colours stay
-  amber, since that is what they mean. The mark is a diff, a rose line out and a teal line in, drawn rather than set
-  in a font.
+- **The brand** ("Aperture", `docs/images/brand`, from the design kit): frost `#9FC9EA` for the approved baseline and
+  lime `#C6DD7A` for what was added, a six-blade shutter iris around a lime point of light, and the `snapshots.`
+  lockup. The docs theme is curb's with its palette remapped to these; warning colours stay amber. In the light theme
+  the brand's `#2884CC` and `#A0C32D` are 3.8:1 and 1.9:1 on paper, so link and highlight text use `#1D6AA8` (5.4:1)
+  and `#5B7413` (5.0:1); the frames keep the brand hues.
+- **Inlined lockups.** The wordmark is live JetBrains Mono text, which an SVG cannot render with the page's fonts when
+  loaded through `<img>`, so the landing page and the docs header (`scripts/docs-pages.py`) inline the animated
+  lockup instead. The PNGs (NuGet icon, favicons, social card, README lockups) are rendered from the SVGs on a
+  transparent canvas with JetBrains Mono embedded; the README uses absolute image URLs so it renders on nuget.org too.
 - **`scripts/docs.sh` does not download docs-builder**: it takes `DOCS_BUILDER` or a `docs-builder` on the PATH.
 
 ## File system access

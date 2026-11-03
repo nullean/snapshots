@@ -27,9 +27,9 @@ awk -v m="$marker" '$0 == m { exit } { print }' "$css" > "$css.tmp"
 { printf '%s\n' "$marker"; cat "$root/docs/snapshots-docs.css"; } >> "$css.tmp"
 mv "$css.tmp" "$css"
 
-# Root links that skip htmx, and the header logo: see scripts/docs-pages.py. The logo is the landing page's nav lockup
-# (156x48), not branding.icon, which docs-builder uses where a square mark fits.
-python3 -I "$root/scripts/docs-pages.py" "$out" "$root/docs" "$prefix" images/snapshots-lockup-nav.svg 156 48
+# Root links that skip htmx, and the header logo: see scripts/docs-pages.py. The logo is the brand's animated lockup at
+# half size (276x96 to 138x48), inlined; branding.icon is the square mark docs-builder uses elsewhere.
+python3 -I "$root/scripts/docs-pages.py" "$out" "$root/docs" "$prefix" images/brand/lockup-animated.svg 138 48
 
 cp "$root/docs/snapshots-landing.html" "$out/index.html"
 cp "$root/docs/robots.txt" "$out/robots.txt"
