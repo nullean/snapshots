@@ -85,6 +85,12 @@ its verified file by the prefix swap. Half-written `*.tmp` files are ignored.
   with "pass a name"; the same owner again (a retried test) is fine.
 - **Deterministic builds.** A `[CallerFilePath]` like `/_/tests/Acme.Tests/Rendering/X.cs` is mapped back by matching
   its leading folders against the end of the project directory from the assembly metadata.
+- **Snapshots of a file.** `Snapshot.MatchFile` keys a snapshot by a source file instead of the calling test:
+  `{Project}/{dir}/{file name without extension}`, the file's place in the project. It exists for browser journeys,
+  which a test and the CLI both run and must compare against one verified file. A relative path resolves against the
+  test project's directory; a file outside the project is an error rather than a key that could collide. The calling
+  test still owns the key for the duplicate check and still supplies the `--treenode-filter` line; without a test the
+  message leaves that line out.
 - **Runs never prune.** The lost first version deleted stale received folders at the start of a run, which raced with
   parallel tests writing into them. A passing assertion deletes only its own received file; cleaning up is
   `snap reject`'s job.

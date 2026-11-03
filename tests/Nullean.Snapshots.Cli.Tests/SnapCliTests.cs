@@ -120,6 +120,25 @@ public class SnapCliTests
 	}
 
 	[Test]
+	public void FileKeyedSnapshotsAreFoundAndAcceptedBySuffix()
+	{
+		// Snapshot.MatchFile keys by a source file's path, so there is no class or method segment.
+		_fs.AddFile(Received("journeys", "checkout.received.journey"), new("## get url\n"));
+		_fs.AddFile(Received("landing.received.journey"), new("## get title\n"));
+
+		Cli().Status(json: true).Should().Be(ExitCode.Pending);
+		using (var document = JsonDocument.Parse(_out.ToString()))
+		{
+			document.RootElement.EnumerateArray().Select(e => e.GetProperty("key").GetString())
+				.Should().Contain(["Acme.Tests/journeys/checkout", "Acme.Tests/landing"]);
+		}
+
+		Cli().Accept(["checkout", "Acme.Tests/landing"], all: false).Should().Be(ExitCode.Ok);
+		_fs.File.ReadAllText(Verified("journeys", "checkout.verified.journey")).Should().Be("## get url\n");
+		_fs.File.ReadAllText(Verified("landing.verified.journey")).Should().Be("## get title\n");
+	}
+
+	[Test]
 	public void RejectDeletesReceivedAndKeepsVerified()
 	{
 		Cli().Reject([Changed], all: false).Should().Be(ExitCode.Ok);
