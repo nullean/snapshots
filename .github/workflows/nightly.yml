@@ -1,0 +1,39 @@
+name: nightly
+
+# The CsCheck properties at 10,000 iterations instead of the default 100, on every OS, once a day and by hand.
+# A failure prints the seed to reproduce with: CsCheck_Seed=<seed> dotnet test ...; keep it as a regression test.
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  properties:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    name: Properties x10000 (${{ matrix.os }})
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - run: git fetch --prune --tags
+        shell: bash
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - run: dotnet build -c Release
+
+      - name: Test with 10,000 iterations per property
+        run: dotnet test -c Release --no-build
+        env:
+          CsCheck_Iter: 10000

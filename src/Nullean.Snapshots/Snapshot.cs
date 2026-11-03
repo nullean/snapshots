@@ -67,6 +67,10 @@ internal sealed class SnapshotEngine(
 	private readonly ConcurrentDictionary<SnapshotProject, RunManifest> _manifests = new();
 	private int _flushed;
 
+	// Projects whose received folder already has its marker in this process. Writing it once, from whichever failure
+	// gets there first, keeps parallel failures from replacing the same file at once, which Windows refuses.
+	private readonly ConcurrentDictionary<SnapshotProject, byte> _markers = new();
+
 	public SnapshotResult Match(
 		string actual,
 		SnapshotFormat format,
@@ -120,7 +124,8 @@ internal sealed class SnapshotEngine(
 		}
 
 		fs.Directory.CreateDirectory(project.ReceivedDirectory);
-		ReceivedMarker.For(fileSystem, project).EnsureWritten(fs, project.ReceivedDirectory);
+		if (_markers.TryAdd(project, 0))
+			ReceivedMarker.For(fileSystem, project).EnsureWritten(fs, project.ReceivedDirectory);
 		AtomicFile.Write(fs, receivedPath, value);
 
 		var failure = new SnapshotFailure(

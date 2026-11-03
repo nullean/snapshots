@@ -61,9 +61,10 @@ internal sealed record ReceivedMarker(string Project, string VerifiedDirectory)
 		{
 			AtomicFile.Write(fs, path, content);
 		}
-		catch (IOException) when (ReadOrNull(fs, path) == content)
+		catch (Exception e) when (e is IOException or UnauthorizedAccessException && ReadOrNull(fs, path) == content)
 		{
-			// Another test wrote the same marker at the same moment.
+			// Another writer (another test process) put the same marker there at the same moment. Windows reports a
+			// move onto a file being replaced as access denied rather than an IO error.
 		}
 	}
 
@@ -73,7 +74,7 @@ internal sealed record ReceivedMarker(string Project, string VerifiedDirectory)
 		{
 			return fs.File.ReadAllText(path, SnapshotText.Encoding);
 		}
-		catch (IOException)
+		catch (Exception e) when (e is IOException or UnauthorizedAccessException)
 		{
 			return null;
 		}

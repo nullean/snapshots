@@ -212,6 +212,9 @@ All snapshot IO goes through `System.IO.Abstractions`, wrapped in `Nullean.Scope
 
 - **Plain `dotnet` commands in CI rather than curb's F# build project.** Curb's scripts exist for corpus gates this
   repository does not have; the pack matrix needs only `dotnet pack -r <rid>`. Revisit if the workflow grows logic.
+- **Nightly properties.** `nightly.yml` runs the whole suite with `CsCheck_Iter=10000` on linux, windows and macos
+  once a day (and by hand); pull requests run CsCheck's default 100. A failing property prints its seed: reproduce
+  with `CsCheck_Seed=<seed>` and keep the case as a regression test.
 - **CI split.** Pull requests build, test and pack the libraries on linux, windows and macos. Pushes to main, tags and
   manual runs also pack the native tool for every RID on a matching runner (including the arm64 runners), pack the
   root and portable `any` packages, and install the tool from a local feed on each OS to run `build/smoke-cli.sh`,
