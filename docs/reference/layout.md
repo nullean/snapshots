@@ -21,6 +21,17 @@ tests/Shop.Tests/
 - **The arguments hash** (eight hex digits) tells data-driven cases apart. It is stable across machines, cultures and
   versions.
 
+A snapshot can also belong to a file rather than a test. `Snapshot.MatchFile` keys it by the file's path in the
+project, without the extension, so every runner of that file shares one verified file:
+
+```text
+tests/Shop.Tests/
+├── journeys/checkout.journey
+└── .snapshots/
+    └── journeys/
+        └── checkout.verified.journey             Shop.Tests/journeys/checkout
+```
+
 Received files never go into the source tree:
 
 ```text

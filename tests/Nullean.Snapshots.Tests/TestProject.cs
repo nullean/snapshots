@@ -36,6 +36,9 @@ internal sealed class TestProject
 	public SnapshotResult Match(string actual, string? name = null, SnapshotOptions? options = null, string member = "RendersTable", int line = 10, string? because = null) =>
 		Engine.Match(actual, SnapshotFormats.Text, Site(member, line), name, options, because);
 
+	public SnapshotResult MatchFile(string actual, string sourceFile, SnapshotOptions? options = null, string? because = null) =>
+		Engine.MatchFile(actual, SnapshotFormats.Text, sourceFile, options, because);
+
 	public string VerifiedFile(string keyWithinProject, string extension = "txt") =>
 		SnapshotPath.File(Fs, Project.SnapshotsDirectory, keyWithinProject, SnapshotPath.VerifiedInfix, extension);
 

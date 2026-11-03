@@ -39,10 +39,13 @@ internal sealed class SnapshotProjectResolver(IFileSystem fs)
 
 	public SnapshotProject Resolve(Assembly? testAssembly, string callerFilePath)
 	{
-		if (testAssembly is not null && _byAssembly.GetOrAdd(testAssembly, FromMetadata) is { } fromMetadata)
+		if (testAssembly is not null && FromAssembly(testAssembly) is { } fromMetadata)
 			return fromMetadata;
 		return FromCallerFile(callerFilePath);
 	}
+
+	/// <summary>The project the assembly's metadata names, cached per assembly; <c>null</c> without metadata.</summary>
+	internal SnapshotProject? FromAssembly(Assembly testAssembly) => _byAssembly.GetOrAdd(testAssembly, FromMetadata);
 
 	/// <summary>Reads the <c>[AssemblyMetadata]</c> that <c>Nullean.Snapshots.targets</c> writes.</summary>
 	internal SnapshotProject? FromMetadata(Assembly assembly)

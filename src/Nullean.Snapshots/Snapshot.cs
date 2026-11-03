@@ -51,6 +51,28 @@ public static class Snapshot
 		SnapshotOptions? options = null,
 		string? because = null
 	) => (EngineOverride.Value ?? Engine).Match(actual, format, callSite, name, options, because);
+
+	/// <summary>
+	/// Compares <paramref name="actual"/> with the verified snapshot of a source file, such as a browser journey,
+	/// rather than of the calling test. The key is the file's path in its project without the extension
+	/// (<c>{Project}/{dir}/{name}</c>), so every runner of the file, a test or a command line tool, shares one verified
+	/// file. Otherwise it behaves as <see cref="Match"/>.
+	/// </summary>
+	/// <param name="actual">The value, as text.</param>
+	/// <param name="format">How it is stored and compared.</param>
+	/// <param name="sourceFile">
+	/// The file the snapshot belongs to: a full path inside a project, or a path relative to the test project's
+	/// directory.
+	/// </param>
+	/// <param name="options">Per-call options such as scrubbers.</param>
+	/// <param name="because">An optional reason, shown in the failure message.</param>
+	public static SnapshotResult MatchFile(
+		string actual,
+		SnapshotFormat format,
+		string sourceFile,
+		SnapshotOptions? options = null,
+		string? because = null
+	) => (EngineOverride.Value ?? Engine).MatchFile(actual, format, sourceFile, options, because);
 }
 
 /// <summary>The snapshot workflow over an <see cref="IFileSystem"/>, so tests can run it on a mock.</summary>
@@ -97,11 +119,63 @@ internal sealed class SnapshotEngine(
 			identity?.MethodName ?? callSite.MemberName,
 			name,
 			identity is null ? null : SnapshotPath.ArgumentsHash(identity.Arguments));
+		ClaimKey(key, identity, callSite);
+		return Compare(actual, format, project, key, identity?.TreeNodeFilter, options, because);
+	}
+
+	public SnapshotResult MatchFile(string actual, SnapshotFormat format, string sourceFile, SnapshotOptions? options, string? because)
+	{
+		ArgumentNullException.ThrowIfNull(actual);
+		ArgumentNullException.ThrowIfNull(format);
+		ArgumentException.ThrowIfNullOrWhiteSpace(sourceFile);
+
+		var identity = (identityProvider is null ? SnapshotDefaults.TestIdentity : identityProvider())?.Current;
+		var assembly = identity?.TestAssembly ?? Assembly.GetEntryAssembly();
+		SnapshotProject project;
+		string fullPath;
+		if (fileSystem.Path.IsPathRooted(sourceFile))
+		{
+			fullPath = fileSystem.Path.GetFullPath(sourceFile);
+			project = projectResolver is null
+				? _resolver.Resolve(assembly, fullPath)
+				: projectResolver(new SnapshotCallSite(fullPath, string.Empty, 0), assembly);
+		}
+		else
+		{
+			project = (projectResolver is null
+					? assembly is null ? null : _resolver.FromAssembly(assembly)
+					: projectResolver(new SnapshotCallSite(sourceFile, string.Empty, 0), assembly))
+				?? throw new InvalidOperationException(
+					$"Cannot resolve '{sourceFile}' without a test project. Pass a full path, or reference Nullean.Snapshots from the test project.");
+			fullPath = fileSystem.Path.GetFullPath(fileSystem.Path.Combine(project.Directory, sourceFile));
+		}
+
+		var relative = SnapshotPath.Relative(fileSystem, project.Directory, fullPath);
+		if (relative.StartsWith("../", StringComparison.Ordinal) || relative == ".." || fileSystem.Path.IsPathRooted(relative))
+			throw new ArgumentException($"'{sourceFile}' is not inside the test project at {project.Directory}.", nameof(sourceFile));
+		var name = SnapshotPath.Sanitize(fileSystem.Path.GetFileNameWithoutExtension(fullPath));
+		if (name.Trim('.').Length == 0)
+			throw new ArgumentException($"'{sourceFile}' has no file name to key its snapshot by.", nameof(sourceFile));
+		var slash = relative.LastIndexOf('/');
+		var key = SnapshotPath.Key(project.Name, slash < 0 ? string.Empty : relative[..slash], string.Empty, name, null, null);
+
+		ClaimKey(key, identity, new SnapshotCallSite(fullPath, string.Empty, 0));
+		return Compare(actual, format, project, key, identity?.TreeNodeFilter, options, because);
+	}
+
+	private SnapshotResult Compare(
+		string actual,
+		SnapshotFormat format,
+		SnapshotProject project,
+		string key,
+		string? treeNodeFilter,
+		SnapshotOptions? options,
+		string? because
+	)
+	{
 		var withinProject = SnapshotPath.KeyWithinProject(key);
 		var verifiedPath = SnapshotPath.File(fileSystem, project.SnapshotsDirectory, withinProject, SnapshotPath.VerifiedInfix, format.Extension);
 		var receivedPath = SnapshotPath.File(fileSystem, project.ReceivedDirectory, withinProject, SnapshotPath.ReceivedInfix, format.Extension);
-
-		ClaimKey(key, identity, callSite);
 
 		var fs = ScopeFor(project);
 		Touch(project, withinProject + SnapshotPath.VerifiedInfix + format.Extension);
@@ -136,7 +210,7 @@ internal sealed class SnapshotEngine(
 			comparison,
 			Because(because),
 			project.RelativeDirectory(fileSystem),
-			identity?.TreeNodeFilter,
+			treeNodeFilter,
 			environment.AcceptIgnoredInCi);
 		return new SnapshotResult(false, failure.Render(), key, verifiedPath, receivedPath);
 	}
