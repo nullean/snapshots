@@ -21,6 +21,7 @@ toc:
       - file: html.md
       - file: json.md
       - file: yaml.md
+      - file: images.md
   - folder: workflow
     children:
       - file: index.md

@@ -1,0 +1,5 @@
+Image did not match snapshot: tests/Acme.Tests/.snapshots/Rendering/HtmlTests/RendersTable.verified.png
+1 difference(s):
+size: verified 40x30, actual 40x31
+Received: .artifacts/.snapshots/received/Acme.Tests/Rendering/HtmlTests/RendersTable.received.png
+Accept:   snap accept Acme.Tests/Rendering/HtmlTests/RendersTable   (or: dnx Nullean.Snapshots.Cli accept Acme.Tests/Rendering/HtmlTests/RendersTable)

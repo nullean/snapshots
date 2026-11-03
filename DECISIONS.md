@@ -244,6 +244,29 @@ its verified file by the prefix swap. Half-written `*.tmp` files are ignored.
   text, so `*.verified.png` and `*.received.png` are marked `binary` after it. The image docs tell users with a
   similar rule to do the same.
 
+## Images
+
+- **Our own PNG codec, PNG only.** A decoder in managed integer code (zlib from `ZLibStream`, the five scanline
+  filters, every colour type and depth, `tRNS`, Adam7) gives the same RGBA on every OS and architecture and adds no
+  dependency. ImageSharp's Split License would pass on to users of an MIT package; SkiaSharp ships native binaries
+  and decodes through platform code that can differ between machines. Every chunk CRC is checked; ancillary chunks
+  and colour management are ignored; 16-bit samples keep their high byte, as stb_image does. 8192 × 8192 pixels at
+  most, so 16-bit data stays within one array. Encoding (diff images only) is 8-bit RGBA with the Up filter and our
+  own CRC table, rather than `System.IO.Hashing`.
+- **The comparison is pixelmatch's** (ISC, Mapbox), ported: the YIQ distance with `35215 * threshold²` as the limit,
+  anti-aliasing detection on the 3×3 neighbourhood with the "many siblings" test in both images, and translucent
+  pixels blended over a background that varies by position. Two departures: the background pattern is keyed by pixel
+  index (pixelmatch's byte offset is always even, so its red channel never varies), and the full delta is unsigned,
+  since only pixelmatch's second diff colour used the sign. An edge that moves one pixel reads as anti-aliasing, as in
+  pixelmatch; two pixels is a difference.
+- **Allowance:** `MaxDifferentPixels` and `MaxDifferentRatio`, both 0 by default; with both set the larger applies,
+  so setting one never makes the other stricter.
+- **Regions** group differences by 8×8 cells that touch, diagonals included, so a changed word reads as one region
+  rather than one per glyph, and grouping costs one pass over the cells.
+- **Oracles:** PngSuite (free to copy, vendored with its licence) decoded by StbImageSharp, a C# port of stb_image,
+  test-only like the JSON oracle. `Validate` decodes the whole actual image before anything is written, so it is
+  decoded twice on a comparison; a screenshot takes far longer than that.
+
 ## File system access
 
 All snapshot IO goes through `System.IO.Abstractions`, wrapped in `Nullean.ScopedFileSystem`:

@@ -1,7 +1,7 @@
 # Formats
 
-Every format stores its snapshots as UTF-8 without a byte order mark, with LF line endings and one trailing newline,
-and compares in its own way:
+Text formats store their snapshots as UTF-8 without a byte order mark, with LF line endings and one trailing newline;
+images are stored exactly as given. Each compares in its own way:
 
 | Format | Stored as | Compared |
 |---|---|---|
@@ -9,9 +9,10 @@ and compares in its own way:
 | [HTML](html.md) | pretty-printed HTML | as a DOM with AngleSharp.Diffing, plus a line diff |
 | [JSON](json.md) | pretty-printed JSON | as a tree: keys in any order, numbers by value |
 | [YAML](yaml.md) | the YAML as written | as a tree with the YAML 1.2 core schema |
+| [Images](images.md) | the PNG as given | by pixels, perceptually, with anti-aliasing left out |
 
-Structural formats never rewrite a verified file that still matches: reformatting it by hand, or a whitespace change
-in the output, does not fail a test.
+Structural formats never rewrite a verified file that still matches: reformatting it by hand, a whitespace change in
+the output, or an image re-encoded with the same pixels does not fail a test.
 
 ## Scrubbing volatile values
 

@@ -1,6 +1,6 @@
 # Nullean.Snapshots
 
-Snapshot testing for .NET on [AwesomeAssertions](https://awesomeassertions.org): plain text, HTML, JSON and YAML,
+Snapshot testing for .NET on [AwesomeAssertions](https://awesomeassertions.org): plain text, HTML, JSON, YAML and PNG images,
 with a small native AOT CLI, `snap`, to review what changed and accept it.
 
 ```csharp

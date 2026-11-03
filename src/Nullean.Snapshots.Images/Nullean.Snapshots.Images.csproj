@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Nullean.Snapshots.Images</RootNamespace>
+    <Description>PNG image snapshots for Nullean.Snapshots: decoded with its own PNG codec and compared pixel by pixel, perceptually and with anti-aliasing left out, so they pass on every machine.</Description>
+    <PackageTags>snapshot;approval;testing;image;png;screenshot;visual-regression;awesomeassertions</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Nullean.Snapshots/Nullean.Snapshots.csproj" />
+    <ProjectReference Include="../Nullean.Snapshots.AwesomeAssertions/Nullean.Snapshots.AwesomeAssertions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Nullean.Snapshots.Images.Tests" />
+  </ItemGroup>
+
+</Project>

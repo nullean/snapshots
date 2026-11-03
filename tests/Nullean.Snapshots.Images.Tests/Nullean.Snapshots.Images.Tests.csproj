@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="TUnit" />
+    <PackageReference Include="AwesomeAssertions" />
+    <PackageReference Include="CsCheck" />
+    <PackageReference Include="StbImageSharp" />
+    <PackageReference Include="TestableIO.System.IO.Abstractions.TestingHelpers" />
+    <ProjectReference Include="../../src/Nullean.Snapshots.Images/Nullean.Snapshots.Images.csproj" />
+    <ProjectReference Include="../../src/Nullean.Snapshots.TUnit/Nullean.Snapshots.TUnit.csproj" />
+  </ItemGroup>
+
+  <!-- The mock project the core tests use. -->
+  <ItemGroup>
+    <Compile Include="../Nullean.Snapshots.Tests/TestProject.cs" Link="TestProject.cs" />
+  </ItemGroup>
+
+  <!-- PngSuite (Willem van Schaik, free to copy and distribute, see PngSuite/PngSuite.LICENSE). -->
+  <ItemGroup>
+    <None Include="PngSuite/**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <Import Project="../../src/Nullean.Snapshots/buildTransitive/Nullean.Snapshots.targets" />
+  <Import Project="../../src/Nullean.Snapshots.TUnit/buildTransitive/Nullean.Snapshots.TUnit.targets" />
+
+</Project>

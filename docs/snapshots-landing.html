@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Nullean.Snapshots — Structural Snapshot tests for .NET</title>
-<meta name="description" content="Snapshot testing on AwesomeAssertions for text, HTML, JSON and YAML. Structural comparison, plain capped failure messages, and a native AOT CLI to review and accept what changed."/>
+<meta name="description" content="Snapshot testing on AwesomeAssertions for text, HTML, JSON, YAML and PNG images. Structural comparison, plain capped failure messages, and a native AOT CLI to review and accept what changed."/>
 <base href="/"/>
 
 <!-- This page is copied verbatim over the generated index.html by scripts/docs-finish.sh, so it never goes through
@@ -259,8 +259,8 @@
 
 <section class="band" id="formats">
   <div class="wrap">
-    <h2>Four formats</h2>
-    <p class="sub">Each stored as UTF-8 with LF endings, each compared its own way.</p>
+    <h2>Five formats</h2>
+    <p class="sub">Text stored as UTF-8 with LF endings, images as given, each compared its own way.</p>
     <div class="table-scroll">
     <table class="formats">
       <thead><tr><th>Format</th><th>Assertions</th><th>Compared</th></tr></thead>
@@ -269,6 +269,7 @@
         <tr><td><a href="formats/html/">HTML</a></td><td><code>MatchHtmlSnapshot</code>, <code>BeHtml</code>, <code>ContainHtml</code></td><td>as a DOM with AngleSharp.Diffing; select, remove and transform first</td></tr>
         <tr><td><a href="formats/json/">JSON</a></td><td><code>MatchJsonSnapshot</code>, <code>BeJson</code></td><td>as a tree: keys in any order, numbers by value, arrays aligned item by item</td></tr>
         <tr><td><a href="formats/yaml/">YAML</a></td><td><code>MatchYamlSnapshot</code>, <code>BeYaml</code></td><td>as a tree with the YAML 1.2 core schema, stored as written, comments and all</td></tr>
+        <tr><td><a href="formats/images/">Images</a></td><td><code>MatchImageSnapshot</code></td><td>by pixels, perceptually, with anti-aliasing left out and a diff image on failure</td></tr>
       </tbody>
     </table>
     </div>
