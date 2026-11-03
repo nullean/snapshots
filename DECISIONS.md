@@ -98,6 +98,29 @@ its verified file by the prefix swap. Half-written `*.tmp` files are ignored.
   AwesomeAssertions' `{reason}`, so the template stays one shape. Object snapshots (`ObjectAssertions`) wait for
   `.Json`, which owns serialisation.
 
+## HTML
+
+- **One package, assertions included.** `Nullean.Snapshots.Html` holds the format and its AwesomeAssertions
+  extensions (`MatchHtmlSnapshot`, `BeHtml`, `ContainHtml`, `NotContainHtml`) and depends on
+  `Nullean.Snapshots.AwesomeAssertions`. Putting `BeHtml` in the AwesomeAssertions package, as the brief had it, would
+  make every user carry AngleSharp. `MatchHtmlSnapshot` rather than a `MatchSnapshot` overload, which would be
+  ambiguous with the text one when called without arguments.
+- **AOT-clean after all.** AngleSharp 1.9 and AngleSharp.Diffing 1.1 publish with native AOT without a single trim or
+  AOT warning (spiked on osx-arm64, the binary parsed, printed and diffed). The package sets `IsAotCompatible`.
+- **The pipeline:** parse, `Select(css)` (the body by default), `Remove(css)`, `RemoveAttributes(patterns)` with `*`
+  wildcards on every element or `RemoveAttributesFrom(css, patterns)`, `Transform(Action<IElement>)`, then
+  AngleSharp's `PrettyMarkupFormatter` with tabs and `\n`. docs-builder's leading-H1 strip and its
+  `section#elastic-docs-v3` selector stay in docs-builder, as a transform and a select.
+- **Top-level text is printed, escaped.** docs-builder printed only the root's element children, silently dropping
+  text between them. Whitespace-only text is still dropped; other text is printed through the formatter's escaping,
+  which a property test showed is needed (`&lt;a` printed raw reparsed as a tag).
+- **Comparison is structural.** Two pretty texts match when AngleSharp.Diffing finds no difference, so a whitespace
+  change never fails and a passing compare never rewrites the verified file. Each difference is docs-builder's
+  `HtmlDiffString` label, then the expected and actual node, cut after six lines; a line diff of the pretty HTML
+  follows within the same 80-line cap.
+- **`ContainHtml` ignores indentation**, as docs-builder's did: both sides are pretty-printed and tabs removed, so a
+  fragment matches wherever it is nested.
+
 ## File system access
 
 All snapshot IO goes through `System.IO.Abstractions`, wrapped in `Nullean.ScopedFileSystem`:
