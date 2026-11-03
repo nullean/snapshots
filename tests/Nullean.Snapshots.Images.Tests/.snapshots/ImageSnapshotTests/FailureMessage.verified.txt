@@ -1,0 +1,8 @@
+Image did not match snapshot: tests/Acme.Tests/.snapshots/Rendering/HtmlTests/RendersTable.verified.png
+5 of 1,200 pixels differ (0.42%), 0 allowed
+2 difference(s):
+x 10-13, y 5-5 (4x1): 4 pixel(s)
+x 35-35, y 25-25 (1x1): 1 pixel(s)
+Received: .artifacts/.snapshots/received/Acme.Tests/Rendering/HtmlTests/RendersTable.received.png
+Diff:     .artifacts/.snapshots/received/Acme.Tests/Rendering/HtmlTests/RendersTable.received-diff.png
+Accept:   snap accept Acme.Tests/Rendering/HtmlTests/RendersTable   (or: dnx Nullean.Snapshots.Cli accept Acme.Tests/Rendering/HtmlTests/RendersTable)

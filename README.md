@@ -17,8 +17,8 @@
 
 ---
 
-Nullean.Snapshots is snapshot testing on [AwesomeAssertions](https://awesomeassertions.org) for text, HTML, JSON
-and YAML. A test's output is compared with a verified file kept with your tests; when it differs, the test fails with
+Nullean.Snapshots is snapshot testing on [AwesomeAssertions](https://awesomeassertions.org) for text, HTML, JSON,
+YAML and PNG images. A test's output is compared with a verified file kept with your tests; when it differs, the test fails with
 a short, plain message that says exactly what moved and how to accept it. A small native AOT CLI, `snap`, reviews and
 accepts what changed.
 
@@ -42,7 +42,8 @@ Accept:   snap accept Shop.Tests/CatalogTests/Serializes   (or: dnx Nullean.Snap
 
 - **Compared by structure, not by text.** HTML compares as a DOM; JSON and YAML compare as trees. Attribute order,
   whitespace, key order and `1` versus `1.0` do not fail a test, and a changed field is reported by its path, with
-  the line and column in the verified file.
+  the line and column in the verified file. Images compare by their pixels, perceptually and with anti-aliasing left
+  out, so a screenshot passes on every machine.
 - **Messages people and agents can act on.** Plain text without colour codes, repository-relative paths, at most 20
   differences and 80 lines, and the exact command to accept. They read the same in a terminal, a CI log and an
   agent's context.
@@ -61,6 +62,7 @@ Accept:   snap accept Shop.Tests/CatalogTests/Serializes   (or: dnx Nullean.Snap
 | [`Nullean.Snapshots.Html`](https://www.nuget.org/packages/Nullean.Snapshots.Html) | `MatchHtmlSnapshot`, `BeHtml`, `ContainHtml`, `NotContainHtml`; select, remove and transform first |
 | [`Nullean.Snapshots.Json`](https://www.nuget.org/packages/Nullean.Snapshots.Json) | `MatchJsonSnapshot` for JSON text and objects (AOT-safe through `JsonTypeInfo<T>`), `BeJson` |
 | [`Nullean.Snapshots.Yaml`](https://www.nuget.org/packages/Nullean.Snapshots.Yaml) | `MatchYamlSnapshot`, `BeYaml`; the YAML 1.2 core schema, anchors and merge keys, stored as written |
+| [`Nullean.Snapshots.Images`](https://www.nuget.org/packages/Nullean.Snapshots.Images) | `MatchImageSnapshot` for PNG screenshots; compared by pixels, with a diff image on failure |
 | [`Nullean.Snapshots.TUnit`](https://www.nuget.org/packages/Nullean.Snapshots.TUnit) | the running TUnit test's class, method and arguments, so every case gets its own file |
 | [`Nullean.Snapshots.Cli`](https://www.nuget.org/packages/Nullean.Snapshots.Cli) | `snap`: review, diff, accept, reject, and find orphaned snapshots |
 
@@ -81,7 +83,7 @@ The first run of a new snapshot fails and writes a received file. Read it, accep
 `snap review`), and commit the verified file. From then on a change in output is a decision you make with the
 difference in front of you.
 
-Read more at **[snapshots.nullean.net](https://snapshots.nullean.net)**: the four formats, the `snap` workflow,
+Read more at **[snapshots.nullean.net](https://snapshots.nullean.net)**: the formats, the `snap` workflow,
 snapshots in CI, working with coding agents, and the reference.
 
 Versions are 0.x while the API settles. The packages need .NET 10.
