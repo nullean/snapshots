@@ -201,6 +201,52 @@ public class SnapshotEngineTests
 		hiddenWrite.Should().Throw<ScopedFileSystemException>();
 	}
 
+	[Test]
+	public void ManifestListsTouchedFilesSortedOnceTheRunEnds()
+	{
+		var p = new TestProject();
+		p.AddVerified(Key, "same\n");
+		p.Match("same");
+		p.Match("other", name: "b", line: 20);
+		p.Match("other", name: "a", line: 30);
+		var manifest = p.Fs.Path.Combine(p.Project.ReceivedDirectory, RunManifest.FileName);
+		p.Fs.File.Exists(manifest).Should().BeFalse("nothing is written per assertion");
+
+		p.Engine.FlushManifests();
+
+		var (files, started) = RunManifest.Read(p.Read(manifest));
+		files.Should().BeEquivalentTo("Rendering/HtmlTests/RendersTable.verified.txt", "Rendering/HtmlTests/RendersTable.a.verified.txt", "Rendering/HtmlTests/RendersTable.b.verified.txt");
+		started.Should().NotBeNull();
+		p.Read(manifest).Split('\n').Skip(1).Where(l => l.Length > 0).Should().BeInAscendingOrder(StringComparer.Ordinal);
+		p.Fs.File.Exists(p.Fs.Path.Combine(p.Project.ReceivedDirectory, ReceivedMarker.FileName)).Should().BeTrue();
+	}
+
+	[Test]
+	public void ManifestReplacesThePreviousRunsAndFlushesOnce()
+	{
+		var p = new TestProject();
+		var manifest = p.Fs.Path.Combine(p.Project.ReceivedDirectory, RunManifest.FileName);
+		p.Fs.AddFile(manifest, new("# old\nGone/Test.verified.txt\n"));
+		p.AddVerified(Key, "same\n");
+		p.Match("same");
+		p.Engine.FlushManifests();
+		p.Fs.File.WriteAllText(manifest, "changed by someone else");
+		p.Engine.FlushManifests();
+
+		p.Read(manifest).Should().Be("changed by someone else");
+	}
+
+	[Test]
+	public void ManifestOfAPassingRunStillMakesTheProjectFindable()
+	{
+		var p = new TestProject();
+		p.AddVerified(Key, "same\n");
+		p.Match("same");
+		p.Engine.FlushManifests();
+		RunManifest.Read(p.Read(p.Fs.Path.Combine(p.Project.ReceivedDirectory, RunManifest.FileName))).Files
+			.Should().Equal("Rendering/HtmlTests/RendersTable.verified.txt");
+	}
+
 	// Regression: the lost first version pruned received folders at the start of a run, which collided with parallel
 	// writes. Runs never prune now; many tests writing into one received tree at once must all land.
 	[Test]

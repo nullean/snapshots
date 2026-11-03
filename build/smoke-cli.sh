@@ -23,6 +23,8 @@ printf 'a\nb\n' > "$verified/Rendering/HtmlTests/RendersTable.verified.txt"
 printf 'a\nB\n' > "$received/Rendering/HtmlTests/RendersTable.received.txt"
 printf 'new\n' > "$received/Rendering/HtmlTests/RendersList.received.txt"
 printf 'drop\n' > "$received/Rendering/HtmlTests/Dropped.received.txt"
+printf 'old\n' > "$verified/Rendering/HtmlTests/Gone.verified.txt"
+printf '# verified files touched by the test run that started 2026-11-03T15:00:00Z\nRendering/HtmlTests/RendersTable.verified.txt\nRendering/HtmlTests/RendersList.verified.txt\n' > "$received/.snapshots-manifest"
 
 fail() { echo "SMOKE FAILED: $*" >&2; exit 1; }
 
@@ -49,6 +51,19 @@ case "$out" in *"+B"*) ;; *) fail "diff should show the added line" ;; esac
 run "$@" reject Dropped --root "$fixture"
 [ "$code" -eq 0 ] || fail "reject should exit 0"
 [ ! -e "$received/Rendering/HtmlTests/Dropped.received.txt" ] || fail "reject should delete the received file"
+
+# review reads one answer per line when its input is redirected: skip everything, then quit.
+set +e
+out="$(printf 's\ns\nq\n' | "$@" review --root "$fixture" 2>&1)"
+code=$?
+set -e
+printf '$ %s review (scripted)\n%s\n[exit %s]\n' "$*" "$out" "$code"
+[ "$code" -eq 1 ] || fail "review that skips everything should exit 1"
+case "$out" in *"0 accepted, 0 rejected"*) ;; *) fail "review should report what it did" ;; esac
+
+run "$@" orphans --root "$fixture"
+[ "$code" -eq 1 ] || fail "orphans should exit 1 with an orphan"
+case "$out" in *"Gone.verified.txt"*) ;; *) fail "orphans should list the untouched verified file" ;; esac
 
 run "$@" accept nothing-like-this --root "$fixture"
 [ "$code" -eq 2 ] || fail "accept of an unknown key should exit 2"

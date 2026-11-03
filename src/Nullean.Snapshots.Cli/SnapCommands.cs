@@ -30,6 +30,16 @@ internal sealed class SnapCommands
 	/// <param name="root">The folder to search from. Defaults to the current folder.</param>
 	public static int Reject([Argument] string[] keys, bool all = false, string? root = null) => Cli(root).Reject(keys, all);
 
+	/// <summary>Review pending snapshots one by one: see each diff, then accept, reject or skip it.</summary>
+	/// <param name="root">The folder to search from. Defaults to the current folder.</param>
+	public static int Review(string? root = null) => Cli(root).Review(new ConsolePrompt(), ConsolePrompt.UseColor);
+
+	/// <summary>List verified snapshots the latest test run did not use. Exits 1 when there are any.</summary>
+	/// <param name="json">Print a JSON array of {project, verified} instead.</param>
+	/// <param name="delete">Delete them. Run the whole test suite first: a filtered run skips snapshots.</param>
+	/// <param name="root">The folder to search from. Defaults to the current folder.</param>
+	public static int Orphans(bool json = false, bool delete = false, string? root = null) => Cli(root).Orphans(json, delete);
+
 	private static SnapCli Cli(string? root) =>
 		new(new FileSystem(), root ?? Directory.GetCurrentDirectory(), Console.Out, Console.Error);
 }
