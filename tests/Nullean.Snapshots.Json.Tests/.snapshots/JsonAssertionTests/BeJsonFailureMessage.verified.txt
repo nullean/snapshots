@@ -1,0 +1,5 @@
+JSON did not match the expected JSON because the catalog is stable:
+3 difference(s):
+$.items[0].name   expected "kibana"   actual "Kibana"   (verified.json:5:15)
+$.items[1]        missing in actual   (verified.json:7:5)
+$.extra           unexpected in actual

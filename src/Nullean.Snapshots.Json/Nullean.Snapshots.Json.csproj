@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Nullean.Snapshots.Json</RootNamespace>
+    <Description>JSON snapshots and inline JSON assertions for Nullean.Snapshots, compared as trees: key order ignored, numbers by value, differences by path.</Description>
+    <PackageTags>snapshot;approval;testing;json;awesomeassertions</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Nullean.Snapshots/Nullean.Snapshots.csproj" />
+    <ProjectReference Include="../Nullean.Snapshots.AwesomeAssertions/Nullean.Snapshots.AwesomeAssertions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Nullean.Snapshots.Json.Tests" />
+  </ItemGroup>
+
+</Project>
