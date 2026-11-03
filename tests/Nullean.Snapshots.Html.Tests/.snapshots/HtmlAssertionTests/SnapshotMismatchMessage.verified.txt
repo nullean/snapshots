@@ -1,0 +1,21 @@
+HTML did not match snapshot: tests/Acme.Tests/.snapshots/Rendering/HtmlTests/RendersTable.verified.html
+2 difference(s):
+The text in table(0) > tbody(1) > tr(1) > td(1) > #text(0) is different.
+  expected: {kibana}
+  actual:   {Kibana}
+The attribute at table(0) > tbody(1) > tr(1) > td(1)[class] was not expected.
+  expected: missing
+  actual:   class="x"
+Line diff:
+@@ line 1 @@
+ <table>
+ 	<tbody>
+ 		<tr>
+-			<td>{kibana}</td>
++			<td class="x">{Kibana}</td>
+ 		</tr>
+ 	</tbody>
+ </table>
+Received: .artifacts/.snapshots/received/Acme.Tests/Rendering/HtmlTests/RendersTable.received.html
+Accept:   snap accept Acme.Tests/Rendering/HtmlTests/RendersTable   (or: dnx Nullean.Snapshots.Cli accept Acme.Tests/Rendering/HtmlTests/RendersTable)
+   or:    SNAPSHOT_ACCEPT=1 dotnet test --project tests/Acme.Tests --treenode-filter "/Acme.Tests/Acme.Tests.Rendering/HtmlTests/RendersTable"

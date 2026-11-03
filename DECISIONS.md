@@ -9,7 +9,7 @@ Non-obvious choices, newest last. Each says what was chosen, and why when the wh
 - Never auto-accept. Accept with `snap accept` or `SNAPSHOT_ACCEPT=1`; with `CI=true` nothing is ever accepted.
 - We own the JSON/YAML tree diff. `SystemTextJson.JsonDiffPatch` is a test-only oracle, never a runtime dependency.
 - The CLI is a native AOT dotnet tool and works on files only; it references no format package.
-- Libraries are AOT/trim-clean, except where a dependency cannot be (AngleSharp, to be confirmed).
+- Libraries are AOT/trim-clean. AngleSharp, the one suspect, turned out clean too (see "HTML").
 
 ## Where snapshots live
 
@@ -97,6 +97,30 @@ its verified file by the prefix swap. Half-written `*.tmp` files are ignored.
   braces in a format string as placeholders. `because` is placed in the first line by the library, not by
   AwesomeAssertions' `{reason}`, so the template stays one shape. Object snapshots (`ObjectAssertions`) wait for
   `.Json`, which owns serialisation.
+
+## HTML
+
+- **One package, assertions included.** `Nullean.Snapshots.Html` holds the format and its AwesomeAssertions
+  extensions (`MatchHtmlSnapshot`, `BeHtml`, `ContainHtml`, `NotContainHtml`) and depends on
+  `Nullean.Snapshots.AwesomeAssertions`. Putting `BeHtml` in the AwesomeAssertions package, as the brief had it, would
+  make every user carry AngleSharp. `MatchHtmlSnapshot` rather than a `MatchSnapshot` overload, which would be
+  ambiguous with the text one when called without arguments.
+- **AngleSharp 1.7.2 as the minimum**, the lowest that works rather than the latest, so a consumer that pins it (docs-builder does) is not forced to upgrade by a test package.
+- **AOT-clean after all.** AngleSharp 1.7.2 and AngleSharp.Diffing 1.1.1 publish with native AOT without a single trim or
+  AOT warning (spiked on osx-arm64, the binary parsed, printed and diffed). The package sets `IsAotCompatible`.
+- **The pipeline:** parse, `Select(css)` (the body by default), `Remove(css)`, `RemoveAttributes(patterns)` with `*`
+  wildcards on every element or `RemoveAttributesFrom(css, patterns)`, `Transform(Action<IElement>)`, then
+  AngleSharp's `PrettyMarkupFormatter` with tabs and `\n`. docs-builder's leading-H1 strip and its
+  `section#elastic-docs-v3` selector stay in docs-builder, as a transform and a select.
+- **Top-level text is printed, escaped.** docs-builder printed only the root's element children, silently dropping
+  text between them. Whitespace-only text is still dropped; other text is printed through the formatter's escaping,
+  which a property test showed is needed (`&lt;a` printed raw reparsed as a tag).
+- **Comparison is structural.** Two pretty texts match when AngleSharp.Diffing finds no difference, so a whitespace
+  change never fails and a passing compare never rewrites the verified file. Each difference is docs-builder's
+  `HtmlDiffString` label, then the expected and actual node, cut after six lines; a line diff of the pretty HTML
+  follows within the same 80-line cap.
+- **`ContainHtml` ignores indentation**, as docs-builder's did: both sides are pretty-printed and tabs removed, so a
+  fragment matches wherever it is nested.
 
 ## File system access
 
