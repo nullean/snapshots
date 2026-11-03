@@ -92,6 +92,7 @@ public class HtmlSnapshotTests
 	[Arguments("hx-*", "HX-GET", true)]
 	[Arguments("hx-*", "data-hx", false)]
 	[Arguments("*-x", "data-x", true)]
+	[Arguments("*-x", "data-y", false)]
 	[Arguments("d*a*x", "data-x", true)]
 	[Arguments("d*q*x", "data-x", false)]
 	[Arguments("ab*ba", "aba", false)]
