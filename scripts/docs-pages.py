@@ -4,7 +4,7 @@
 
 - Links to the site root load it whole (hx-boost="false"). The root is the landing page, which has none of the docs
   shell, so htmx's boosted swap of #main-container would find nothing to swap and leave the reader on the docs.
-- The header shows the given logo (the landing page's animated lockup). The design-system header has a slot for a
+- The header shows the given logo (the landing page's animated lockup), inlined when it is an SVG. The design-system header has a slot for a
   logo (site-header__logo) that docs-builder never fills, even with branding.icon set.
 """
 
@@ -18,7 +18,15 @@ root = f"/{prefix}/" if prefix else "/"
 if not (docs / logo).is_file():
     print(f"docs: the logo {docs / logo} does not exist", file=sys.stderr)
     sys.exit(1)
-logo_img = f'<img class="site-header__logo" src="{root}{logo}" alt="" width="{width}" height="{height}">'
+if logo.endswith(".svg"):
+    # Inlined rather than an <img>: the lockup's wordmark is live JetBrains Mono text, which an SVG loaded as an image
+    # cannot render with the page's fonts, and its animation lives in its own <style>.
+    svg = (docs / logo).read_text(encoding="utf-8")
+    svg = re.sub(r"<\?xml[^>]*>\s*", "", svg)
+    svg = re.sub(r"<svg\b", f'<svg class="site-header__logo" aria-hidden="true" width="{width}" height="{height}"', svg, count=1)
+    logo_img = svg.strip()
+else:
+    logo_img = f'<img class="site-header__logo" src="{root}{logo}" alt="" width="{width}" height="{height}">'
 brand = re.compile(r'(<a\b[^>]*\bclass="site-header__brand"[^>]*>)(?!\s*<img\b)')
 
 root_link = re.compile(r'<a\b(?![^>]*\bhx-boost=)([^>]*\bhref="' + re.escape(root) + r'")')

@@ -13,7 +13,15 @@
 <meta property="og:url" content="https://snapshots.nullean.net/"/>
 <meta property="og:title" content="Nullean.Snapshots — Structural Snapshot tests for .NET"/>
 <meta property="og:description" content="Text, HTML, JSON and YAML snapshots that say exactly what moved, and never accept themselves."/>
-<link rel="icon" type="image/svg+xml" href="images/snapshots-mark.svg"/>
+<meta property="og:image" content="https://snapshots.nullean.net/images/brand/png/social-card.png"/>
+<meta property="og:image:width" content="1280"/>
+<meta property="og:image:height" content="640"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="Nullean.Snapshots — Structural Snapshot tests for .NET"/>
+<meta name="twitter:image" content="https://snapshots.nullean.net/images/brand/png/social-card.png"/>
+<link rel="icon" type="image/svg+xml" href="images/brand/mark-small.svg"/>
+<link rel="icon" type="image/png" sizes="32x32" href="images/brand/png/mark-32.png"/>
+<link rel="apple-touch-icon" sizes="180x180" href="images/brand/png/mark-180.png"/>
 <meta name="theme-color" content="#08090B"/>
 
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -26,17 +34,17 @@
     --bg:        #08090B;
     --bg2:       #0D1013;
     --bg3:       #1B2126;
-    --teal:      #6CC7C2;
-    --teal-hi:   #9FDCD8;
-    --teal-dim:  #12302F;
-    --rose:      #E38C9B;
-    --rose-hi:   #EEB0BA;
-    --rose-dim:  #3A1B22;
+    --accent:     #9FC9EA;
+    --accent-hi:  #C3DEF2;
+    --accent-dim: #222A31;
+    --accent-2:   #C6DD7A;
+    --accent-2-hi:#DCEAAD;
+    --accent-2-dim:#282D1E;
     --text:      #E9ECF1;
     --muted:     #98A1AE;
     --dim:       #5A6472;
-    --line:      rgba(108,199,194,0.12);
-    --line-soft: rgba(108,199,194,0.065);
+    --line:      rgba(159,201,234,0.12);
+    --line-soft: rgba(159,201,234,0.065);
     --mono:      'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
     --display:   'Space Grotesk', system-ui, sans-serif;
     --maxw:      1180px;
@@ -54,16 +62,16 @@
     overflow-x: hidden;
   }
 
-  /* Two quiet glows, teal and rose, fixed behind the page. */
+  /* Two quiet glows, frost and lime, fixed behind the page. */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
     z-index: -1;
     background:
-      radial-gradient(at 10% 12%, rgba(108,199,194,0.13) 0, transparent 52%),
-      radial-gradient(at 90% 8%, rgba(227,140,155,0.10) 0, transparent 48%),
-      radial-gradient(at 70% 85%, rgba(108,199,194,0.06) 0, transparent 55%);
+      radial-gradient(at 10% 12%, rgba(159,201,234,0.13) 0, transparent 52%),
+      radial-gradient(at 90% 8%, rgba(198,221,122,0.10) 0, transparent 48%),
+      radial-gradient(at 70% 85%, rgba(159,201,234,0.06) 0, transparent 55%);
   }
 
   a { color: inherit; text-decoration: none; }
@@ -77,11 +85,16 @@
   }
   nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; }
   nav .links { display: flex; gap: 28px; font-size: 13px; color: var(--muted); }
-  nav .links a:hover { color: var(--teal-hi); }
+  nav .links { align-items: center; }
+  nav .links a:hover { color: var(--accent-hi); }
+  .nav-lockup { display: block; width: 138px; height: 48px; }
+  .icon-link { display: inline-flex; align-items: center; gap: 6px; }
+  .icon-link svg { width: 16px; height: 16px; }
+  .footer-links { display: inline-flex; gap: 16px; align-items: center; }
 
   .hero { padding: 96px 0 72px; }
   .hero .wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 56px; align-items: center; }
-  .kicker { color: var(--teal); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .kicker { color: var(--accent); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }
   h1 {
     font-family: var(--display);
     font-size: clamp(38px, 5vw, 58px);
@@ -89,7 +102,7 @@
     letter-spacing: -0.03em;
     margin: 18px 0 22px;
   }
-  h1 em { font-style: normal; color: var(--teal); }
+  h1 em { font-style: normal; color: var(--accent); }
   .lead { color: var(--muted); font-size: 16px; max-width: 34em; }
   .actions { display: flex; gap: 14px; margin-top: 32px; flex-wrap: wrap; }
   .btn {
@@ -97,9 +110,9 @@
     padding: 12px 20px; border-radius: 6px; font-size: 14px; font-weight: 500;
     border: 1px solid var(--line);
   }
-  .btn.primary { background: var(--teal); color: var(--bg); border-color: var(--teal); }
-  .btn.primary:hover { background: var(--teal-hi); }
-  .btn:not(.primary):hover { border-color: var(--teal); color: var(--teal-hi); }
+  .btn.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .btn.primary:hover { background: var(--accent-hi); }
+  .btn:not(.primary):hover { border-color: var(--accent); color: var(--accent-hi); }
 
   .panel {
     background: var(--bg2);
@@ -113,8 +126,8 @@
   pre { padding: 18px 20px; font-size: 12.5px; line-height: 1.65; overflow-x: auto; white-space: pre; tab-size: 2; }
   .t-dim { color: var(--dim); }
   .t-mut { color: var(--muted); }
-  .t-del { color: var(--rose); }
-  .t-add { color: var(--teal); }
+  .t-del { color: var(--accent); }
+  .t-add { color: var(--accent-2); }
   .t-hi  { color: var(--text); font-weight: 500; }
 
   section.band { padding: 72px 0; border-top: 1px solid var(--line-soft); }
@@ -129,8 +142,8 @@
     padding: 22px;
     transition: border-color .15s, transform .15s;
   }
-  a.card:hover { border-color: var(--teal); transform: translateY(-2px); }
-  .card-kicker { font-size: 11px; color: var(--rose); letter-spacing: 0.08em; text-transform: uppercase; }
+  a.card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .card-kicker { font-size: 11px; color: var(--accent-2); letter-spacing: 0.08em; text-transform: uppercase; }
   .card-title { font-family: var(--display); font-size: 19px; margin: 8px 0 10px; line-height: 1.25; }
   .card p { color: var(--muted); font-size: 13.5px; }
 
@@ -138,7 +151,7 @@
   table.formats { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   .formats th, .formats td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
   .formats th { color: var(--dim); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
-  .formats td:first-child { color: var(--teal); white-space: nowrap; }
+  .formats td:first-child { color: var(--accent); white-space: nowrap; }
   .formats td { color: var(--muted); }
   .formats code { color: var(--text); }
 
@@ -146,7 +159,7 @@
 
   footer { padding: 40px 0 56px; border-top: 1px solid var(--line-soft); color: var(--dim); font-size: 13px; }
   footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-  footer a:hover { color: var(--teal-hi); }
+  footer a:hover { color: var(--accent-hi); }
 
   @media (max-width: 900px) {
     .hero .wrap, .two { grid-template-columns: minmax(0, 1fr); }
@@ -167,12 +180,13 @@
 
 <nav>
   <div class="wrap">
-    <a href="./" aria-label="Nullean.Snapshots home"><img src="images/snapshots-lockup-nav.svg" alt="Nullean.Snapshots" width="156" height="48"/></a>
+    <a href="./" aria-label="Nullean.Snapshots home"><svg class="nav-lockup" width="138" height="48" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 276 96" width="276" height="96" role="img" aria-label="snapshots"><style>.a2sh{animation:a2sw 4.6s ease-in-out infinite}@keyframes a2sw{0%,64%{transform:translateX(0)}92%,100%{transform:translateX(396px)}}.a2bl{transform:translateY(var(--t,2.2px))}.a2bl{animation:a2a 4.6s cubic-bezier(.45,0,.25,1) infinite}@keyframes a2a{0%,10%{transform:translateY(0)}38%,46%{transform:translateY(13.5px)}74%,100%{transform:translateY(0)}}.a2core,.a2glow{animation:a2g 4.6s ease-in-out infinite}@keyframes a2g{0%,10%{opacity:1}38%,46%{opacity:.15}74%,100%{opacity:1}}.a2fl{animation:a2f 4.6s ease-out infinite}@keyframes a2f{0%,44%{opacity:0}47%{opacity:.38}60%,100%{opacity:0}}@media (prefers-reduced-motion:reduce){.a2sh,.a2bl,.a2core,.a2glow,.a2fl{animation:none}}</style><defs><linearGradient id="a2f" x1="0" y1=".2" x2="1" y2=".8"><stop offset=".44" stop-color="#9fc9ea"/><stop offset=".56" stop-color="#c6dd7a"/></linearGradient><radialGradient id="a2g" cx=".18" cy=".12" r="1.2"><stop offset="0" stop-color="#1b2126"/><stop offset=".55" stop-color="#0d1013"/><stop offset="1" stop-color="#08090b"/></radialGradient><linearGradient id="a2s" x1="0" y1="0" x2="1" y2="0"><stop offset=".35" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".8"/><stop offset=".65" stop-color="#fff" stop-opacity="0"/></linearGradient><mask id="a2m"><rect width="276" height="96" fill="#fff"/><rect x="5" y="5" width="266" height="86" fill="#000"/></mask></defs><rect width="276" height="96" rx="10" fill="url(#a2f)"/><g mask="url(#a2m)"><rect class="a2sh" x="-120" y="-20" width="120" height="136" fill="url(#a2s)" transform="skewX(-18)"/></g><rect x="5" y="5" width="266" height="86" rx="5" fill="url(#a2g)"/><g transform="translate(14 16)"><defs><clipPath id="a2c"><circle cx="32" cy="32" r="26.5"/></clipPath><radialGradient id="a2o" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#c6dd7a" stop-opacity=".95"/><stop offset=".45" stop-color="#c6dd7a" stop-opacity=".35"/><stop offset="1" stop-color="#c6dd7a" stop-opacity="0"/></radialGradient><linearGradient id="a2b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3d4e5b"/><stop offset="1" stop-color="#1d242b"/></linearGradient></defs><circle cx="32" cy="32" r="28" fill="#0b0e11"/><circle class="a2glow" cx="32" cy="32" r="22" fill="url(#a2o)"/><circle class="a2core" cx="32" cy="32" r="5.5" fill="#c6dd7a"/><g clip-path="url(#a2c)"><g transform="rotate(0 32 32)"><g class="a2bl" style="--t:2.2px"><polygon points="14,23 50,18.5 72,-8 -8,-8" fill="url(#a2b)" stroke="#9fc9ea" stroke-width="1.5" stroke-linejoin="round"/></g></g><g transform="rotate(60 32 32)"><g class="a2bl" style="--t:2.2px"><polygon points="14,23 50,18.5 72,-8 -8,-8" fill="url(#a2b)" stroke="#9fc9ea" stroke-width="1.5" stroke-linejoin="round"/></g></g><g transform="rotate(120 32 32)"><g class="a2bl" style="--t:2.2px"><polygon points="14,23 50,18.5 72,-8 -8,-8" fill="url(#a2b)" stroke="#9fc9ea" stroke-width="1.5" stroke-linejoin="round"/></g></g><g transform="rotate(180 32 32)"><g class="a2bl" style="--t:2.2px"><polygon points="14,23 50,18.5 72,-8 -8,-8" fill="url(#a2b)" stroke="#9fc9ea" stroke-width="1.5" stroke-linejoin="round"/></g></g><g transform="rotate(240 32 32)"><g class="a2bl" style="--t:2.2px"><polygon points="14,23 50,18.5 72,-8 -8,-8" fill="url(#a2b)" stroke="#9fc9ea" stroke-width="1.5" stroke-linejoin="round"/></g></g><g transform="rotate(300 32 32)"><g class="a2bl" style="--t:2.2px"><polygon points="14,23 50,18.5 72,-8 -8,-8" fill="url(#a2b)" stroke="#9fc9ea" stroke-width="1.5" stroke-linejoin="round"/></g></g></g><circle cx="32" cy="32" r="28" fill="none" stroke="#9fc9ea" stroke-width="4"/><circle cx="32" cy="32" r="23.2" fill="none" stroke="#9fc9ea" stroke-opacity=".3" stroke-width="1"/><circle class="a2fl" cx="32" cy="32" r="26" fill="#fff" opacity="0"/></g><g font-family="JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700"><text x="90" y="58" font-size="29" letter-spacing="-1" fill="#ffffff">snapshots<tspan fill="#c6dd7a">.</tspan></text></g></svg></a>
     <div class="links">
       <a href="getting-started/">Get started</a>
       <a href="formats/" class="hide-sm">Formats</a>
       <a href="workflow/snap/" class="hide-sm">snap</a>
-      <a href="https://github.com/nullean/snapshots">GitHub</a>
+      <a class="icon-link" href="getting-started/" aria-label="Documentation" title="Documentation"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M0 1.75A.75.75 0 0 1 .75 1h4.253c1.227 0 2.317.59 3 1.501A3.743 3.743 0 0 1 11.006 1h4.245a.75.75 0 0 1 .75.75v10.5a.75.75 0 0 1-.75.75h-4.507a2.25 2.25 0 0 0-1.591.659l-.622.621a.75.75 0 0 1-1.06 0l-.622-.621A2.25 2.25 0 0 0 5.258 13H.75a.75.75 0 0 1-.75-.75Zm7.251 10.324.004-5.073-.002-2.253A2.25 2.25 0 0 0 5.003 2.5H1.5v9h3.757a3.75 3.75 0 0 1 1.994.574ZM8.755 4.75l-.004 7.322a3.752 3.752 0 0 1 1.992-.572H14.5v-9h-3.495a2.25 2.25 0 0 0-2.25 2.25Z"/></svg></a>
+      <a class="icon-link" href="https://github.com/nullean/snapshots" aria-label="GitHub" title="GitHub"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg></a>
     </div>
   </div>
 </nav>
@@ -271,7 +285,7 @@
       </p>
       <div class="panel">
         <div class="panel-bar">● ● ●<span>install</span></div>
-<pre><span class="t-dim">dotnet tool install --global</span> Nullean.Snapshots.Cli <span class="t-dim">--prerelease</span>
+<pre><span class="t-dim">dotnet tool install --global</span> Nullean.Snapshots.Cli
 <span class="t-dim"># or, without installing:</span>
 dnx Nullean.Snapshots.Cli status</pre>
       </div>
@@ -294,8 +308,12 @@ dnx Nullean.Snapshots.Cli status</pre>
 
 <footer>
   <div class="wrap">
-    <span>Nullean.Snapshots · MIT · 0.x prereleases while the API settles</span>
-    <span><a href="getting-started/">Docs</a> · <a href="https://github.com/nullean/snapshots">GitHub</a> · <a href="https://www.nuget.org/packages?q=Nullean.Snapshots">NuGet</a></span>
+    <span>Nullean.Snapshots · MIT · 0.x while the API settles</span>
+    <span class="footer-links">
+      <a class="icon-link" href="getting-started/"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M0 1.75A.75.75 0 0 1 .75 1h4.253c1.227 0 2.317.59 3 1.501A3.743 3.743 0 0 1 11.006 1h4.245a.75.75 0 0 1 .75.75v10.5a.75.75 0 0 1-.75.75h-4.507a2.25 2.25 0 0 0-1.591.659l-.622.621a.75.75 0 0 1-1.06 0l-.622-.621A2.25 2.25 0 0 0 5.258 13H.75a.75.75 0 0 1-.75-.75Zm7.251 10.324.004-5.073-.002-2.253A2.25 2.25 0 0 0 5.003 2.5H1.5v9h3.757a3.75 3.75 0 0 1 1.994.574ZM8.755 4.75l-.004 7.322a3.752 3.752 0 0 1 1.992-.572H14.5v-9h-3.495a2.25 2.25 0 0 0-2.25 2.25Z"/></svg> Docs</a>
+      <a class="icon-link" href="https://github.com/nullean/snapshots"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg> GitHub</a>
+      <a href="https://www.nuget.org/packages?q=Nullean.Snapshots">NuGet</a>
+    </span>
   </div>
 </footer>
 
