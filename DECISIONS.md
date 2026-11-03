@@ -65,9 +65,49 @@ Core ships `buildTransitive/Nullean.Snapshots.targets`, so every package that de
 
 `snap` does not glob for snapshot folders. From the working directory (or `--root`) it probes
 `artifacts/.snapshots/received/*/` and `.artifacts/.snapshots/received/*/`, then each directory holding a `*.csproj`
-for `obj/snapshots/received/`, skipping `.git`, `bin`, `obj` and `node_modules` while walking. Each received root's
-`.snapshots-project` marker names its verified folder, and each received file maps back to its verified file by the
-prefix swap.
+for `obj/snapshots/received/`, skipping `bin`, `obj`, `node_modules` and every dot folder (`.git` included) while
+walking. Each received root's `.snapshots-project` marker names its verified folder, and each received file maps back to
+its verified file by the prefix swap. Half-written `*.tmp` files are ignored.
+
+- **Keys on the command line:** a full key, a unique suffix that starts at a `/` (`RendersTable`,
+  `HtmlTests/RendersTable`), or a glob where `*` stays within a segment and `**` crosses them. An ambiguous suffix is a
+  usage error that lists the candidates; a glob may match many.
+
+## Running tests
+
+- **Identity.** With `Nullean.Snapshots.TUnit` the class folder is the runtime class, so `[InheritsTests]` keeps
+  derived classes apart; the file name gets an eight hex digit FNV-1a hash of the class and method arguments' invariant
+  text when there are any. The TUnit package registers itself from a module initializer it compiles *into the test
+  project* (`buildTransitive`), because a module initializer in the package's own assembly runs only once something
+  touches that assembly. `SnapshotsTUnitAutoRegister=false` opts out. Without the adapter the class folder is the test
+  file's name and data-driven cases cannot be told apart.
+- **Duplicates.** A key is owned by the first test id and call-site line that uses it in the run. Another owner fails
+  with "pass a name"; the same owner again (a retried test) is fine.
+- **Deterministic builds.** A `[CallerFilePath]` like `/_/tests/Acme.Tests/Rendering/X.cs` is mapped back by matching
+  its leading folders against the end of the project directory from the assembly metadata.
+- **Runs never prune.** The lost first version deleted stale received folders at the start of a run, which raced with
+  parallel tests writing into them. A passing assertion deletes only its own received file; cleaning up is
+  `snap reject`'s job.
+- **Scrubbers are opt-in**, globally (`SnapshotDefaults.AddScrubber`) or per call. Line endings are always normalised;
+  that is not a scrubber.
+- **Message caps.** At most 20 differences and 80 lines. A difference that does not fit in the remaining lines is
+  left out whole rather than cut mid-hunk, except a first difference longer than the cap on its own, which is cut so
+  something shows. Either way it counts in "(+N more, see received)".
+- **AwesomeAssertions.** The message is passed as a `{0}` argument with a verbatim value formatter, because 9.x reads
+  braces in a format string as placeholders. `because` is placed in the first line by the library, not by
+  AwesomeAssertions' `{reason}`, so the template stays one shape. Object snapshots (`ObjectAssertions`) wait for
+  `.Json`, which owns serialisation.
+
+## File system access
+
+All snapshot IO goes through `System.IO.Abstractions`, wrapped in `Nullean.ScopedFileSystem`:
+
+- **Library:** scoped to the project's verified and received folders (`.snapshots` and `.artifacts` allowed as hidden
+  folders, `.snapshots-project` as a hidden file). Finding the project (assembly metadata, the csproj walk-up, the
+  `.git` lookup) reads outside that scope and never writes.
+- **CLI:** scoped to `--root`. A marker whose verified folder lies outside the root is skipped with a warning instead
+  of widening the scope, so a stray marker cannot point writes elsewhere.
+- Writes are atomic: a temporary file in the same folder, then a move.
 
 ## Dependencies
 
@@ -78,6 +118,11 @@ prefix swap.
 
 - **Plain `dotnet` commands in CI rather than curb's F# build project.** Curb's scripts exist for corpus gates this
   repository does not have; the pack matrix needs only `dotnet pack -r <rid>`. Revisit if the workflow grows logic.
+- **CI split.** Pull requests build, test and pack the libraries on linux, windows and macos. Pushes to main, tags and
+  manual runs also pack the native tool for every RID on a matching runner (including the arm64 runners), pack the
+  root and portable `any` packages, and install the tool from a local feed on each OS to run `build/smoke-cli.sh`,
+  installed and through `dnx`. A plain `dotnet pack` of the tool emits managed per-RID packages too; those are dropped,
+  as curb does, so only the AOT ones ship.
 - **No strong naming.** Nothing here needs it, and `InternalsVisibleTo` stays a plain assembly name.
 - **Tests run on Microsoft.Testing.Platform** (`global.json` `test.runner`), so `dotnet test --project ...
   --treenode-filter ...` works, which the failure message prints.

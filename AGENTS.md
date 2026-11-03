@@ -14,6 +14,18 @@ dotnet test -c Release --project tests/Nullean.Snapshots.Tests --treenode-filter
 
 Requires the .NET 10 SDK (pinned in `global.json`). Tests run on Microsoft.Testing.Platform with TUnit.
 
+This repository's own failure messages and CLI output are snapshots under `tests/*/.snapshots/`. When one fails, the
+message says where the received file is. Read the diff, then accept with the command the message prints
+(`SNAPSHOT_ACCEPT=1 dotnet test --project ... --treenode-filter ...`) or with the CLI:
+
+```sh
+dotnet run --project src/Nullean.Snapshots.Cli -- status
+dotnet run --project src/Nullean.Snapshots.Cli -- accept <key>
+```
+
+Always read `git diff` of the verified files before committing them. `build/smoke-cli.sh <snap command>` runs the
+CLI end to end on a throwaway fixture.
+
 ## Rules
 
 - Failure messages are plain text: no ANSI, repo-relative paths, capped, readable by people and agents.
