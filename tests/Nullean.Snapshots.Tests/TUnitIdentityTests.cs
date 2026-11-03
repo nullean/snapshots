@@ -18,6 +18,7 @@ public class TUnitIdentityTests
 		identity.ClassName.Should().Be(nameof(TUnitIdentityTests));
 		identity.MethodName.Should().Be(nameof(ReportsClassMethodAndFilter));
 		identity.Arguments.Should().BeEmpty();
+		identity.ClassArgumentCount.Should().Be(0);
 		identity.TestAssembly.Should().BeSameAs(typeof(TUnitIdentityTests).Assembly);
 		identity.TreeNodeFilter.Should().Be("/Nullean.Snapshots.Tests/Nullean.Snapshots.Tests/TUnitIdentityTests/ReportsClassMethodAndFilter");
 	}
@@ -53,6 +54,39 @@ public class TUnitIdentityTests
 
 	public sealed class Generic<T>;
 }
+
+/// <summary>A class that receives data through its constructor.</summary>
+[Arguments("first")]
+[Arguments("second")]
+public sealed class ClassArgumentIdentity(string value)
+{
+	[Test]
+	[Arguments(1)]
+	public void SeparatesClassFromMethodArguments(int number)
+	{
+		var identity = TUnitTestIdentity.Instance.Current!;
+		identity.ClassArgumentCount.Should().Be(1);
+		identity.Arguments.Should().Equal(value, number);
+		identity.NamingArguments(ignoreClassArguments: true).Should().Equal(number);
+		identity.NamingArguments(ignoreClassArguments: false).Should().Equal(value, number);
+	}
+}
+
+/// <summary>A class that receives a fixture through its constructor, the case that adds a hash to every file name.</summary>
+[ClassDataSource<InjectedFixture>(Shared = SharedType.PerClass)]
+public sealed class FixtureInjectedIdentity(InjectedFixture fixture)
+{
+	[Test]
+	public void TheFixtureIsAClassArgument()
+	{
+		var identity = TUnitTestIdentity.Instance.Current!;
+		identity.ClassArgumentCount.Should().Be(1);
+		identity.Arguments.Should().ContainSingle().Which.Should().BeSameAs(fixture);
+		identity.NamingArguments(ignoreClassArguments: true).Should().BeEmpty();
+	}
+}
+
+public sealed class InjectedFixture;
 
 /// <summary>A base class whose tests run again in a derived class through <c>[InheritsTests]</c>.</summary>
 public abstract class InheritedIdentityBase

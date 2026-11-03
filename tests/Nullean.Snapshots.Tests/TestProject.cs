@@ -50,6 +50,15 @@ internal sealed class TestProject
 	public static SnapshotTestIdentity TUnitLike(string className = "HtmlTests", string method = "RendersTable", params object?[] arguments) =>
 		new($"{className}.{method}({string.Join(",", arguments)})", className, method, arguments, null, $"/Acme.Tests/Acme.Tests.Rendering/{className}/{method}");
 
+	/// <summary>An identity whose first entries come from the test class's constructor, as TUnit reports them.</summary>
+	public static SnapshotTestIdentity TUnitLikeWithClassArguments(object?[] classArguments, params object?[] methodArguments)
+	{
+		object?[] all = [.. classArguments, .. methodArguments];
+		return new(
+			$"HtmlTests.RendersTable({string.Join(",", all)})", "HtmlTests", "RendersTable", all, null,
+			"/Acme.Tests/Acme.Tests.Rendering/HtmlTests/RendersTable", classArguments.Length);
+	}
+
 	private sealed class Provider(TestProject owner) : ISnapshotTestIdentityProvider
 	{
 		public SnapshotTestIdentity? Current => owner.Identity;

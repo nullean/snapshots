@@ -36,5 +36,24 @@ JSON and YAML differences are reported by a JSONPath-like path:
 
 ## SnapshotOptions
 
-Per call: `Scrub(Func<string, string>)`, `Scrub(Regex, string)` and `IgnoreDefaultScrubbers`. See
-[scrubbing](../formats/index.md#scrubbing-volatile-values).
+Per call: `Scrub(Func<string, string>)`, `Scrub(Regex, string)`, `IgnoreDefaultScrubbers` and `IgnoreClassArguments`. See
+[scrubbing](../formats/index.md#scrubbing-volatile-values) and [class arguments](#class-arguments).
+
+## Class arguments
+
+A test class that receives a fixture through its constructor gets an arguments hash in every file name, because the
+constructor arguments are part of the test's identity. When those arguments are dependencies and not data, leave them
+out:
+
+```csharp
+html.Should().MatchHtmlSnapshot(options: new SnapshotOptions { IgnoreClassArguments = true });
+
+// or once for the whole process, from a module initializer
+SnapshotDefaults.IgnoreClassArguments = true;
+```
+
+The file is then named `{Method}.verified.html`. Method arguments still add their hash, and a per-call value of `false`
+turns the default off for one call.
+
+Use this only when the class arguments do not change what is snapshotted. Two instances of one class with different
+data would claim the same file, and the second fails with `Two snapshot assertions resolve to ...`.

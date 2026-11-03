@@ -35,7 +35,8 @@ public sealed class TUnitTestIdentity : ISnapshotTestIdentityProvider
 				details.MethodName,
 				[.. details.TestClassArguments, .. details.TestMethodArguments],
 				type.Assembly,
-				TreeNodeFilter(type, details.MethodName));
+				TreeNodeFilter(type, details.MethodName),
+				details.TestClassArguments.Length);
 		}
 	}
 

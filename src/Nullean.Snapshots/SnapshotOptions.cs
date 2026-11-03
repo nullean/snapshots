@@ -13,6 +13,12 @@ public sealed class SnapshotOptions
 	/// <summary>Skip the scrubbers registered in <see cref="SnapshotDefaults"/> for this call.</summary>
 	public bool IgnoreDefaultScrubbers { get; set; }
 
+	/// <summary>
+	/// Leaves the test class's constructor arguments out of the file name, so a fixture injected into the class does not add a
+	/// hash. <see langword="null"/> uses <see cref="SnapshotDefaults.IgnoreClassArguments"/>.
+	/// </summary>
+	public bool? IgnoreClassArguments { get; set; }
+
 	/// <summary>Adds a scrubber for this call.</summary>
 	public SnapshotOptions Scrub(Func<string, string> scrubber)
 	{

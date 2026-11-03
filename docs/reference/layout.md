@@ -19,7 +19,9 @@ tests/Shop.Tests/
   `snap orphans` finds them.
 - **A folder per runtime class**, so `[InheritsTests]` classes that share a base class's methods get their own files.
 - **The arguments hash** (eight hex digits) tells data-driven cases apart. It is stable across machines, cultures and
-  versions.
+  versions. It covers the test method's arguments and the arguments of the test class's constructor, so a class that
+  receives a fixture gets a hash too. To leave the class arguments out, see
+  [class arguments](options.md#class-arguments).
 
 Received files never go into the source tree:
 

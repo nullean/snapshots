@@ -10,12 +10,24 @@ public static class SnapshotDefaults
 {
 	private static Func<string, string>[] AllScrubbers = [];
 	private static ISnapshotTestIdentityProvider? IdentityProvider;
+	private static bool ClassArgumentsIgnored;
 
 	/// <summary>Scrubbers applied to every snapshot, in the order they were added.</summary>
 	public static IReadOnlyList<Func<string, string>> Scrubbers => Volatile.Read(ref AllScrubbers);
 
 	/// <summary>The registered source of test identity, if any. See <see cref="UseTestIdentity"/>.</summary>
 	public static ISnapshotTestIdentityProvider? TestIdentity => Volatile.Read(ref IdentityProvider);
+
+	/// <summary>
+	/// Leaves test classes' constructor arguments out of every snapshot's file name. Off by default: a class run with
+	/// different data would otherwise share one file. Turn it on when class arguments are dependencies, such as a shared
+	/// fixture. <see cref="SnapshotOptions.IgnoreClassArguments"/> overrides it for one call.
+	/// </summary>
+	public static bool IgnoreClassArguments
+	{
+		get => Volatile.Read(ref ClassArgumentsIgnored);
+		set => Volatile.Write(ref ClassArgumentsIgnored, value);
+	}
 
 	/// <summary>Adds a scrubber applied to every snapshot.</summary>
 	public static void AddScrubber(Func<string, string> scrubber)

@@ -156,6 +156,68 @@ public class SnapshotEngineTests
 	}
 
 	[Test]
+	public void ClassArgumentsAreHashedByDefault()
+	{
+		var fixture = new object();
+		var p = new TestProject { Identity = TestProject.TUnitLikeWithClassArguments([fixture], 1) };
+		p.Match("x").Key.Should().Be($"Acme.Tests/Rendering/HtmlTests/RendersTable.{SnapshotPath.ArgumentsHash([fixture, 1])}");
+	}
+
+	[Test]
+	public void IgnoringClassArgumentsKeepsTheMethodArguments()
+	{
+		var p = new TestProject { Identity = TestProject.TUnitLikeWithClassArguments([new object()], 1, "a") };
+		var result = p.Match("x", options: new SnapshotOptions { IgnoreClassArguments = true });
+		result.Key.Should().Be($"Acme.Tests/Rendering/HtmlTests/RendersTable.{SnapshotPath.ArgumentsHash([1, "a"])}");
+	}
+
+	[Test]
+	public void IgnoringClassArgumentsLeavesNoHashWhenTheMethodHasNone()
+	{
+		var p = new TestProject { Identity = TestProject.TUnitLikeWithClassArguments([new object()]) };
+		p.Match("x", options: new SnapshotOptions { IgnoreClassArguments = true }).Key.Should().Be("Acme.Tests/" + Key);
+	}
+
+	[Test]
+	[NotInParallel]
+	public void TheDefaultAppliesToEveryCallAndACallCanOverrideIt()
+	{
+		var fixture = new object();
+		var identity = TestProject.TUnitLikeWithClassArguments([fixture]);
+		SnapshotDefaults.IgnoreClassArguments = true;
+		try
+		{
+			new TestProject { Identity = identity }.Match("x").Key.Should().Be("Acme.Tests/" + Key);
+			new TestProject { Identity = identity }.Match("x", options: new SnapshotOptions { IgnoreClassArguments = false }).Key
+				.Should().Be($"Acme.Tests/{Key}.{SnapshotPath.ArgumentsHash([fixture])}");
+		}
+		finally
+		{
+			SnapshotDefaults.IgnoreClassArguments = false;
+		}
+	}
+
+	[Test]
+	public void ProvidersThatDoNotSeparateClassArgumentsAreUnaffected()
+	{
+		var p = new TestProject { Identity = TestProject.TUnitLike("HtmlTests", "RendersTable", 1, "a") };
+		var result = p.Match("x", options: new SnapshotOptions { IgnoreClassArguments = true });
+		result.Key.Should().Be($"Acme.Tests/{Key}.{SnapshotPath.ArgumentsHash([1, "a"])}");
+	}
+
+	[Test]
+	public void ClassInstancesThatIgnoreTheirArgumentsShareOneFileSoTheSecondFails()
+	{
+		var options = new SnapshotOptions { IgnoreClassArguments = true };
+		var p = new TestProject { Identity = TestProject.TUnitLikeWithClassArguments(["first"]) };
+		p.Match("x", options: options);
+
+		p.Identity = TestProject.TUnitLikeWithClassArguments(["second"]);
+		var act = () => p.Match("x", options: options);
+		act.Should().Throw<InvalidOperationException>().WithMessage("Two snapshot assertions resolve to *");
+	}
+
+	[Test]
 	public void WithoutIdentityTheFileNameIsTheClass()
 	{
 		var p = new TestProject();

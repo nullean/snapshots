@@ -81,6 +81,11 @@ its verified file by the prefix swap. Half-written `*.tmp` files are ignored.
   project* (`buildTransitive`), because a module initializer in the package's own assembly runs only once something
   touches that assembly. `SnapshotsTUnitAutoRegister=false` opts out. Without the adapter the class folder is the test
   file's name and data-driven cases cannot be told apart.
+- **Class arguments.** The identity carries the class and method arguments in one list, plus how many of them come from
+  the class, so a provider that cannot tell them apart keeps working. Class arguments are hashed by default, because
+  a class run with different data (`[Arguments]` on the class) would otherwise share its files. `IgnoreClassArguments`,
+  per call or in `SnapshotDefaults`, leaves them out for the common case of an injected fixture. It is an opt-out for
+  that reason, and instances that then claim one file fail through the duplicates check below.
 - **Duplicates.** A key is owned by the first test id and call-site line that uses it in the run. Another owner fails
   with "pass a name"; the same owner again (a retried test) is fine.
 - **Deterministic builds.** A `[CallerFilePath]` like `/_/tests/Acme.Tests/Rendering/X.cs` is mapped back by matching

@@ -90,13 +90,14 @@ internal sealed class SnapshotEngine(
 			? _resolver.Resolve(identity?.TestAssembly ?? Assembly.GetEntryAssembly(), callSite.FilePath)
 			: projectResolver(callSite, identity?.TestAssembly);
 
+		var ignoreClassArguments = options?.IgnoreClassArguments ?? SnapshotDefaults.IgnoreClassArguments;
 		var key = SnapshotPath.Key(
 			project.Name,
 			SnapshotPath.RelativeTestDirectory(fileSystem, project.Directory, callSite.FilePath),
 			identity?.ClassName ?? fileSystem.Path.GetFileNameWithoutExtension(callSite.FilePath),
 			identity?.MethodName ?? callSite.MemberName,
 			name,
-			identity is null ? null : SnapshotPath.ArgumentsHash(identity.Arguments));
+			identity is null ? null : SnapshotPath.ArgumentsHash(identity.NamingArguments(ignoreClassArguments)));
 		var withinProject = SnapshotPath.KeyWithinProject(key);
 		var verifiedPath = SnapshotPath.File(fileSystem, project.SnapshotsDirectory, withinProject, SnapshotPath.VerifiedInfix, format.Extension);
 		var receivedPath = SnapshotPath.File(fileSystem, project.ReceivedDirectory, withinProject, SnapshotPath.ReceivedInfix, format.Extension);
