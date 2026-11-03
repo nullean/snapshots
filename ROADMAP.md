@@ -90,7 +90,7 @@ numerically unless `StrictNumbers`. Options: `IgnorePaths`, `NullEqualsMissing`.
 
 `snap status [--json]` (exit 1 when anything is pending; `[{key, ext, state: changed|new, verified, received}]`),
 `snap diff <key>`, `snap accept <key|glob|--all>`, `snap reject <key|glob|--all>`. Exit codes: 0 ok, 1 pending,
-2 usage, 3 IO. Phase 5 adds interactive `snap` review and `snap orphans` with a manifest.
+2 usage, 3 IO. Phase 5 adds `snap review` (also bare `snap`) and `snap orphans [--json] [--delete]` with a run manifest.
 
 Packaging mirrors nullean/curb: `PackAsTool`, AOT for each of `linux-x64;linux-arm64;win-x64;win-arm64;osx-arm64`
 built on a matching runner, plus a framework-dependent `any` fallback and the root pointer package. All packages share

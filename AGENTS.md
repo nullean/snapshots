@@ -23,7 +23,8 @@ dotnet run --project src/Nullean.Snapshots.Cli -- status
 dotnet run --project src/Nullean.Snapshots.Cli -- accept <key>
 ```
 
-Always read `git diff` of the verified files before committing them. `build/smoke-cli.sh <snap command>` runs the
+`snap review` walks through pending snapshots one at a time; `snap orphans` lists verified files the last full test
+run did not use. Always read `git diff` of the verified files before committing them. `build/smoke-cli.sh <snap command>` runs the
 CLI end to end on a throwaway fixture.
 
 ## Rules
