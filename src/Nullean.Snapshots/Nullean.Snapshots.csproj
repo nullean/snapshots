@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Nullean.Snapshots</RootNamespace>
+    <Description>Lightweight snapshot testing: the store, accept modes, scrubbers, the line differ and the failure message.</Description>
+    <PackageTags>snapshot;approval;testing;golden;diff</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Nullean.Snapshots.Tests" />
+  </ItemGroup>
+
+</Project>

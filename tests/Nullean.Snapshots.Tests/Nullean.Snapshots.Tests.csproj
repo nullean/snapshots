@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="TUnit" />
+    <PackageReference Include="AwesomeAssertions" />
+    <PackageReference Include="CsCheck" />
+    <ProjectReference Include="../../src/Nullean.Snapshots/Nullean.Snapshots.csproj" />
+  </ItemGroup>
+
+</Project>
