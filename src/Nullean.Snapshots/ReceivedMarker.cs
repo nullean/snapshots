@@ -87,14 +87,25 @@ internal static class AtomicFile
 	/// Writes <paramref name="content"/> to a temporary file next to <paramref name="path"/> and moves it into place, so
 	/// a reader never sees half a file. Creates the folder if needed.
 	/// </summary>
-	public static void Write(IFileSystem fs, string path, string content)
+	public static void Write(IFileSystem fs, string path, string content) =>
+		Write(fs, path, content, static (fs, temp, content) => fs.File.WriteAllText(temp, content, SnapshotText.Encoding));
+
+	/// <summary>Writes bytes the same way as <see cref="Write(IFileSystem, string, string)"/>.</summary>
+	public static void Write(IFileSystem fs, string path, ReadOnlyMemory<byte> content) =>
+		Write(fs, path, content, static (fs, temp, content) =>
+		{
+			using var stream = fs.File.Create(temp);
+			stream.Write(content.Span);
+		});
+
+	private static void Write<T>(IFileSystem fs, string path, T content, Action<IFileSystem, string, T> write)
 	{
 		var directory = fs.Path.GetDirectoryName(path)!;
 		fs.Directory.CreateDirectory(directory);
 		var temp = fs.Path.Combine(directory, $"{fs.Path.GetFileName(path).TrimStart('.')}.{Guid.NewGuid():N}.tmp");
 		try
 		{
-			fs.File.WriteAllText(temp, content, SnapshotText.Encoding);
+			write(fs, temp, content);
 			fs.File.Move(temp, path, overwrite: true);
 		}
 		finally

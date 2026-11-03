@@ -217,6 +217,24 @@ its verified file by the prefix swap. Half-written `*.tmp` files are ignored.
   transparent canvas with JetBrains Mono embedded; the README uses absolute image URLs so it renders on nuget.org too.
 - **`scripts/docs.sh` does not download docs-builder**: it takes `DOCS_BUILDER` or a `docs-builder` on the PATH.
 
+## Binary snapshots
+
+- **A second path, not a flag on the text one.** `Snapshot.Match(ReadOnlyMemory<byte>, BinarySnapshotFormat, ...)`
+  shares key resolution, key claims, the manifest, accept modes and the message with text, but never scrubs or
+  normalises: the bytes are stored exactly as given. A format's `Validate` throws before anything is written.
+- **Attachments** are extra received files a format writes on a failure, such as a diff image, named
+  `{name}.received-{suffix}` (`Draws.received-diff.png`). The dash keeps `.received.` out of the name, so discovery
+  never lists one as pending. A format declares its suffixes up front, so a pass or an accept deletes stale ones without
+  listing the folder; returning an undeclared one is an error. The message lists each under its label after
+  `Received:`.
+- **The CLI tells binary from text by content, as git does**: a NUL in the first 8000 bytes. It still references no
+  format package, so a format from another package works too. A binary snapshot is accepted byte for byte (normalising
+  line endings would corrupt it), `diff` and `review` show paths, sizes and attachments instead of a line diff, and
+  accept and reject delete the attachments with the received file.
+- **`.gitattributes`:** this repository's `*.verified.* text eol=lf` would have made git treat a `.verified.png` as
+  text, so `*.verified.png` and `*.received.png` are marked `binary` after it. The image docs tell users with a
+  similar rule to do the same.
+
 ## File system access
 
 All snapshot IO goes through `System.IO.Abstractions`, wrapped in `Nullean.ScopedFileSystem`:

@@ -209,7 +209,14 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 
 	private void WriteDiff(IFileSystem fs, PendingSnapshot snapshot, bool color)
 	{
-		var received = SnapshotText.Normalize(fs.File.ReadAllText(snapshot.ReceivedPath, SnapshotText.Encoding));
+		var bytes = fs.File.ReadAllBytes(snapshot.ReceivedPath);
+		if (SnapshotPath.IsBinary(bytes))
+		{
+			WriteBinary(fs, snapshot, bytes.Length);
+			return;
+		}
+
+		var received = SnapshotText.Normalize(SnapshotText.Encoding.GetString(bytes));
 		var verified = snapshot.IsNew ? string.Empty : SnapshotText.Normalize(fs.File.ReadAllText(snapshot.VerifiedPath, SnapshotText.Encoding));
 		output.WriteLine("--- " + (snapshot.IsNew ? "(new snapshot, no verified file)" : Relative(snapshot.VerifiedPath)));
 		output.WriteLine("+++ " + Relative(snapshot.ReceivedPath));
@@ -218,6 +225,30 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 			foreach (var line in hunk)
 				output.WriteLine(color ? Colored(line) : line);
 		}
+	}
+
+	/// <summary>A binary snapshot has no line diff: its paths, sizes and attachments (a diff image) instead.</summary>
+	private void WriteBinary(IFileSystem fs, PendingSnapshot snapshot, long receivedLength)
+	{
+		output.WriteLine("--- " + (snapshot.IsNew
+			? "(new snapshot, no verified file)"
+			: $"{Relative(snapshot.VerifiedPath)}  ({Bytes(fs.FileInfo.New(snapshot.VerifiedPath).Length)})"));
+		output.WriteLine($"+++ {Relative(snapshot.ReceivedPath)}  ({Bytes(receivedLength)})");
+		output.WriteLine("Binary snapshot: no line diff, open the files to compare.");
+		foreach (var attachment in Attachments(fs, snapshot))
+			output.WriteLine("    " + Relative(attachment));
+	}
+
+	private static string Bytes(long length) => length.ToString("N0", System.Globalization.CultureInfo.InvariantCulture) + " bytes";
+
+	/// <summary>Files written next to the received file for it, such as <c>X.received-diff.png</c>.</summary>
+	private static List<string> Attachments(IFileSystem fs, PendingSnapshot snapshot)
+	{
+		var directory = fs.Path.GetDirectoryName(snapshot.ReceivedPath)!;
+		var name = fs.Path.GetFileName(snapshot.ReceivedPath);
+		return [.. fs.Directory.EnumerateFiles(directory)
+			.Where(f => SnapshotPath.IsAttachmentOf(fs.Path.GetFileName(f), name))
+			.Order(StringComparer.Ordinal)];
 	}
 
 	// Only the interactive review colours its output, and only on a terminal: messages and other commands stay plain.
@@ -229,18 +260,32 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 		_ => line,
 	};
 
+	/// <summary>
+	/// Text is normalised on the way in; a binary snapshot (a NUL in its first 8000 bytes, as git decides) is copied
+	/// byte for byte, since normalising line endings would corrupt it.
+	/// </summary>
 	private void AcceptOne(IFileSystem fs, PendingSnapshot snapshot)
 	{
-		var content = SnapshotText.Normalize(fs.File.ReadAllText(snapshot.ReceivedPath, SnapshotText.Encoding));
-		AtomicFile.Write(fs, snapshot.VerifiedPath, content);
-		fs.File.Delete(snapshot.ReceivedPath);
+		var bytes = fs.File.ReadAllBytes(snapshot.ReceivedPath);
+		if (SnapshotPath.IsBinary(bytes))
+			AtomicFile.Write(fs, snapshot.VerifiedPath, bytes.AsMemory());
+		else
+			AtomicFile.Write(fs, snapshot.VerifiedPath, SnapshotText.Normalize(SnapshotText.Encoding.GetString(bytes)));
+		DeleteReceived(fs, snapshot);
 		output.WriteLine($"accepted  {snapshot.Key}  -> {Relative(snapshot.VerifiedPath)}");
 	}
 
 	private void RejectOne(IFileSystem fs, PendingSnapshot snapshot)
 	{
-		fs.File.Delete(snapshot.ReceivedPath);
+		DeleteReceived(fs, snapshot);
 		output.WriteLine($"rejected  {snapshot.Key}");
+	}
+
+	private static void DeleteReceived(IFileSystem fs, PendingSnapshot snapshot)
+	{
+		foreach (var attachment in Attachments(fs, snapshot))
+			fs.File.Delete(attachment);
+		fs.File.Delete(snapshot.ReceivedPath);
 	}
 
 	private int Run(Func<IReadOnlyList<PendingSnapshot>, int> command) => Run((pending, _) => command(pending));

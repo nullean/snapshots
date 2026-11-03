@@ -56,7 +56,7 @@ public static class Snapshot
 	/// Compares <paramref name="actual"/> with the verified snapshot of a source file, such as a browser journey,
 	/// rather than of the calling test. The key is the file's path in its project without the extension
 	/// (<c>{Project}/{dir}/{name}</c>), so every runner of the file, a test or a command line tool, shares one verified
-	/// file. Otherwise it behaves as <see cref="Match"/>.
+	/// file. Otherwise it behaves as <see cref="Match(string, SnapshotFormat, SnapshotCallSite, string?, SnapshotOptions?, string?)"/>.
 	/// </summary>
 	/// <param name="actual">The value, as text.</param>
 	/// <param name="format">How it is stored and compared.</param>
@@ -73,6 +73,24 @@ public static class Snapshot
 		SnapshotOptions? options = null,
 		string? because = null
 	) => (EngineOverride.Value ?? Engine).MatchFile(actual, format, sourceFile, options, because);
+
+	/// <summary>
+	/// Compares <paramref name="actual"/> bytes with their verified snapshot, as the text overload does but without
+	/// scrubbers or normalisation. On a mismatch the format's attachments, such as a diff image, are written next to
+	/// the received file.
+	/// </summary>
+	/// <param name="actual">The value's bytes, stored exactly as given.</param>
+	/// <param name="format">How it is stored and compared.</param>
+	/// <param name="callSite">Where the assertion is.</param>
+	/// <param name="name">Tells apart several snapshots in one test: letters, digits, <c>-</c>, <c>_</c> and <c>.</c>.</param>
+	/// <param name="because">An optional reason, shown in the failure message.</param>
+	public static SnapshotResult Match(
+		ReadOnlyMemory<byte> actual,
+		BinarySnapshotFormat format,
+		SnapshotCallSite callSite,
+		string? name = null,
+		string? because = null
+	) => (EngineOverride.Value ?? Engine).Match(actual, format, callSite, name, because);
 }
 
 /// <summary>The snapshot workflow over an <see cref="IFileSystem"/>, so tests can run it on a mock.</summary>
@@ -104,6 +122,29 @@ internal sealed class SnapshotEngine(
 	{
 		ArgumentNullException.ThrowIfNull(actual);
 		ArgumentNullException.ThrowIfNull(format);
+		var (project, key, identity) = ResolveTestKey(callSite, name);
+		ClaimKey(key, identity, callSite);
+		return Compare(actual, format, project, key, identity?.TreeNodeFilter, options, because);
+	}
+
+	public SnapshotResult Match(
+		ReadOnlyMemory<byte> actual,
+		BinarySnapshotFormat format,
+		SnapshotCallSite callSite,
+		string? name,
+		string? because
+	)
+	{
+		ArgumentNullException.ThrowIfNull(format);
+		format.Validate(actual.Span);
+		var (project, key, identity) = ResolveTestKey(callSite, name);
+		ClaimKey(key, identity, callSite);
+		return CompareBinary(actual, format, Target(project, key, identity?.TreeNodeFilter, format.Extension), because);
+	}
+
+	/// <summary>The project and key of a snapshot named after the calling test.</summary>
+	private (SnapshotProject Project, string Key, SnapshotTestIdentity? Identity) ResolveTestKey(SnapshotCallSite callSite, string? name)
+	{
 		if (name is not null && !SnapshotPath.IsValidName(name))
 			throw new ArgumentException($"Snapshot name '{name}' may only hold letters, digits, '-', '_' and inner '.'.", nameof(name));
 
@@ -119,8 +160,7 @@ internal sealed class SnapshotEngine(
 			identity?.MethodName ?? callSite.MemberName,
 			name,
 			identity is null ? null : SnapshotPath.ArgumentsHash(identity.Arguments));
-		ClaimKey(key, identity, callSite);
-		return Compare(actual, format, project, key, identity?.TreeNodeFilter, options, because);
+		return (project, key, identity);
 	}
 
 	public SnapshotResult MatchFile(string actual, SnapshotFormat format, string sourceFile, SnapshotOptions? options, string? because)
@@ -173,46 +213,130 @@ internal sealed class SnapshotEngine(
 		string? because
 	)
 	{
-		var withinProject = SnapshotPath.KeyWithinProject(key);
-		var verifiedPath = SnapshotPath.File(fileSystem, project.SnapshotsDirectory, withinProject, SnapshotPath.VerifiedInfix, format.Extension);
-		var receivedPath = SnapshotPath.File(fileSystem, project.ReceivedDirectory, withinProject, SnapshotPath.ReceivedInfix, format.Extension);
-
-		var fs = ScopeFor(project);
-		Touch(project, withinProject + SnapshotPath.VerifiedInfix + format.Extension);
+		var target = Target(project, key, treeNodeFilter, format.Extension);
+		var fs = target.Fs;
 		var value = SnapshotText.Normalize(Scrub(actual, options));
-		var verified = fs.File.Exists(verifiedPath) ? SnapshotText.Normalize(fs.File.ReadAllText(verifiedPath, SnapshotText.Encoding)) : null;
+		var verified = fs.File.Exists(target.VerifiedPath) ? SnapshotText.Normalize(fs.File.ReadAllText(target.VerifiedPath, SnapshotText.Encoding)) : null;
 		var comparison = verified is null ? null : format.Compare(verified, value);
 
 		if (comparison is { IsMatch: true })
 		{
-			DeleteIfExists(fs, receivedPath);
-			return new SnapshotResult(true, null, key, verifiedPath, receivedPath);
+			DeleteIfExists(fs, target.ReceivedPath);
+			return target.Passed();
 		}
 
 		var environment = SnapshotEnvironment.From(getVariable);
 		if (environment.Mode == SnapshotMode.Accept)
 		{
-			AtomicFile.Write(fs, verifiedPath, value);
-			DeleteIfExists(fs, receivedPath);
-			return new SnapshotResult(true, null, key, verifiedPath, receivedPath);
+			AtomicFile.Write(fs, target.VerifiedPath, value);
+			DeleteIfExists(fs, target.ReceivedPath);
+			return target.Passed();
 		}
 
-		fs.Directory.CreateDirectory(project.ReceivedDirectory);
-		if (_markers.TryAdd(project, 0))
-			ReceivedMarker.For(fileSystem, project).EnsureWritten(fs, project.ReceivedDirectory);
-		AtomicFile.Write(fs, receivedPath, value);
+		PrepareReceived(target);
+		AtomicFile.Write(fs, target.ReceivedPath, value);
+		return Failed(target, format.Name, comparison, because, environment, []);
+	}
 
+	private SnapshotResult CompareBinary(ReadOnlyMemory<byte> actual, BinarySnapshotFormat format, SnapshotTarget target, string? because)
+	{
+		var fs = target.Fs;
+		BinarySnapshotComparison? comparison = null;
+		if (fs.File.Exists(target.VerifiedPath))
+		{
+			var verified = fs.File.ReadAllBytes(target.VerifiedPath);
+			comparison = format.Compare(verified, actual.Span);
+			var undeclared = comparison.Attachments.FirstOrDefault(a => !format.AttachmentSuffixes.Contains(a.Suffix, StringComparer.Ordinal));
+			if (undeclared is not null)
+				throw new InvalidOperationException($"{format.Name} returned attachment '{undeclared.Suffix}', which it does not declare in AttachmentSuffixes.");
+		}
+
+		if (comparison is { Comparison.IsMatch: true })
+		{
+			DeleteReceived(target, format);
+			return target.Passed();
+		}
+
+		var environment = SnapshotEnvironment.From(getVariable);
+		if (environment.Mode == SnapshotMode.Accept)
+		{
+			AtomicFile.Write(fs, target.VerifiedPath, actual);
+			DeleteReceived(target, format);
+			return target.Passed();
+		}
+
+		PrepareReceived(target);
+		AtomicFile.Write(fs, target.ReceivedPath, actual);
+		var attachments = new List<(string Label, string Path)>();
+		foreach (var suffix in format.AttachmentSuffixes)
+		{
+			var path = AttachmentPath(target, suffix);
+			var attachment = comparison?.Attachments.FirstOrDefault(a => string.Equals(a.Suffix, suffix, StringComparison.Ordinal));
+			if (attachment is null)
+				DeleteIfExists(fs, path);
+			else
+			{
+				AtomicFile.Write(fs, path, attachment.Content);
+				attachments.Add((attachment.Label, path));
+			}
+		}
+
+		return Failed(target, format.Name, comparison?.Comparison, because, environment, attachments);
+	}
+
+	/// <summary>Both paths of a key, the scoped file system, and the manifest entry for the verified file.</summary>
+	private SnapshotTarget Target(SnapshotProject project, string key, string? treeNodeFilter, string extension)
+	{
+		var withinProject = SnapshotPath.KeyWithinProject(key);
+		var verifiedPath = SnapshotPath.File(fileSystem, project.SnapshotsDirectory, withinProject, SnapshotPath.VerifiedInfix, extension);
+		var receivedPath = SnapshotPath.File(fileSystem, project.ReceivedDirectory, withinProject, SnapshotPath.ReceivedInfix, extension);
+		var fs = ScopeFor(project);
+		Touch(project, withinProject + SnapshotPath.VerifiedInfix + extension);
+		return new SnapshotTarget(project, treeNodeFilter, fs, key, withinProject, verifiedPath, receivedPath);
+	}
+
+	private void DeleteReceived(SnapshotTarget target, BinarySnapshotFormat format)
+	{
+		DeleteIfExists(target.Fs, target.ReceivedPath);
+		foreach (var suffix in format.AttachmentSuffixes)
+			DeleteIfExists(target.Fs, AttachmentPath(target, suffix));
+	}
+
+	private string AttachmentPath(SnapshotTarget target, string suffix) =>
+		SnapshotPath.File(fileSystem, target.Project.ReceivedDirectory, target.KeyWithinProject, SnapshotPath.AttachmentInfix, suffix);
+
+	/// <summary>Creates the received folder and, once per project in this process, its marker.</summary>
+	private void PrepareReceived(SnapshotTarget target)
+	{
+		target.Fs.Directory.CreateDirectory(target.Project.ReceivedDirectory);
+		if (_markers.TryAdd(target.Project, 0))
+			ReceivedMarker.For(fileSystem, target.Project).EnsureWritten(target.Fs, target.Project.ReceivedDirectory);
+	}
+
+	private SnapshotResult Failed(
+		SnapshotTarget target,
+		string formatName,
+		SnapshotComparison? comparison,
+		string? because,
+		SnapshotEnvironment environment,
+		IReadOnlyList<(string Label, string Path)> attachments
+	)
+	{
+		var project = target.Project;
 		var failure = new SnapshotFailure(
-			format.Name,
-			SnapshotPath.Relative(fileSystem, project.RepositoryRoot, verifiedPath),
-			SnapshotPath.Relative(fileSystem, project.RepositoryRoot, receivedPath),
-			key,
+			formatName,
+			SnapshotPath.Relative(fileSystem, project.RepositoryRoot, target.VerifiedPath),
+			SnapshotPath.Relative(fileSystem, project.RepositoryRoot, target.ReceivedPath),
+			target.Key,
 			comparison,
 			Because(because),
 			project.RelativeDirectory(fileSystem),
-			treeNodeFilter,
-			environment.AcceptIgnoredInCi);
-		return new SnapshotResult(false, failure.Render(), key, verifiedPath, receivedPath);
+			target.TreeNodeFilter,
+			environment.AcceptIgnoredInCi)
+		{
+			Attachments = [.. attachments.Select(a => (a.Label, SnapshotPath.Relative(fileSystem, project.RepositoryRoot, a.Path)))],
+		};
+		return new SnapshotResult(false, failure.Render(), target.Key, target.VerifiedPath, target.ReceivedPath);
 	}
 
 	/// <summary>
@@ -302,6 +426,20 @@ internal sealed class SnapshotEngine(
 			AllowedHiddenFolderNames = [".snapshots", ".artifacts"],
 			AllowedHiddenFileNames = [ReceivedMarker.FileName, RunManifest.FileName],
 		});
+}
+
+/// <summary>Where one assertion's snapshot lives, resolved once per call.</summary>
+internal sealed record SnapshotTarget(
+	SnapshotProject Project,
+	string? TreeNodeFilter,
+	IFileSystem Fs,
+	string Key,
+	string KeyWithinProject,
+	string VerifiedPath,
+	string ReceivedPath
+)
+{
+	public SnapshotResult Passed() => new(true, null, Key, VerifiedPath, ReceivedPath);
 }
 
 /// <summary>
