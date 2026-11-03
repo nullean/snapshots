@@ -241,8 +241,9 @@ All snapshot IO goes through `System.IO.Abstractions`, wrapped in `Nullean.Scope
   as curb does, so only the AOT ones ship.
 - **Releasing.** Push a tag (`0.1.0-alpha.1`: MinVer takes the version from it), then start CI by hand on that tag
   (`gh workflow run ci.yml --ref 0.1.0-alpha.1`). The `release` job runs only for such a manual run, needs every other
-  job including the smoke tests, checks that every package carries the tag's version, and waits for a reviewer on the
-  `release` environment, which only tags may deploy to. It publishes with nuget.org trusted publishing (`NuGet/login`,
+  job including the smoke tests, and checks that every package carries the tag's version. Starting that run is the
+  release decision: the `release` environment has no reviewers (it stays because the nuget.org trusted publishing
+  policy names it, and only tags may deploy to it). It publishes with nuget.org trusted publishing (`NuGet/login`,
   the org's `NUGET_USER`), so no API key is stored. The root tool package is pushed last, after the per-RID and `any`
   packages it points at. A tag push alone never publishes.
 - **No strong naming.** Nothing here needs it, and `InternalsVisibleTo` stays a plain assembly name.

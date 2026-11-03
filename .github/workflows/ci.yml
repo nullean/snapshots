@@ -200,8 +200,10 @@ jobs:
           "$GITHUB_WORKSPACE/build/smoke-cli.sh" "$temp/tool/$snap"
           "$GITHUB_WORKSPACE/build/smoke-cli.sh" dotnet dnx "Nullean.Snapshots.Cli@$root" --add-source "$feed" --yes
 
-  # Publishing to nuget.org: only from a manual run on a tag, only once every gate above has passed, and only after a
-  # reviewer approves the 'release' environment. Pushing a tag alone runs CI but never publishes.
+  # Publishing to nuget.org: only from a manual run on a tag (gh workflow run ci.yml --ref <tag>), and only once every
+  # gate above has passed. Starting that run is the release decision; pushing a tag alone runs CI but never publishes.
+  # The 'release' environment has no reviewers: it is kept because the nuget.org trusted publishing policy names it,
+  # and it only lets tags deploy.
   # nuget.org trusts this workflow file (ci.yml) through a trusted publishing policy, so there is no long-lived key.
   release:
     if: github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/')
