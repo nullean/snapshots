@@ -257,18 +257,24 @@ public class SnapshotEngineTests
 	}
 
 	[Test]
-	public async Task RacingScrubberRegistrationsAreAllKept()
+	public void RacingScrubberRegistrationsAreAllKept()
 	{
 		var before = SnapshotDefaults.Scrubbers.Count;
 		static string Same(string value) => value;
-		await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => Task.Run(() =>
+		// Dedicated threads released together, so the registrations really collide.
+		using var start = new ManualResetEventSlim();
+		var threads = Enumerable.Range(0, Math.Max(4, Environment.ProcessorCount)).Select(_ => new Thread(() =>
 		{
-			for (var i = 0; i < 500; i++)
+			start.Wait();
+			for (var i = 0; i < 300; i++)
 				SnapshotDefaults.AddScrubber(Same);
-		})));
+		})).ToList();
+		threads.ForEach(t => t.Start());
+		start.Set();
+		threads.ForEach(t => t.Join());
 		var after = SnapshotDefaults.Scrubbers.Count;
 		SnapshotDefaults.ClearScrubbers();
-		after.Should().Be(before + 4000);
+		after.Should().Be(before + (threads.Count * 300));
 	}
 
 	// Regression: the lost first version pruned received folders at the start of a run, which collided with parallel
