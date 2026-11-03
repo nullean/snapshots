@@ -1,0 +1,19 @@
+HTML did not match the expected HTML because the list must not shrink:
+3 difference(s):
+The values of the attribute at p(0)[class] are different.
+  expected: class="a"
+  actual:   class="b"
+The text in p(0) > #text(0) is different.
+  expected: {kibana}
+  actual:   {Kibana}
+The element at ul(2) > li(3) is missing.
+  expected: <li>two</li>
+  actual:   missing
+Line diff:
+@@ line 1 @@
+-<p class="a">{kibana}</p>
++<p class="b">{Kibana}</p>
+ <ul>
+ 	<li>one</li>
+-	<li>two</li>
+ </ul>

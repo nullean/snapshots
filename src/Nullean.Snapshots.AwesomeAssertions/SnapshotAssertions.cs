@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using AwesomeAssertions;
+using AwesomeAssertions.Execution;
 using AwesomeAssertions.Formatting;
 using AwesomeAssertions.Primitives;
 
@@ -71,12 +72,24 @@ public static class SnapshotAssertions
 			options,
 			because);
 
+		FailUnless(chain, result.Passed, result.FailureMessage ?? string.Empty);
+		return new AndConstraint<StringAssertions>(assertions);
+	}
+
+	/// <summary>
+	/// Fails <paramref name="chain"/> with <paramref name="message"/> shown exactly as given, unless
+	/// <paramref name="condition"/> holds. For format packages building their own assertions.
+	/// </summary>
+	/// <param name="chain">The assertion chain, e.g. <c>assertions.CurrentAssertionChain</c>.</param>
+	/// <param name="condition">The assertion passes when this is true.</param>
+	/// <param name="message">The plain-text failure message.</param>
+	public static void FailUnless(AssertionChain chain, bool condition, string message)
+	{
+		ArgumentNullException.ThrowIfNull(chain);
+		ArgumentNullException.ThrowIfNull(message);
 		// The message goes in as an argument, never as the format string: AwesomeAssertions reads {braces} in a format
 		// string as placeholders, and snapshot content is full of them.
-		chain
-			.ForCondition(result.Passed)
-			.FailWith("{0}", new VerbatimMessage(result.FailureMessage ?? string.Empty));
-		return new AndConstraint<StringAssertions>(assertions);
+		chain.ForCondition(condition).FailWith("{0}", new VerbatimMessage(message));
 	}
 
 	/// <summary>A message the formatter writes as is: no quotes, no escaping.</summary>

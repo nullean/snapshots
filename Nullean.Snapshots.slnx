@@ -4,9 +4,11 @@
     <Project Path="src/Nullean.Snapshots.AwesomeAssertions/Nullean.Snapshots.AwesomeAssertions.csproj" />
     <Project Path="src/Nullean.Snapshots.TUnit/Nullean.Snapshots.TUnit.csproj" />
     <Project Path="src/Nullean.Snapshots.Cli/Nullean.Snapshots.Cli.csproj" />
+    <Project Path="src/Nullean.Snapshots.Html/Nullean.Snapshots.Html.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Nullean.Snapshots.Tests/Nullean.Snapshots.Tests.csproj" />
     <Project Path="tests/Nullean.Snapshots.Cli.Tests/Nullean.Snapshots.Cli.Tests.csproj" />
+    <Project Path="tests/Nullean.Snapshots.Html.Tests/Nullean.Snapshots.Html.Tests.csproj" />
   </Folder>
 </Solution>

@@ -42,7 +42,7 @@ internal sealed record SnapshotFailure(
 		else
 		{
 			message.Append(FormatName).Append(" did not match snapshot").Append(because).Append(": ").Append(VerifiedPath).Append('\n');
-			AppendDifferences(message, Comparison.Differences);
+			AppendComparison(message, Comparison);
 		}
 
 		message.Append("Received: ").Append(ReceivedPath).Append('\n');
@@ -62,40 +62,79 @@ internal sealed record SnapshotFailure(
 		return message.ToString().TrimEnd('\n');
 	}
 
-	/// <summary>
-	/// Lists differences up to <see cref="SnapshotMessageLimits.MaxDifferences"/> and
-	/// <see cref="SnapshotMessageLimits.MaxLines"/>. A difference that does not fit in the remaining lines is left out
-	/// whole, except a first difference that is longer than the cap on its own: that one is cut, so the message still
-	/// shows something. Either way it counts as not shown.
-	/// </summary>
-	internal static void AppendDifferences(StringBuilder message, IReadOnlyList<IReadOnlyList<string>> differences)
+	/// <summary>The differences of <paramref name="comparison"/>, then its line diff if it has one, within the caps.</summary>
+	internal static void AppendComparison(StringBuilder message, SnapshotComparison comparison)
 	{
-		message.Append(differences.Count.ToString(CultureInfo.InvariantCulture)).Append(" difference(s):\n");
+		message.Append(comparison.Differences.Count.ToString(CultureInfo.InvariantCulture)).Append(" difference(s):\n");
+		var used = AppendBlocks(message, comparison.Differences, SnapshotMessageLimits.MaxLines, SnapshotMessageLimits.MaxDifferences, "more");
+		if (comparison.LineDiff is not { Count: > 0 } hunks)
+			return;
+		var left = SnapshotMessageLimits.MaxLines - used - 1;
+		if (left <= 0)
+		{
+			message.Append("(line diff left out, see received)\n");
+			return;
+		}
+
+		message.Append("Line diff:\n");
+		AppendBlocks(message, hunks, left, int.MaxValue, "more hunk(s)");
+	}
+
+	/// <summary>Lists differences without a line diff. See <see cref="AppendBlocks"/>.</summary>
+	internal static void AppendDifferences(StringBuilder message, IReadOnlyList<IReadOnlyList<string>> differences) =>
+		AppendComparison(message, new SnapshotComparison(false, differences));
+
+	/// <summary>
+	/// Appends blocks up to <paramref name="maxBlocks"/> and <paramref name="maxLines"/>. A block that does not fit in
+	/// the remaining lines is left out whole, except a first block that is longer than the cap on its own: that one is
+	/// cut, so the message still shows something. Either way it counts in "(+N more, see received)". Returns the lines
+	/// used, not counting that note.
+	/// </summary>
+	private static int AppendBlocks(StringBuilder message, IReadOnlyList<IReadOnlyList<string>> blocks, int maxLines, int maxBlocks, string more)
+	{
 		var lines = 0;
 		var shown = 0;
-		foreach (var difference in differences)
+		foreach (var block in blocks)
 		{
-			if (shown == SnapshotMessageLimits.MaxDifferences)
+			if (shown == maxBlocks)
 				break;
-			if (lines + difference.Count > SnapshotMessageLimits.MaxLines)
+			if (lines + block.Count > maxLines)
 			{
 				if (shown == 0)
 				{
-					foreach (var line in difference.Take(SnapshotMessageLimits.MaxLines))
+					foreach (var line in block.Take(maxLines))
 						message.Append(line).Append('\n');
+					lines = maxLines;
 				}
 
 				break;
 			}
 
-			foreach (var line in difference)
+			foreach (var line in block)
 				message.Append(line).Append('\n');
-			lines += difference.Count;
+			lines += block.Count;
 			shown++;
 		}
 
-		var more = differences.Count - shown;
-		if (more > 0)
-			message.Append("(+").Append(more.ToString(CultureInfo.InvariantCulture)).Append(" more, see received)\n");
+		var rest = blocks.Count - shown;
+		if (rest > 0)
+			message.Append("(+").Append(rest.ToString(CultureInfo.InvariantCulture)).Append(' ').Append(more).Append(", see received)\n");
+		return lines;
+	}
+}
+
+/// <summary>Renders comparisons the way failure messages do, for assertions that compare inline values.</summary>
+public static class SnapshotMessages
+{
+	/// <summary>
+	/// <c>N difference(s):</c> followed by the differences and the line diff, within
+	/// <see cref="SnapshotMessageLimits"/>. Ends without a newline.
+	/// </summary>
+	public static string Describe(SnapshotComparison comparison)
+	{
+		ArgumentNullException.ThrowIfNull(comparison);
+		var message = new StringBuilder();
+		SnapshotFailure.AppendComparison(message, comparison);
+		return message.ToString().TrimEnd('\n');
 	}
 }
