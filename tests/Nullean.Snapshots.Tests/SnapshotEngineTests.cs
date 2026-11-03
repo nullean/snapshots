@@ -201,6 +201,82 @@ public class SnapshotEngineTests
 		hiddenWrite.Should().Throw<ScopedFileSystemException>();
 	}
 
+	[Test]
+	public void ManifestListsTouchedFilesSortedOnceTheRunEnds()
+	{
+		var p = new TestProject();
+		p.AddVerified(Key, "same\n");
+		p.Match("same");
+		p.Match("other", name: "b", line: 20);
+		p.Match("other", name: "a", line: 30);
+		var manifest = p.Fs.Path.Combine(p.Project.ReceivedDirectory, RunManifest.FileName);
+		p.Fs.File.Exists(manifest).Should().BeFalse("nothing is written per assertion");
+
+		p.Engine.FlushManifests();
+
+		var (files, started) = RunManifest.Read(p.Read(manifest));
+		files.Should().BeEquivalentTo("Rendering/HtmlTests/RendersTable.verified.txt", "Rendering/HtmlTests/RendersTable.a.verified.txt", "Rendering/HtmlTests/RendersTable.b.verified.txt");
+		started.Should().NotBeNull();
+		p.Read(manifest).Split('\n').Skip(1).Where(l => l.Length > 0).Should().BeInAscendingOrder(StringComparer.Ordinal);
+
+		// Many keys added in reverse, so an unsorted set would almost surely show.
+		var many = new TestProject();
+		for (var i = 50; i > 0; i--)
+			many.Match("x", name: $"n{i:00}", line: i);
+		many.Engine.FlushManifests();
+		many.Read(many.Fs.Path.Combine(many.Project.ReceivedDirectory, RunManifest.FileName)).Split('\n').Skip(1).Where(l => l.Length > 0)
+			.Should().HaveCount(50).And.BeInAscendingOrder(StringComparer.Ordinal);
+		p.Fs.File.Exists(p.Fs.Path.Combine(p.Project.ReceivedDirectory, ReceivedMarker.FileName)).Should().BeTrue();
+	}
+
+	[Test]
+	public void ManifestReplacesThePreviousRunsAndFlushesOnce()
+	{
+		var p = new TestProject();
+		var manifest = p.Fs.Path.Combine(p.Project.ReceivedDirectory, RunManifest.FileName);
+		p.Fs.AddFile(manifest, new("# old\nGone/Test.verified.txt\n"));
+		p.AddVerified(Key, "same\n");
+		p.Match("same");
+		p.Engine.FlushManifests();
+		p.Fs.File.WriteAllText(manifest, "changed by someone else");
+		p.Engine.FlushManifests();
+
+		p.Read(manifest).Should().Be("changed by someone else");
+	}
+
+	[Test]
+	public void ManifestOfAPassingRunStillMakesTheProjectFindable()
+	{
+		var p = new TestProject();
+		p.AddVerified(Key, "same\n");
+		p.Match("same");
+		p.Engine.FlushManifests();
+		RunManifest.Read(p.Read(p.Fs.Path.Combine(p.Project.ReceivedDirectory, RunManifest.FileName))).Files
+			.Should().Equal("Rendering/HtmlTests/RendersTable.verified.txt");
+		p.Fs.File.Exists(p.Fs.Path.Combine(p.Project.ReceivedDirectory, ReceivedMarker.FileName)).Should().BeTrue("the CLI finds projects by their marker");
+	}
+
+	[Test]
+	public void RacingScrubberRegistrationsAreAllKept()
+	{
+		var before = SnapshotDefaults.Scrubbers.Count;
+		static string Same(string value) => value;
+		// Dedicated threads released together, so the registrations really collide.
+		using var start = new ManualResetEventSlim();
+		var threads = Enumerable.Range(0, Math.Max(4, Environment.ProcessorCount)).Select(_ => new Thread(() =>
+		{
+			start.Wait();
+			for (var i = 0; i < 300; i++)
+				SnapshotDefaults.AddScrubber(Same);
+		})).ToList();
+		threads.ForEach(t => t.Start());
+		start.Set();
+		threads.ForEach(t => t.Join());
+		var after = SnapshotDefaults.Scrubbers.Count;
+		SnapshotDefaults.ClearScrubbers();
+		after.Should().Be(before + (threads.Count * 300));
+	}
+
 	// Regression: the lost first version pruned received folders at the start of a run, which collided with parallel
 	// writes. Runs never prune now; many tests writing into one received tree at once must all land.
 	[Test]

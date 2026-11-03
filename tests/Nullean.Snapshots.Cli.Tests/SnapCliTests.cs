@@ -180,6 +180,86 @@ public class SnapCliTests
 		_out.ToString().Should().Contain(Obj).And.NotContain(Changed);
 	}
 
+	private void Manifest(params string[] files) =>
+		_fs.File.WriteAllText(Received(ReceivedMarker.FileName.Replace("project", "manifest", StringComparison.Ordinal)),
+			"# verified files touched by the test run that started 2026-11-03T15:00:00Z\n" + string.Concat(files.Select(f => f + "\n")));
+
+	[Test]
+	public void OrphansAreVerifiedFilesTheLastRunDidNotTouch()
+	{
+		_fs.AddFile(Verified("Old", "Gone.verified.txt"), new("x"));
+		Manifest("Rendering/HtmlTests/RendersTable.verified.txt");
+		Cli().Orphans(json: false, delete: false).Should().Be(ExitCode.Pending);
+		_out.ToString().Replace("\r\n", "\n", StringComparison.Ordinal).Should().MatchSnapshot();
+		_err.ToString().Should().Contain("No run manifest for Lib");
+		_fs.File.Exists(Verified("Old", "Gone.verified.txt")).Should().BeTrue();
+	}
+
+	[Test]
+	public void OrphansJsonAndDelete()
+	{
+		_fs.AddFile(Verified("Old", "Gone.verified.txt"), new("x"));
+		Manifest("Rendering/HtmlTests/RendersTable.verified.txt");
+		Cli().Orphans(json: true, delete: false).Should().Be(ExitCode.Pending);
+		_out.ToString().Should().Contain("\"verified\": \"tests/Acme.Tests/.snapshots/Old/Gone.verified.txt\"");
+
+		Cli().Orphans(json: false, delete: true).Should().Be(ExitCode.Ok);
+		_fs.File.Exists(Verified("Old", "Gone.verified.txt")).Should().BeFalse();
+		_fs.File.Exists(Verified("Rendering", "HtmlTests", "RendersTable.verified.txt")).Should().BeTrue();
+	}
+
+	[Test]
+	public void NoOrphansWhenEverythingWasTouched()
+	{
+		Manifest("Rendering/HtmlTests/RendersTable.verified.txt");
+		Cli().Orphans(json: false, delete: false).Should().Be(ExitCode.Ok);
+		_out.ToString().Should().Contain("No orphaned snapshots.");
+	}
+
+	[Test]
+	public void ReviewAcceptsRejectsAndSkips()
+	{
+		var prompt = new ScriptedPrompt('x', 'a', 's', 'r');
+		Cli().Review(prompt, color: false).Should().Be(ExitCode.Pending);
+		_fs.File.ReadAllText(Verified("Rendering", "HtmlTests", "RendersList.a1b2c3d4.verified.txt")).Should().Be("new {x}\n");
+		_fs.File.Exists(Received("Rendering", "HtmlTests", "RendersTable.received.txt")).Should().BeTrue("it was skipped");
+		_fs.File.Exists(P("src", "Lib", "obj", "snapshots", "received", "X", "Y.received.txt")).Should().BeFalse("it was rejected");
+		prompt.Asked.Should().Be(4, "the unknown answer is asked again");
+		_out.ToString().Should().Contain("1 accepted, 1 rejected, 1 still pending.").And.NotContain("\u001b");
+	}
+
+	[Test]
+	public void ReviewStopsOnQuitOrEndOfInput()
+	{
+		var quit = new ScriptedPrompt('q', 'a', 'a');
+		Cli().Review(quit, color: false).Should().Be(ExitCode.Pending);
+		quit.Asked.Should().Be(1);
+		_out.ToString().Should().Contain("0 accepted, 0 rejected, 3 still pending.");
+		Cli().Review(new ScriptedPrompt(), color: false).Should().Be(ExitCode.Pending);
+	}
+
+	[Test]
+	public void ReviewColoursOnlyWhenAsked()
+	{
+		Cli().Review(new ScriptedPrompt('s', 's', 's'), color: true).Should().Be(ExitCode.Pending);
+		_out.ToString().Should().Contain("\u001b[31m-b\u001b[0m").And.Contain("\u001b[32m+B\u001b[0m");
+	}
+
+	[Test]
+	public void ReviewWithNothingPending()
+	{
+		var empty = new MockFileSystem();
+		empty.AddDirectory(Root);
+		new SnapCli(empty, Root, _out, _err).Review(new ScriptedPrompt(), color: false).Should().Be(ExitCode.Ok);
+	}
+
+	private sealed class ScriptedPrompt(params char[] answers) : ISnapPrompt
+	{
+		public int Asked { get; private set; }
+
+		public char? Ask(string question) => Asked < answers.Length ? answers[Asked++] : null;
+	}
+
 	[Test]
 	public void IoErrorsExitThree()
 	{

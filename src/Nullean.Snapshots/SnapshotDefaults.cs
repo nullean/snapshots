@@ -8,7 +8,6 @@ namespace Nullean.Snapshots;
 /// </summary>
 public static class SnapshotDefaults
 {
-	private static readonly Lock Gate = new();
 	private static Func<string, string>[] AllScrubbers = [];
 	private static ISnapshotTestIdentityProvider? IdentityProvider;
 
@@ -22,8 +21,14 @@ public static class SnapshotDefaults
 	public static void AddScrubber(Func<string, string> scrubber)
 	{
 		ArgumentNullException.ThrowIfNull(scrubber);
-		lock (Gate)
-			Volatile.Write(ref AllScrubbers, [.. AllScrubbers, scrubber]);
+		// Copy-on-write with compare-and-swap: readers never block, and racing writers retry instead of locking.
+		Func<string, string>[] current, next;
+		do
+		{
+			current = Volatile.Read(ref AllScrubbers);
+			next = [.. current, scrubber];
+		}
+		while (Interlocked.CompareExchange(ref AllScrubbers, next, current) != current);
 	}
 
 	/// <summary>Adds a scrubber applied to every snapshot that replaces every match of <paramref name="pattern"/>.</summary>
@@ -31,11 +36,7 @@ public static class SnapshotDefaults
 		AddScrubber(Nullean.Snapshots.Scrubbers.Regex(pattern, replacement));
 
 	/// <summary>Removes every scrubber added through <see cref="AddScrubber(Func{string, string})"/>.</summary>
-	public static void ClearScrubbers()
-	{
-		lock (Gate)
-			Volatile.Write(ref AllScrubbers, []);
-	}
+	public static void ClearScrubbers() => Volatile.Write(ref AllScrubbers, []);
 
 	/// <summary>
 	/// Registers where the current test's identity comes from. The <c>Nullean.Snapshots.TUnit</c> package does this

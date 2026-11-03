@@ -19,7 +19,15 @@ public sealed record SnapshotResult(bool Passed, string? FailureMessage, string 
 /// </summary>
 public static class Snapshot
 {
-	private static readonly SnapshotEngine Engine = new(new FileSystem(), Environment.GetEnvironmentVariable);
+	private static readonly SnapshotEngine Engine = CreateEngine();
+
+	private static SnapshotEngine CreateEngine()
+	{
+		var engine = new SnapshotEngine(new FileSystem(), Environment.GetEnvironmentVariable);
+		// The run manifests are written once, when the test process ends, rather than on every assertion.
+		AppDomain.CurrentDomain.ProcessExit += (_, _) => engine.FlushManifests();
+		return engine;
+	}
 
 	/// <summary>Lets a test run the assertion packages against its own engine, without touching other tests.</summary>
 	internal static AsyncLocal<SnapshotEngine?> EngineOverride { get; } = new();
@@ -56,6 +64,8 @@ internal sealed class SnapshotEngine(
 	private readonly SnapshotProjectResolver _resolver = new(fileSystem);
 	private readonly ConcurrentDictionary<string, string> _owners = new(StringComparer.OrdinalIgnoreCase);
 	private readonly ConcurrentDictionary<SnapshotProject, IFileSystem> _scoped = new();
+	private readonly ConcurrentDictionary<SnapshotProject, RunManifest> _manifests = new();
+	private int _flushed;
 
 	// Projects whose received folder already has its marker in this process. Writing it once, from whichever failure
 	// gets there first, keeps parallel failures from replacing the same file at once, which Windows refuses.
@@ -94,6 +104,7 @@ internal sealed class SnapshotEngine(
 		ClaimKey(key, identity, callSite);
 
 		var fs = ScopeFor(project);
+		Touch(project, withinProject + SnapshotPath.VerifiedInfix + format.Extension);
 		var value = SnapshotText.Normalize(Scrub(actual, options));
 		var verified = fs.File.Exists(verifiedPath) ? SnapshotText.Normalize(fs.File.ReadAllText(verifiedPath, SnapshotText.Encoding)) : null;
 		var comparison = verified is null ? null : format.Compare(verified, value);
@@ -128,6 +139,38 @@ internal sealed class SnapshotEngine(
 			identity?.TreeNodeFilter,
 			environment.AcceptIgnoredInCi);
 		return new SnapshotResult(false, failure.Render(), key, verifiedPath, receivedPath);
+	}
+
+	/// <summary>
+	/// Records that this run touched a verified file, for <c>snap orphans</c>. Lock-free and without IO: the manifest is
+	/// written by <see cref="FlushManifests"/> when the process ends.
+	/// </summary>
+	private void Touch(SnapshotProject project, string verifiedFile) =>
+		_manifests.GetOrAdd(project, static _ => new RunManifest(DateTimeOffset.UtcNow)).Seen.TryAdd(verifiedFile, 0);
+
+	/// <summary>
+	/// Writes each project's manifest of the verified files this run touched, sorted, replacing the previous run's, and
+	/// the received folder's marker so the CLI finds the project even when nothing failed. Runs once; never throws, as
+	/// it runs while the process exits.
+	/// </summary>
+	internal void FlushManifests()
+	{
+		if (Interlocked.Exchange(ref _flushed, 1) == 1)
+			return;
+		foreach (var (project, manifest) in _manifests)
+		{
+			try
+			{
+				var fs = ScopeFor(project);
+				fs.Directory.CreateDirectory(project.ReceivedDirectory);
+				ReceivedMarker.For(fileSystem, project).EnsureWritten(fs, project.ReceivedDirectory);
+				AtomicFile.Write(fs, fs.Path.Combine(project.ReceivedDirectory, RunManifest.FileName), manifest.Render());
+			}
+			catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+			{
+				// Best effort: a missing manifest only means 'snap orphans' asks for another run.
+			}
+		}
 	}
 
 	/// <summary>
@@ -183,6 +226,42 @@ internal sealed class SnapshotEngine(
 		new Nullean.ScopedFileSystem.ScopedFileSystem(fileSystem, new ScopedFileSystemOptions(project.SnapshotsDirectory, project.ReceivedDirectory)
 		{
 			AllowedHiddenFolderNames = [".snapshots", ".artifacts"],
-			AllowedHiddenFileNames = [ReceivedMarker.FileName],
+			AllowedHiddenFileNames = [ReceivedMarker.FileName, RunManifest.FileName],
 		});
+}
+
+/// <summary>
+/// The verified files one test run touched, kept as <c>.snapshots-manifest</c> in the project's received folder: a
+/// header line, then one path below the snapshots folder per line (<c>Rendering/HtmlTests/RendersTable.verified.html</c>).
+/// </summary>
+internal sealed class RunManifest(DateTimeOffset started)
+{
+	public const string FileName = ".snapshots-manifest";
+	private const string HeaderPrefix = "# verified files touched by the test run that started ";
+
+	/// <summary>The touched files; a concurrent dictionary used as a lock-free set.</summary>
+	public ConcurrentDictionary<string, byte> Seen { get; } = new(StringComparer.Ordinal);
+
+	public string Render() =>
+		Header(started) + string.Concat(Seen.Keys.Order(StringComparer.Ordinal).Select(f => f + "\n"));
+
+	public static string Header(DateTimeOffset started) =>
+		HeaderPrefix + started.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture) + "\n";
+
+	/// <summary>The paths a manifest lists, and when its run started if the header says.</summary>
+	public static (IReadOnlySet<string> Files, string? Started) Read(string text)
+	{
+		var files = new HashSet<string>(StringComparer.Ordinal);
+		string? started = null;
+		foreach (var raw in text.Split('\n'))
+		{
+			var line = raw.TrimEnd('\r');
+			if (line.StartsWith(HeaderPrefix, StringComparison.Ordinal))
+				started = line[HeaderPrefix.Length..];
+			else if (line.Length > 0 && !line.StartsWith('#'))
+				files.Add(line);
+		}
+
+		return (files, started);
+	}
 }

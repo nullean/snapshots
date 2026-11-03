@@ -174,6 +174,24 @@ its verified file by the prefix swap. Half-written `*.tmp` files are ignored.
 - **Stored verbatim.** `MatchYamlSnapshot` stores the text as given (comments and layout survive) after the usual
   line-ending normalisation, and invalid YAML fails the assertion before anything is written.
 
+## Review and orphans
+
+- **The run manifest** (`.snapshots-manifest` in each project's received folder) lists, sorted, the verified files the
+  latest test process touched, under a header with its start time. Touching is a lock-free `ConcurrentDictionary`
+  add with no IO; the file is written once, on `ProcessExit`, replacing the previous run's, together with the
+  received folder's marker so the CLI finds projects that had no failures. A run that crashes before exiting leaves
+  the previous manifest. Writing it never throws.
+- **`snap orphans`** lists verified files the manifest does not name and exits 1 when there are any; `--delete`
+  removes them and is the only command that deletes verified files. A filtered run produces false orphans, so the
+  output says to run the whole suite first. A project without a manifest is reported on stderr and skipped.
+- **`snap review`**, also bare `snap`: each pending snapshot with its diff, then accept, reject, skip or quit.
+  Unknown answers are asked again; the end of input means quit. On a terminal it reads single keys; with redirected
+  input one answer per line, so it can be scripted and is smoke-tested in CI. It exits 1 while anything is left
+  pending.
+- **Colour** only in `snap review`, only when stdout is a terminal, `NO_COLOR` is unset and `TERM` is not `dumb`.
+  Failure messages and every other command stay plain.
+- **No locks.** `SnapshotDefaults.AddScrubber` is a copy-on-write compare-and-swap loop; reads are a volatile read.
+
 ## File system access
 
 All snapshot IO goes through `System.IO.Abstractions`, wrapped in `Nullean.ScopedFileSystem`:
