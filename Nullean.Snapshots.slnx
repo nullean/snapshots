@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Nullean.Snapshots/Nullean.Snapshots.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Nullean.Snapshots.Tests/Nullean.Snapshots.Tests.csproj" />
+  </Folder>
+</Solution>
