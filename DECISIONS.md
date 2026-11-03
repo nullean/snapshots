@@ -122,6 +122,37 @@ its verified file by the prefix swap. Half-written `*.tmp` files are ignored.
 - **`ContainHtml` ignores indentation**, as docs-builder's did: both sides are pretty-printed and tabs removed, so a
   fragment matches wherever it is nested.
 
+## Trees and JSON
+
+- **Numbers keep their text.** A scalar number holds its source text; equality goes through `NumberValue` (sign,
+  significant digits, exponent), never `double`, so `1 == 1.0 == 10e-1`, `-0 == 0`, and integers past 2^53 still
+  compare exactly. `StrictNumbers` compares kind and text instead. NaN equals NaN: it is a value in a snapshot.
+- **Equality is the diff finding nothing.** `TreeDiffer.DeepEquals` follows the same options, ignored paths and
+  null-as-missing included, and a CsCheck property holds the two together. The structural hash used to bucket the LCS
+  only ever rules equality out; with ignored paths or null-as-missing it falls back to the node type, so it stays
+  sound.
+- **Sequence alignment** is the LCS of equal items read from the front, matches first; above `CellCap` (4M cells) it
+  is positional. In a gap between matches the i-th unmatched verified item pairs with the i-th unmatched actual item
+  when they are similar (same node type; a shared equal entry or item; scalars always). A moved item reads as
+  missing plus unexpected: its two places always fall in different gaps, since two equal items in one gap would have
+  lengthened the LCS. (The pairing still refuses equal items, defensively; mutation testing confirms that guard is
+  unreachable.)
+- **Paths:** `$`, `.key` for identifier keys, `["quoted"]` otherwise, `[n]`. A paired item at a different index reads
+  `$[1].v (actual $[2].v)`. Unexpected items carry their actual path. Ignore patterns add `.*`, `[*]` and `..key`.
+- **Ordering** of differences follows the traversal: verified keys in order, then keys only in actual; within a
+  sequence, by position along the alignment. It never depends on hash or dictionary order.
+- **Messages** are one line per difference, paths padded to the widest of the first 20 (at most 40 columns), and
+  missing or changed values point at the verified file: `(verified.json:14:5)`. Long or multi-line strings show the
+  first differing line. Columns count characters, not UTF-8 bytes.
+- **JSON** is parsed with `Utf8JsonReader` (depth 256); a property repeated in one object is an error. It is stored
+  with two-space indentation in its original property order, numbers as written and non-ASCII text unescaped. An
+  invalid verified file is a difference, not an exception.
+- **Object snapshots** live in `.Json` (`ObjectAssertions.MatchJsonSnapshot`), with a `JsonTypeInfo<T>` overload for
+  AOT and a reflection overload marked `RequiresUnreferencedCode`. `JsonSerializerOptions.Default` unless given.
+- **Oracle:** `SystemTextJson.JsonDiffPatch` (`DeepEquals`, semantic) is a test-only reference. It compares numbers as
+  doubles, so the agreement property leaves out numbers past double precision; our exact comparison is covered by
+  example tests.
+
 ## File system access
 
 All snapshot IO goes through `System.IO.Abstractions`, wrapped in `Nullean.ScopedFileSystem`:
