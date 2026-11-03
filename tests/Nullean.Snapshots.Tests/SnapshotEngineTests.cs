@@ -218,6 +218,14 @@ public class SnapshotEngineTests
 		files.Should().BeEquivalentTo("Rendering/HtmlTests/RendersTable.verified.txt", "Rendering/HtmlTests/RendersTable.a.verified.txt", "Rendering/HtmlTests/RendersTable.b.verified.txt");
 		started.Should().NotBeNull();
 		p.Read(manifest).Split('\n').Skip(1).Where(l => l.Length > 0).Should().BeInAscendingOrder(StringComparer.Ordinal);
+
+		// Many keys added in reverse, so an unsorted set would almost surely show.
+		var many = new TestProject();
+		for (var i = 50; i > 0; i--)
+			many.Match("x", name: $"n{i:00}", line: i);
+		many.Engine.FlushManifests();
+		many.Read(many.Fs.Path.Combine(many.Project.ReceivedDirectory, RunManifest.FileName)).Split('\n').Skip(1).Where(l => l.Length > 0)
+			.Should().HaveCount(50).And.BeInAscendingOrder(StringComparer.Ordinal);
 		p.Fs.File.Exists(p.Fs.Path.Combine(p.Project.ReceivedDirectory, ReceivedMarker.FileName)).Should().BeTrue();
 	}
 
@@ -245,6 +253,22 @@ public class SnapshotEngineTests
 		p.Engine.FlushManifests();
 		RunManifest.Read(p.Read(p.Fs.Path.Combine(p.Project.ReceivedDirectory, RunManifest.FileName))).Files
 			.Should().Equal("Rendering/HtmlTests/RendersTable.verified.txt");
+		p.Fs.File.Exists(p.Fs.Path.Combine(p.Project.ReceivedDirectory, ReceivedMarker.FileName)).Should().BeTrue("the CLI finds projects by their marker");
+	}
+
+	[Test]
+	public async Task RacingScrubberRegistrationsAreAllKept()
+	{
+		var before = SnapshotDefaults.Scrubbers.Count;
+		static string Same(string value) => value;
+		await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => Task.Run(() =>
+		{
+			for (var i = 0; i < 500; i++)
+				SnapshotDefaults.AddScrubber(Same);
+		})));
+		var after = SnapshotDefaults.Scrubbers.Count;
+		SnapshotDefaults.ClearScrubbers();
+		after.Should().Be(before + 4000);
 	}
 
 	// Regression: the lost first version pruned received folders at the start of a run, which collided with parallel

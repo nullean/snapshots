@@ -231,7 +231,9 @@ public class SnapCliTests
 	[Test]
 	public void ReviewStopsOnQuitOrEndOfInput()
 	{
-		Cli().Review(new ScriptedPrompt('q'), color: false).Should().Be(ExitCode.Pending);
+		var quit = new ScriptedPrompt('q', 'a', 'a');
+		Cli().Review(quit, color: false).Should().Be(ExitCode.Pending);
+		quit.Asked.Should().Be(1);
 		_out.ToString().Should().Contain("0 accepted, 0 rejected, 3 still pending.");
 		Cli().Review(new ScriptedPrompt(), color: false).Should().Be(ExitCode.Pending);
 	}
