@@ -31,13 +31,18 @@ Verified snapshots sit in one folder per test project, mirroring the test file's
 Received snapshots never go into the source tree:
 
 ```
-$(ArtifactsPath)/snapshots/received/{Project}/{same relative path}.received.{ext}     when ArtifactsPath is set
+$(ArtifactsPath)/.snapshots/received/{Project}/{same relative path}.received.{ext}    when ArtifactsPath is set
 {ProjectDir}/obj/snapshots/received/{same relative path}.received.{ext}              otherwise
 ```
 
 - Both are already ignored in essentially every .NET repository, so adopting the library needs no `.gitignore` change,
   a received file cannot be committed by accident, and CI that uploads `artifacts/` gets received files for free.
 - Verified and received paths map to each other by swapping the prefix.
+- Under the artifacts path the folder is `.snapshots/received`, so the received tree mirrors the checked-in
+  `.snapshots/` by name. The `obj/` fallback keeps `snapshots/received`.
+- Each received root holds a `.snapshots-project` marker, written with the first received file: `key=value` lines
+  `project=` (the project name) and `verified=` (the verified folder, relative to the marker's folder, `/`
+  separators). It is how the CLI finds verified files for a received tree without evaluating MSBuild.
 
 **Key.** `{Project}/{relative dir}/{Class}/{Method}[.{name}][.{argsHash}]`, with `/` separators on every OS. The CLI
 takes a full key, any unique suffix, or a glob. Keys are path-qualified because filename-only keys collide across
@@ -48,7 +53,8 @@ folders.
 Core ships `buildTransitive/Nullean.Snapshots.targets`, so every package that depends on core brings it along:
 
 - `SnapshotsDirectory` (default `$(MSBuildProjectDirectory)/.snapshots`)
-- `SnapshotsReceivedDirectory` (default as above)
+- `SnapshotsReceivedDirectory` (default as above: `$(ArtifactsPath)/.snapshots/received/$(MSBuildProjectName)` when
+  `ArtifactsPath` is set, else `$(MSBuildProjectDirectory)/obj/snapshots/received`)
 - `SnapshotsIncludeInProject` (default `true`): adds the verified files as `None` items so they show in the IDE even
   though default globbing skips dot folders. Set it to `false` to opt out.
 - The project directory, project name and both directories are written into `[AssemblyMetadata]`, so a test run
@@ -58,9 +64,10 @@ Core ships `buildTransitive/Nullean.Snapshots.targets`, so every package that de
 ## CLI discovery
 
 `snap` does not glob for snapshot folders. From the working directory (or `--root`) it probes
-`artifacts/snapshots/received/` and `.artifacts/snapshots/received/`, then each directory holding a `*.csproj` for
-`obj/snapshots/received/`, skipping `.git`, `bin`, `obj` and `node_modules` while walking. Each received file maps back
-to its verified file by the prefix swap.
+`artifacts/.snapshots/received/*/` and `.artifacts/.snapshots/received/*/`, then each directory holding a `*.csproj`
+for `obj/snapshots/received/`, skipping `.git`, `bin`, `obj` and `node_modules` while walking. Each received root's
+`.snapshots-project` marker names its verified folder, and each received file maps back to its verified file by the
+prefix swap.
 
 ## Dependencies
 
