@@ -98,6 +98,7 @@ public class YamlSnapshotTests
 	[Test]
 	[Arguments("a: 1\na: 2", "appears twice")]
 	[Arguments("a: *nowhere", "has no anchor")]
+	[Arguments("a: &x 1\n---\nb: *x", "has no anchor")]
 	[Arguments("? [1, 2]\n: x", "Only scalar keys")]
 	[Arguments("<<: 1", "needs a mapping")]
 	[Arguments("a: [1, 2", "While")]
