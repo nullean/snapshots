@@ -22,6 +22,7 @@
     <InternalsVisibleTo Include="Nullean.Snapshots.Tests" />
     <InternalsVisibleTo Include="Nullean.Snapshots.Html.Tests" />
     <InternalsVisibleTo Include="Nullean.Snapshots.Json.Tests" />
+    <InternalsVisibleTo Include="Nullean.Snapshots.Yaml.Tests" />
     <!-- The CLI ships self-contained with its own copy of this assembly, so the internals cannot drift apart. -->
     <InternalsVisibleTo Include="snap" />
     <InternalsVisibleTo Include="Nullean.Snapshots.Cli.Tests" />

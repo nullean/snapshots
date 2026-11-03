@@ -7,7 +7,7 @@ using Nullean.Snapshots.Trees;
 namespace Nullean.Snapshots.Json.Tests;
 
 /// <summary>Generators for trees and the edits applied to them, and a writer that turns a tree into JSON.</summary>
-internal static class TreeGen
+public static class TreeGen
 {
 	/// <summary>Strings that trip up parsers and printers: empty, quotes, newlines, unicode, numeric- and keyword-looking.</summary>
 	public static readonly Gen<string> NastyString = Gen.OneOf(
