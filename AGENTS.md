@@ -1,6 +1,6 @@
 # Nullean.Snapshots: contributor and agent conventions
 
-Snapshot testing on AwesomeAssertions for text, HTML, JSON and YAML, plus a native AOT CLI, `snap`.
+Snapshot testing on AwesomeAssertions for text, HTML, JSON, YAML and PNG images, plus a native AOT CLI, `snap`.
 [DECISIONS.md](DECISIONS.md) records the non-obvious choices; read it before changing where files go or how they are
 named.
 
