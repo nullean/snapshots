@@ -11,6 +11,12 @@ internal static class SnapshotPath
 	public const string ReceivedInfix = ".received.";
 
 	/// <summary>
+	/// Attachments are <c>{name}.received-{suffix}</c>. The dash keeps them out of <see cref="ReceivedInfix"/>, so
+	/// they are never listed as pending.
+	/// </summary>
+	public const string AttachmentInfix = ".received-";
+
+	/// <summary>
 	/// True for a path rewritten by deterministic builds (<c>/_/</c>, <c>/_1/</c>, …), which has no directory on disk.
 	/// </summary>
 	public static bool IsDeterministic(string path)
@@ -78,6 +84,29 @@ internal static class SnapshotPath
 
 	public static string File(IFileSystem fs, string root, string keyWithinProject, string infix, string extension) =>
 		fs.Path.Combine([root, .. (keyWithinProject + infix + extension).Split('/')]);
+
+	/// <summary>
+	/// True when <paramref name="fileName"/> is an attachment of the received file <paramref name="receivedName"/>
+	/// (<c>X.received.png</c> owns <c>X.received-diff.png</c>). A file that holds <see cref="ReceivedInfix"/> is a
+	/// snapshot of its own, never an attachment.
+	/// </summary>
+	public static bool IsAttachmentOf(string fileName, string receivedName)
+	{
+		var at = receivedName.LastIndexOf(ReceivedInfix, StringComparison.Ordinal);
+		if (at <= 0)
+			return false;
+		var prefix = string.Concat(receivedName.AsSpan(0, at), AttachmentInfix);
+		return fileName.Length > prefix.Length
+			&& fileName.StartsWith(prefix, StringComparison.Ordinal)
+			&& !fileName.Contains(ReceivedInfix, StringComparison.Ordinal)
+			&& !fileName.EndsWith(".tmp", StringComparison.Ordinal);
+	}
+
+	/// <summary>
+	/// True when the file looks binary by git's rule: a NUL byte in its first 8000 bytes. Binary snapshots are copied
+	/// byte for byte; text ones are normalised.
+	/// </summary>
+	public static bool IsBinary(ReadOnlySpan<byte> content) => content[..Math.Min(content.Length, 8000)].Contains((byte)0);
 
 	/// <summary>Swaps a received file name for its verified one.</summary>
 	public static string ToVerifiedName(string receivedName)

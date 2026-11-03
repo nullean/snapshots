@@ -279,6 +279,68 @@ public class SnapCliTests
 		public char? Ask(string question) => Asked < answers.Length ? answers[Asked++] : null;
 	}
 
+	// A PNG signature and IHDR length: CR, LF, SUB and NULs that text handling would rewrite.
+	private static readonly byte[] Png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0x0D, 0x0D, 0x0A];
+	private static readonly byte[] OldPng = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0];
+
+	private void AddBinary(bool withVerified = true)
+	{
+		if (withVerified)
+			_fs.AddFile(Verified("Rendering", "ChartTests", "Draws.verified.png"), new(OldPng));
+		_fs.AddFile(Received("Rendering", "ChartTests", "Draws.received.png"), new(Png));
+		_fs.AddFile(Received("Rendering", "ChartTests", "Draws.received-diff.png"), new(Png));
+	}
+
+	[Test]
+	public void AcceptCopiesBinarySnapshotsByteForByteAndRemovesAttachments()
+	{
+		AddBinary();
+		Cli().Accept(["ChartTests/Draws"], all: false).Should().Be(ExitCode.Ok);
+		_fs.File.ReadAllBytes(Verified("Rendering", "ChartTests", "Draws.verified.png")).Should().Equal(Png);
+		_fs.File.Exists(Received("Rendering", "ChartTests", "Draws.received.png")).Should().BeFalse();
+		_fs.File.Exists(Received("Rendering", "ChartTests", "Draws.received-diff.png")).Should().BeFalse();
+	}
+
+	[Test]
+	public void RejectRemovesAttachments()
+	{
+		AddBinary();
+		Cli().Reject(["ChartTests/Draws"], all: false).Should().Be(ExitCode.Ok);
+		_fs.File.ReadAllBytes(Verified("Rendering", "ChartTests", "Draws.verified.png")).Should().Equal(OldPng);
+		_fs.File.Exists(Received("Rendering", "ChartTests", "Draws.received-diff.png")).Should().BeFalse();
+	}
+
+	[Test]
+	public void AttachmentsAreNotPending()
+	{
+		AddBinary();
+		Cli().Status(json: true).Should().Be(ExitCode.Pending);
+		using var document = JsonDocument.Parse(_out.ToString());
+		document.RootElement.EnumerateArray().Select(e => e.GetProperty("key").GetString())
+			.Should().Equal("Acme.Tests/Rendering/ChartTests/Draws", New, Changed, Obj);
+	}
+
+	[Test]
+	public void DiffOfABinarySnapshotNamesSizesAndAttachments()
+	{
+		AddBinary();
+		Cli().Diff("ChartTests/Draws").Should().Be(ExitCode.Ok);
+		_out.ToString().Replace("\r\n", "\n", StringComparison.Ordinal).Should().Be(
+			"--- tests/Acme.Tests/.snapshots/Rendering/ChartTests/Draws.verified.png  (11 bytes)\n" +
+			"+++ .artifacts/.snapshots/received/Acme.Tests/Rendering/ChartTests/Draws.received.png  (14 bytes)\n" +
+			"Binary snapshot: no line diff, open the files to compare.\n" +
+			"    .artifacts/.snapshots/received/Acme.Tests/Rendering/ChartTests/Draws.received-diff.png\n");
+	}
+
+	[Test]
+	public void DiffOfANewBinarySnapshot()
+	{
+		AddBinary(withVerified: false);
+		Cli().Diff("ChartTests/Draws").Should().Be(ExitCode.Ok);
+		_out.ToString().Replace("\r\n", "\n", StringComparison.Ordinal).Should().StartWith(
+			"--- (new snapshot, no verified file)\n+++ .artifacts/.snapshots/received/Acme.Tests/Rendering/ChartTests/Draws.received.png  (14 bytes)\n");
+	}
+
 	[Test]
 	public void IoErrorsExitThree()
 	{

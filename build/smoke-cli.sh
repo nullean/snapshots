@@ -65,6 +65,22 @@ run "$@" orphans --root "$fixture"
 [ "$code" -eq 1 ] || fail "orphans should exit 1 with an orphan"
 case "$out" in *"Gone.verified.txt"*) ;; *) fail "orphans should list the untouched verified file" ;; esac
 
+# A binary snapshot: a PNG signature and chunk length, full of CR, LF and NUL bytes that text handling would rewrite.
+mkdir -p "$received/Rendering/ChartTests" "$verified/Rendering/ChartTests"
+printf '\211PNG\r\n\032\n\000\000\000\015\015\012\015' > "$fixture/expected.png"
+cp "$fixture/expected.png" "$received/Rendering/ChartTests/Draws.received.png"
+printf 'diff' > "$received/Rendering/ChartTests/Draws.received-diff.png"
+printf '\211PNG\r\n\032\n\000' > "$verified/Rendering/ChartTests/Draws.verified.png"
+
+run "$@" diff ChartTests/Draws --root "$fixture"
+[ "$code" -eq 0 ] || fail "diff of a binary snapshot should exit 0"
+case "$out" in *"Binary snapshot"*"Draws.received-diff.png"*) ;; *) fail "diff should name the binary snapshot's diff image" ;; esac
+
+run "$@" accept ChartTests/Draws --root "$fixture"
+[ "$code" -eq 0 ] || fail "accept of a binary snapshot should exit 0"
+cmp -s "$fixture/expected.png" "$verified/Rendering/ChartTests/Draws.verified.png" || fail "accept should copy a binary snapshot byte for byte"
+[ ! -e "$received/Rendering/ChartTests/Draws.received-diff.png" ] || fail "accept should delete the diff image"
+
 run "$@" accept nothing-like-this --root "$fixture"
 [ "$code" -eq 2 ] || fail "accept of an unknown key should exit 2"
 

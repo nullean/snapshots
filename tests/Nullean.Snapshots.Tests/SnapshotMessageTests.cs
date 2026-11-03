@@ -13,6 +13,15 @@ public class SnapshotMessageTests
 			.Select(d => (IReadOnlyList<IReadOnlyList<string>>)d);
 
 	[Test]
+	public void ASummaryComesBeforeTheDifferences() =>
+		SnapshotMessages.Describe(new SnapshotComparison(false, [["x 1-2, y 3-4"]], Summary: "5 of 100 pixels differ"))
+			.Should().Be("5 of 100 pixels differ\n1 difference(s):\nx 1-2, y 3-4");
+
+	[Test]
+	public void NoSummaryLeavesTheMessageAsItWas() =>
+		SnapshotMessages.Describe(new SnapshotComparison(false, [["a"]])).Should().Be("1 difference(s):\na");
+
+	[Test]
 	public void CapsAreRespectedAndTheRestIsCounted() =>
 		Differences.Sample(differences =>
 		{

@@ -26,6 +26,9 @@ internal sealed record SnapshotFailure(
 	bool AcceptIgnoredInCi
 )
 {
+	/// <summary>Further received files to point at, such as a diff image: a label and a repository-relative path.</summary>
+	public IReadOnlyList<(string Label, string Path)> Attachments { get; init; } = [];
+
 	/// <summary>True when there was no verified file to compare with.</summary>
 	public bool IsNew => Comparison is null;
 
@@ -46,6 +49,8 @@ internal sealed record SnapshotFailure(
 		}
 
 		message.Append("Received: ").Append(ReceivedPath).Append('\n');
+		foreach (var (label, path) in Attachments)
+			message.Append((label + ":").PadRight(10)).Append(path).Append('\n');
 		message.Append("Accept:   snap accept ").Append(Key).Append("   (or: dnx Nullean.Snapshots.Cli accept ").Append(Key).Append(")\n");
 		if (TreeNodeFilter is not null)
 		{
@@ -65,6 +70,8 @@ internal sealed record SnapshotFailure(
 	/// <summary>The differences of <paramref name="comparison"/>, then its line diff if it has one, within the caps.</summary>
 	internal static void AppendComparison(StringBuilder message, SnapshotComparison comparison)
 	{
+		if (comparison.Summary is { Length: > 0 } summary)
+			message.Append(summary).Append('\n');
 		message.Append(comparison.Differences.Count.ToString(CultureInfo.InvariantCulture)).Append(" difference(s):\n");
 		var used = AppendBlocks(message, comparison.Differences, SnapshotMessageLimits.MaxLines, SnapshotMessageLimits.MaxDifferences, "more");
 		if (comparison.LineDiff is not { Count: > 0 } hunks)
