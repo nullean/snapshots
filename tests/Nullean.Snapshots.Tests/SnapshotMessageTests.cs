@@ -49,6 +49,14 @@ public class SnapshotMessageTests
 	}
 
 	[Test]
+	public void AtMostTwentyDifferencesAreListed()
+	{
+		var lines = Render([.. Enumerable.Range(0, 30).Select(_ => Block(1))]);
+		lines.Should().HaveCount(1 + SnapshotMessageLimits.MaxDifferences + 1);
+		lines[^1].Should().Be("(+10 more, see received)");
+	}
+
+	[Test]
 	public void ExactlyFullIsNotCut()
 	{
 		var lines = Render(Block(40), Block(40));
