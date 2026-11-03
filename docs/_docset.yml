@@ -1,0 +1,32 @@
+project: 'Nullean.Snapshots'
+max_toc_depth: 2
+dev_docs: true
+
+branding:
+  icon: images/snapshots-mark.svg
+
+toc:
+  - file: index.md
+  - folder: getting-started
+    children:
+      - file: index.md
+      - file: first-snapshot.md
+  - folder: formats
+    children:
+      - file: index.md
+      - file: text.md
+      - file: html.md
+      - file: json.md
+      - file: yaml.md
+  - folder: workflow
+    children:
+      - file: index.md
+      - file: snap.md
+      - file: ci.md
+      - file: agents.md
+  - folder: reference
+    children:
+      - file: index.md
+      - file: layout.md
+      - file: options.md
+      - file: messages.md

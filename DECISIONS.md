@@ -192,6 +192,20 @@ its verified file by the prefix swap. Half-written `*.tmp` files are ignored.
   Failure messages and every other command stay plain.
 - **No locks.** `SnapshotDefaults.AddScrubber` is a copy-on-write compare-and-swap loop; reads are a volatile read.
 
+## Documentation
+
+- **Built like nullean/curb's and argh's:** a `docs/` docset built by the `elastic/docs-builder` action with the
+  design-system layout (`FEATURE_NAVIGATION_PREVIEW`), then `scripts/docs-finish.sh` appends the theme to the emitted
+  `ds.css`, puts the header lockup in (`scripts/docs-pages.py`, copied from curb), copies the fonts and replaces
+  `index.html` with the hand-written landing page. Published to GitHub Pages at `snapshots.nullean.net` (Pages from
+  Actions, custom domain set on the repository, TLS at Cloudflare as for curb).
+- **Pull requests build the site** and upload it as an artifact; only pushes to main deploy.
+- **The hue:** a quiet teal (`#6CC7C2` dark, `#1F6461` light, links at 4.5:1 on paper) with a muted rose second
+  colour, next to curb's amber and argh's lime. The theme is curb's with its palette remapped; warning colours stay
+  amber, since that is what they mean. The mark is a diff, a rose line out and a teal line in, drawn rather than set
+  in a font.
+- **`scripts/docs.sh` does not download docs-builder**: it takes `DOCS_BUILDER` or a `docs-builder` on the PATH.
+
 ## File system access
 
 All snapshot IO goes through `System.IO.Abstractions`, wrapped in `Nullean.ScopedFileSystem`:

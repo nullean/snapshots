@@ -122,10 +122,10 @@ One PR each; done means CI green on linux, windows and macos.
 2. *(.Html done, #3; the docs-builder migration is verified locally and left to the owner)* **.Html**, then migrate docs-builder: wrappers keep `PrettyHtmlExtensions` / `HtmlAssertions` method names, keep the
    H1 strip, `section#elastic-docs-v3` selector and `hx-*` removal in the wrappers, drop DiffPlex and
    AngleSharp.Diffing there, rework docs-builder #4654 to `MatchSnapshot` with `Select("main#content-container")`.
-3. **Node tree + TreeDiffer + .Json** with the full CsCheck suite.
-4. **.Yaml**, including cross-format properties and positions.
-5. **snap review** (interactive), `snap orphans` and the manifest.
-6. **Docs**: README, an AGENTS.md snippet ("accept: snap accept <key>; always read the git diff of verified files
+3. *(done, #5)* **Node tree + TreeDiffer + .Json** with the full CsCheck suite.
+4. *(done, #6)* **.Yaml**, including cross-format properties and positions.
+5. *(done, #7)* **snap review** (interactive), `snap orphans` and the manifest.
+6. *(#8)* **Docs**: README, an AGENTS.md snippet ("accept: snap accept <key>; always read the git diff of verified files
    first"), a landing page on snapshots.nullean.net. Versions stay 0.x: 1.0 waits for the owner's go-ahead.
 
 ## Spikes
