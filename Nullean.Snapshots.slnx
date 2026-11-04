@@ -23,5 +23,6 @@
     <Project Path="tests/Nullean.Snapshots.Json.Tests/Nullean.Snapshots.Json.Tests.csproj" />
     <Project Path="tests/Nullean.Snapshots.Yaml.Tests/Nullean.Snapshots.Yaml.Tests.csproj" />
     <Project Path="tests/Nullean.HttpFileParser.Tests/Nullean.HttpFileParser.Tests.csproj" />
+    <Project Path="tests/Nullean.Snapshots.Http.Tests/Nullean.Snapshots.Http.Tests.csproj" />
   </Folder>
 </Solution>

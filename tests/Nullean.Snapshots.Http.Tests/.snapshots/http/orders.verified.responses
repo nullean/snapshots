@@ -1,0 +1,37 @@
+## login: POST {{host}}/api/login
+status: 200 OK
+content-type: application/json; charset=utf-8
+
+{
+  "token": "tok-0123456789",
+  "user": {
+    "name": "ada",
+    "roles": [
+      "admin",
+      "dev"
+    ]
+  }
+}
+
+## GET {{host}}/api/orders
+status: 200 OK
+content-type: application/json; charset=utf-8
+
+{
+  "orders": [
+    {
+      "id": 1,
+      "total": 12.5
+    },
+    {
+      "id": 2,
+      "total": 3
+    }
+  ]
+}
+
+## GET {{host}}/api/missing
+status: 404 Not Found
+content-type: text/plain; charset=utf-8
+
+> not found

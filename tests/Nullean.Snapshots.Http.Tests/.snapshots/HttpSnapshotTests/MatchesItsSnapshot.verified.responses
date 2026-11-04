@@ -1,0 +1,7 @@
+## GET /api/orders
+status: 401 Unauthorized
+content-type: application/json; charset=utf-8
+
+{
+  "error": "unauthorized"
+}

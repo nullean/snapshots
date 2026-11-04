@@ -1,0 +1,19 @@
+# One of each kind of body.
+
+### text
+GET {{host}}/api/text
+
+### binary
+GET {{host}}/api/binary
+
+### gzip
+GET {{host}}/api/gzip
+
+### invalid
+GET {{host}}/api/invalid-json
+
+### created
+POST {{host}}/api/created
+Content-Type: application/json
+
+{}

@@ -1,0 +1,39 @@
+## text: GET {{host}}/api/text
+status: 200 OK
+content-type: text/plain; charset=utf-8
+
+> line one
+> ## not a section
+>
+> status: 500
+> > quoted
+
+## binary: GET {{host}}/api/binary
+status: 200 OK
+content-type: image/png
+
+binary: 9 bytes, image/png
+
+## gzip: GET {{host}}/api/gzip
+status: 200 OK
+content-type: application/json; charset=utf-8
+
+{
+  "zipped": true
+}
+
+## invalid: GET {{host}}/api/invalid-json
+status: 200 OK
+content-type: application/json; charset=utf-8
+
+> {not json
+
+## created: POST {{host}}/api/created
+status: 201 Created
+content-type: application/json; charset=utf-8
+location: /api/orders/3
+x-request-id: r-1
+
+{
+  "id": 3
+}
