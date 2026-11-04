@@ -195,7 +195,7 @@
 <section class="hero">
   <div class="wrap">
     <div>
-      <div class="kicker">Text · HTML · JSON · YAML · Images · Browser</div>
+      <div class="kicker">Text · HTML · JSON · YAML · Images · Browser · HTTP</div>
       <h1><em>Structural</em> Snapshot tests for&nbsp;.NET</h1>
       <p class="lead">
         Snapshots on AwesomeAssertions, compared by structure and reported by path, in plain messages that read the
@@ -260,7 +260,7 @@
 
 <section class="band" id="formats">
   <div class="wrap">
-    <h2>Five formats</h2>
+    <h2>Seven formats</h2>
     <p class="sub">Text stored as UTF-8 with LF endings, images as given, each compared its own way.</p>
     <div class="table-scroll">
     <table class="formats">
@@ -272,6 +272,7 @@
         <tr><td><a href="formats/yaml/">YAML</a></td><td><code>MatchYamlSnapshot</code>, <code>BeYaml</code></td><td>as a tree with the YAML 1.2 core schema, stored as written, comments and all</td></tr>
         <tr><td><a href="formats/images/">Images</a></td><td><code>MatchImageSnapshot</code></td><td>by pixels, perceptually, with anti-aliasing left out and a diff image on failure</td></tr>
         <tr><td><a href="formats/browser/">Browser journeys</a></td><td><code>MatchJourneySnapshot</code>, <code>MatchAriaSnapshot</code></td><td>agent-browser commands run in Chrome; each read compared as a tree</td></tr>
+        <tr><td><a href="formats/http/">HTTP</a></td><td><code>MatchHttpSnapshot</code>, <code>MatchHttpFileSnapshot</code></td><td><code>.http</code> files run in order; status, chosen headers and JSON bodies compared as trees, secrets redacted</td></tr>
       </tbody>
     </table>
     </div>
