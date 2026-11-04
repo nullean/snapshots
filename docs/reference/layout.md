@@ -42,6 +42,9 @@ tests/Shop.Tests/obj/snapshots/received/Rendering/CatalogTests/Renders.received.
 
 Both are ignored in practically every .NET repository already, so a received file cannot be committed by accident.
 
+Files a file-keyed run writes, such as a journey's screenshots, go into a folder next to its received file,
+`{received}/journeys/checkout.artifacts/`, emptied before each run (`Snapshot.ArtifactsDirectory`).
+
 ## MSBuild properties
 
 | Property | Default |

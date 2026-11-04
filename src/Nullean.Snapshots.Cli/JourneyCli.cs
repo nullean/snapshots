@@ -16,20 +16,27 @@ namespace Nullean.Snapshots.Cli;
 /// <param name="root">The folder files and globs are relative to.</param>
 /// <param name="output">Where results go.</param>
 /// <param name="error">Where usage and journey errors go.</param>
-/// <param name="run">Runs one journey file; a real browser in the CLI, a fake in tests.</param>
+/// <param name="run">Runs one journey file with its options; a real browser in the CLI, a fake in tests.</param>
 /// <param name="getVariable">Reads environment variables.</param>
 internal sealed class JourneyCli(
 	IFileSystem fileSystem,
 	string root,
 	TextWriter output,
 	TextWriter error,
-	Func<string, Uri?, CancellationToken, Task<JourneyTranscript>> run,
+	Func<string, JourneySnapshotOptions, CancellationToken, Task<JourneyTranscript>> run,
 	Func<string, string?> getVariable
 )
 {
 	private readonly string _root = fileSystem.Path.TrimEndingDirectorySeparator(fileSystem.Path.GetFullPath(root));
 
-	public async Task<int> RunAsync(IReadOnlyList<string> patterns, string? baseUrl, CancellationToken cancellationToken)
+	public async Task<int> RunAsync(
+		IReadOnlyList<string> patterns,
+		string? baseUrl,
+		CancellationToken cancellationToken,
+		IReadOnlyList<string>? allow = null,
+		string? fileRoot = null,
+		string? artifacts = null
+	)
 	{
 		if (patterns.Count == 0)
 		{
@@ -64,7 +71,16 @@ internal sealed class JourneyCli(
 			JourneyTranscript transcript;
 			try
 			{
-				transcript = await run(file, baseUri, cancellationToken).ConfigureAwait(false);
+				transcript = await run(file, new JourneySnapshotOptions
+				{
+					BaseUrl = baseUri,
+					AllowedHosts = allow ?? [],
+					FileRoot = fileRoot is null ? null : fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, fileRoot)),
+					// As in a test: a journey that writes files gets its own folder next to its received transcript.
+					ArtifactsDirectory = artifacts is not null
+						? fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, artifacts))
+						: WritesFiles(file) ? engine.ArtifactsDirectory(file) : null,
+				}, cancellationToken).ConfigureAwait(false);
 			}
 			catch (JourneyParseException e)
 			{
@@ -91,6 +107,9 @@ internal sealed class JourneyCli(
 
 		return exit;
 	}
+
+	private bool WritesFiles(string file) =>
+		Journey.Parse(fileSystem.File.ReadAllText(file), file).Steps.Any(s => s.Command is ScreenshotCommand or HarCommand { Action: "stop" });
 
 	/// <summary>
 	/// The walk-up resolver only knows the default received folder, <c>obj/snapshots/received</c>. A project whose tests
@@ -157,17 +176,27 @@ internal sealed class JourneyCommands
 	/// <param name="files">Journey files or globs, relative to the root (e.g. 'tests/Shop.Tests/journeys/**/*.journey').</param>
 	/// <param name="baseUrl">What relative 'open' URLs resolve against, e.g. http://localhost:5000/.</param>
 	/// <param name="root">The folder files and globs are relative to. Defaults to the current folder.</param>
-	public static async Task<int> Run([Argument] string[] files, string? baseUrl = null, string? root = null)
+	/// <param name="allow">-a, --allow, Another host pattern journeys may reach (repeatable): host, *.domain or *.</param>
+	/// <param name="fileRoot">The folder file:// URLs may point into, when the base URL is not a folder.</param>
+	/// <param name="artifacts">Where screenshot and network har stop write. Defaults to a folder per journey next to its received transcript.</param>
+	public static async Task<int> Run(
+		[Argument] string[] files,
+		string? baseUrl = null,
+		string? root = null,
+		string[]? allow = null,
+		string? fileRoot = null,
+		string? artifacts = null
+	)
 	{
 		Cdp.Browser? browser = null;
 		try
 		{
-			var cli = new JourneyCli(new FileSystem(), root ?? Directory.GetCurrentDirectory(), Console.Out, Console.Error, async (file, baseUri, ct) =>
+			var cli = new JourneyCli(new FileSystem(), root ?? Directory.GetCurrentDirectory(), Console.Out, Console.Error, async (file, options, ct) =>
 			{
 				browser ??= await Cdp.Browser.LaunchAsync(cancellationToken: ct).ConfigureAwait(false);
-				return await JourneySnapshot.RunAsync(file, browser, new JourneySnapshotOptions { BaseUrl = baseUri }, ct).ConfigureAwait(false);
+				return await JourneySnapshot.RunAsync(file, browser, options, ct).ConfigureAwait(false);
 			}, Environment.GetEnvironmentVariable);
-			return await cli.RunAsync(files, baseUrl, CancellationToken.None).ConfigureAwait(false);
+			return await cli.RunAsync(files, baseUrl, CancellationToken.None, allow, fileRoot, artifacts).ConfigureAwait(false);
 		}
 		finally
 		{

@@ -75,6 +75,13 @@ public static class Snapshot
 	) => (EngineOverride.Value ?? Engine).MatchFile(actual, format, sourceFile, options, because);
 
 	/// <summary>
+	/// An empty folder for the files a run of <paramref name="sourceFile"/> writes, such as a journey's screenshots and
+	/// HAR files: <c>{received}/{folder}/{name}.artifacts</c>, next to its received snapshot. It is emptied first.
+	/// <paramref name="sourceFile"/> resolves as for <see cref="MatchFile"/>.
+	/// </summary>
+	public static string ArtifactsDirectory(string sourceFile) => (EngineOverride.Value ?? Engine).ArtifactsDirectory(sourceFile);
+
+	/// <summary>
 	/// Compares <paramref name="actual"/> bytes with their verified snapshot, as the text overload does but without
 	/// scrubbers or normalisation. On a mismatch the format's attachments, such as a diff image, are written next to
 	/// the received file.
@@ -170,7 +177,40 @@ internal sealed class SnapshotEngine(
 		ArgumentException.ThrowIfNullOrWhiteSpace(sourceFile);
 
 		var identity = (identityProvider is null ? SnapshotDefaults.TestIdentity : identityProvider())?.Current;
-		var assembly = identity?.TestAssembly ?? Assembly.GetEntryAssembly();
+		var (project, fullPath, relative, name) = ResolveFile(sourceFile, identity?.TestAssembly ?? Assembly.GetEntryAssembly());
+		var slash = relative.LastIndexOf('/');
+		var key = SnapshotPath.Key(project.Name, slash < 0 ? string.Empty : relative[..slash], string.Empty, name, null, null);
+
+		ClaimKey(key, identity, new SnapshotCallSite(fullPath, string.Empty, 0));
+		return Compare(actual, format, project, key, identity?.TreeNodeFilter, options, because);
+	}
+
+	/// <summary>
+	/// An empty folder for the files a run of <paramref name="sourceFile"/> writes, such as a journey's screenshots:
+	/// <c>{received}/{folder in the project}/{name}.artifacts</c>. Emptied first, so files from an earlier run never
+	/// linger. Inside the received folder, so the snapshot library still writes nowhere else.
+	/// </summary>
+	public string ArtifactsDirectory(string sourceFile)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(sourceFile);
+		var identity = (identityProvider is null ? SnapshotDefaults.TestIdentity : identityProvider())?.Current;
+		var (project, _, relative, name) = ResolveFile(sourceFile, identity?.TestAssembly ?? Assembly.GetEntryAssembly());
+		var slash = relative.LastIndexOf('/');
+		string[] parts = slash < 0 ? [] : relative[..slash].Split('/');
+		var folder = fileSystem.Path.Combine([project.ReceivedDirectory, .. parts, name + ArtifactsSuffix]);
+		var fs = ScopeFor(project);
+		fs.Directory.CreateDirectory(project.ReceivedDirectory);
+		if (_markers.TryAdd(project, 0))
+			ReceivedMarker.For(fileSystem, project).EnsureWritten(fs, project.ReceivedDirectory);
+		if (fs.Directory.Exists(folder))
+			fs.Directory.Delete(folder, true);
+		fs.Directory.CreateDirectory(folder);
+		return folder;
+	}
+
+	/// <summary>A source file's project, full path, path within the project (<c>/</c> separators) and sanitised name.</summary>
+	private (SnapshotProject Project, string FullPath, string Relative, string Name) ResolveFile(string sourceFile, Assembly? assembly)
+	{
 		SnapshotProject project;
 		string fullPath;
 		if (fileSystem.Path.IsPathRooted(sourceFile))
@@ -196,12 +236,11 @@ internal sealed class SnapshotEngine(
 		var name = SnapshotPath.Sanitize(fileSystem.Path.GetFileNameWithoutExtension(fullPath));
 		if (name.Trim('.').Length == 0)
 			throw new ArgumentException($"'{sourceFile}' has no file name to key its snapshot by.", nameof(sourceFile));
-		var slash = relative.LastIndexOf('/');
-		var key = SnapshotPath.Key(project.Name, slash < 0 ? string.Empty : relative[..slash], string.Empty, name, null, null);
-
-		ClaimKey(key, identity, new SnapshotCallSite(fullPath, string.Empty, 0));
-		return Compare(actual, format, project, key, identity?.TreeNodeFilter, options, because);
+		return (project, fullPath, relative, name);
 	}
+
+	/// <summary>Ends a source file's artifacts folder; a dot never appears in a test class's folder name.</summary>
+	internal const string ArtifactsSuffix = ".artifacts";
 
 	private SnapshotResult Compare(
 		string actual,
