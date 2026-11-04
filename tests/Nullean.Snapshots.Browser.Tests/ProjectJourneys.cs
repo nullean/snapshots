@@ -10,7 +10,6 @@ public class ProjectJourneys
 
 	[Test]
 	[JourneyFiles("journeys")]
-	[NotInParallel(LiveJourneyTests.ArtifactsFolder)]
 	public Task Run(SnapshotFile journey) => JourneyTest.RunAsync(journey, new JourneySnapshotOptions { BaseUrl = LiveJourneyTests.Site });
 }
 

@@ -1,0 +1,9 @@
+## a11y
+url: {origin}/index.html
+> violations: 0
+
+## links --all
+url: {origin}/index.html
+> links: 2 checked, 0 broken
+> ok /index.html
+> ok /basket.html
