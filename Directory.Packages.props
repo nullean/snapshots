@@ -18,8 +18,8 @@
     <PackageVersion Include="AngleSharp.Diffing" Version="1.1.1" />
     <PackageVersion Include="SharpYaml" Version="3.16.0" />
     <!-- The browser for journeys. 0.x and unpublished while this is a draft; see DECISIONS.md, "Browser". -->
-    <PackageVersion Include="Nullean.Cdp" Version="0.2.0" />
-    <PackageVersion Include="Nullean.Cdp.Journeys" Version="0.2.0" />
+    <PackageVersion Include="Nullean.Cdp" Version="0.3.0" />
+    <PackageVersion Include="Nullean.Cdp.Journeys" Version="0.3.0" />
     <!-- Adapters build against the latest stable release, which is also their minimum. -->
     <PackageVersion Include="TUnit.Core" Version="1.78.0" />
   </ItemGroup>
