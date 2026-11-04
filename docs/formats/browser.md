@@ -2,14 +2,19 @@
 
 ```csharp
 using Nullean.Snapshots.Browser;
+using Nullean.Snapshots.TUnit;
 
-public static IEnumerable<string> Journeys() => JourneySnapshot.Find();   // journeys/**/*.journey in the project
-
-[Test, MethodDataSource(nameof(Journeys))]
-public async Task Runs(string journey) =>
-    (await JourneySnapshot.RunAsync(journey, new() { BaseUrl = new("http://localhost:5000/") }))
-        .Should().MatchJourneySnapshot();
+public class ShopJourneys(ShopServer server)   // your usual setup: fixtures, hooks
+{
+    [Test]
+    [JourneyFiles("journeys")]                 // a test case per journeys/**/*.journey
+    public Task Run(SnapshotFile journey) =>
+        JourneyTest.RunAsync(journey, new() { BaseUrl = server.Url });
+}
 ```
+
+Each journey is its own test case, named after its file: `Run(checkout)`, `Run(basket/empty)`. Run or filter one
+on its own like any test.
 
 A **journey** is a text file of [agent-browser](https://github.com/vercel-labs/agent-browser) commands, one per
 line, run in Chrome by [Nullean.Cdp](https://cdp.nullean.net) without Node or a daemon:
@@ -77,6 +82,24 @@ way:
 ```csharp
 (await page.SnapshotAsync(new() { Compact = true })).Should().MatchAriaSnapshot();
 ```
+
+## Setup per folder
+
+Setup lives on the test class as usual. A folder whose journeys need something else, such as a signed-in user, gets
+its own class with a more specific folder, and the outer class leaves that folder out:
+
+```csharp
+public class AdminJourneys(ShopServer server, AdminSession admin)
+{
+    [Test]
+    [JourneyFiles("journeys/admin")]            // ShopJourneys no longer runs these
+    public Task Run(SnapshotFile journey) =>
+        JourneyTest.RunAsync(journey, new() { BaseUrl = server.Url, Secrets = admin.Secrets });
+}
+```
+
+`[SnapshotFiles(folder, pattern)]` is the same data source for any kind of file, and `SnapshotFile.Find` lists the
+files without a test framework.
 
 ## Checks
 

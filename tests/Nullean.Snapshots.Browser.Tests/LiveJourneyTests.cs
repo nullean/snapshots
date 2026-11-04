@@ -15,9 +15,9 @@ public class LiveJourneyTests
 
 	private static string ThisFile([System.Runtime.CompilerServices.CallerFilePath] string path = "") => path;
 
-	private static Uri Site => new(Path.Combine(Project, "site") + Path.DirectorySeparatorChar);
+	internal static Uri Site => new(Path.Combine(Project, "site") + Path.DirectorySeparatorChar);
 
-	private static void RequireChrome()
+	internal static void RequireChrome()
 	{
 		var location = new ChromeLocator().Locate();
 		if (location.Found)
@@ -29,26 +29,24 @@ public class LiveJourneyTests
 
 	public static IEnumerable<string> Journeys() => JourneySnapshot.Find();
 
-	// checks.journey's default artifacts folder is emptied by each run of it, from a test or from snap journey run.
-	private const string ArtifactsFolder = "checks.artifacts";
+	[Test]
+	public void FindsTheProjectsJourneys() =>
+		Journeys().Should().Equal("journeys/basket/empty.journey", "journeys/checks.journey", "journeys/shop.journey");
 
 	[Test]
-	[MethodDataSource(nameof(Journeys))]
-	[NotInParallel(ArtifactsFolder)]
-	public async Task Runs(string journey)
+	public void AMoreSpecificFolderClaimsItsJourneys()
 	{
-		RequireChrome();
-		var transcript = await JourneySnapshot.RunAsync(journey, new JourneySnapshotOptions { BaseUrl = Site });
+		var assembly = typeof(ProjectJourneys).Assembly;
 
-		transcript.Failure.Should().BeNull();
-		transcript.Should().MatchJourneySnapshot();
+		var outer = new Nullean.Snapshots.TUnit.JourneyFilesAttribute("journeys");
+		var basket = new Nullean.Snapshots.TUnit.JourneyFilesAttribute("journeys/basket");
+
+		outer.Files(assembly, SnapshotFile.Find(assembly, outer.Folder, outer.Pattern)).Select(f => f.Name).Should().Equal("checks", "shop");
+		basket.Files(assembly, SnapshotFile.Find(assembly, basket.Folder, basket.Pattern))
+			.Should().Equal(new SnapshotFile("journeys/basket/empty.journey", "empty"));
 	}
 
 	[Test]
-	public void FindsTheProjectsJourneys() => Journeys().Should().Equal("journeys/checks.journey", "journeys/shop.journey");
-
-	[Test]
-	[NotInParallel(ArtifactsFolder)]
 	public async Task SnapJourneyRunGivesAJourneyThatWritesFilesAFolder()
 	{
 		RequireChrome();
@@ -59,10 +57,11 @@ public class LiveJourneyTests
 			(file, options, ct) => JourneySnapshot.RunAsync(file, browser, options, ct),
 			_ => null);
 
-		var exit = await cli.RunAsync(["journeys/checks.journey"], Site.AbsoluteUri, CancellationToken.None);
+		// Its own copy of checks.journey: a journey's artifacts folder belongs to one run at a time.
+		var exit = await cli.RunAsync(["cli-journeys/checks.journey"], Site.AbsoluteUri, CancellationToken.None);
 
 		error.ToString().Should().BeEmpty();
-		output.ToString().Trim().Should().Be("ok   Nullean.Snapshots.Browser.Tests/journeys/checks", "the screenshot step had a folder to write into");
+		output.ToString().Trim().Should().Be("ok   Nullean.Snapshots.Browser.Tests/cli-journeys/checks", "the screenshot step had a folder to write into");
 		exit.Should().Be(0);
 	}
 

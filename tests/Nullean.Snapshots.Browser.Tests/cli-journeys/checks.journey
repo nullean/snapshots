@@ -1,0 +1,5 @@
+# A copy of journeys/checks.journey for the snap journey run test, so the two never share an artifacts folder.
+open index.html
+a11y
+links --all
+screenshot shots/shop.png --full

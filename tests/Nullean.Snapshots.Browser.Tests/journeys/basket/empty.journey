@@ -1,0 +1,3 @@
+# The basket before anything is added; lives in a subfolder, so its generated test is in a nested class.
+open basket.html
+snapshot -c -s main
