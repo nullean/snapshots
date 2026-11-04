@@ -299,6 +299,16 @@ its verified file by the prefix swap. Half-written `*.tmp` files are ignored.
   process's assembly; its received folder is the artifacts one when that already exists, else `obj/`. Globs skip
   `bin`, `obj`, `node_modules` and dot folders, since verified transcripts end in `.journey` too, and `**/` matches no
   folder as well. Exit codes: 0, 1 differs or a step failed, 2 usage or journey errors, 3 Chrome could not start.
+- **A test case per journey file, from a data source, not a source generator.** `[JourneyFiles(folder)]`
+  (Nullean.Snapshots.TUnit; `[SnapshotFiles(folder, pattern)]` underneath) yields a `SnapshotFile` per file whose
+  `ToString` is its name, so cases read `Run(basket/empty)`. A generator emitting a `[Test]` per file was built and
+  dropped: TUnit discovers tests with its own source generator, generators cannot see each other's output, and the
+  generated tests compiled but were never discovered. TUnit's reflection mode would see them, but it costs the whole
+  test project TUnit's AOT discovery.
+- **Setup per folder:** a data source leaves out files under a folder that another data source of the same pattern
+  names more specifically, found by scanning the test assembly's methods once (cached per assembly). That scan
+  suppresses the trimming warnings, with the reason: test assemblies are not trimmed and TUnit keeps every test
+  method. Each file thus belongs to one test, as `MatchFile`'s key ownership requires.
 - **Options pass through to Nullean.Cdp:** `AllowedHosts`, `FileRoot`, `ArtifactsDirectory` and `Secrets` (the
   process environment when unset), and on the CLI `--allow`, `--file-root` and `--artifacts`.
 - **Files a journey writes** (`screenshot`, `network har stop`) go into `Snapshot.ArtifactsDirectory(journey)` unless
