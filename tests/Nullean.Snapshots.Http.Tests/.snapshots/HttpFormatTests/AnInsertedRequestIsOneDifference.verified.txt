@@ -1,0 +1,16 @@
+1 difference(s):
+$[1]   unexpected in actual
+Line diff:
+@@ line 9 @@
+   }
+ }
+ 
++## GET {{host}}/api/whoami
++status: 200 OK
++
++{
++  "user": "ada"
++}
++
+ ## GET {{host}}/api/orders
+ status: 404 Not Found

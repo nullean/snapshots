@@ -1,0 +1,12 @@
+1 difference(s):
+$[0].body.token   expected "abc"   actual "xyz"   (verified.responses:6:12)
+Line diff:
+@@ line 3 @@
+ content-type: application/json; charset=utf-8
+ 
+ {
+-  "token": "abc",
++  "token": "xyz",
+   "user": {
+     "name": "ada"
+   }

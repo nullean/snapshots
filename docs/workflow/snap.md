@@ -60,5 +60,26 @@ screenshots and HAR files out of each journey's folder next to its received tran
 
 It writes received files for `snap review` and prints the usual failure message, but never accepts (not even with
 `SNAPSHOT_ACCEPT=1`) and never writes the run manifest, so it cannot make other snapshots look orphaned. Exit codes:
-0 all match, 1 a transcript differs or a step failed, 2 usage or a journey error, 3 Chrome could not start. It is the
-one command that does more than read and write files.
+0 all match, 1 a transcript differs or a step failed, 2 usage or a journey error, 3 Chrome could not start.
+
+## HTTP files
+
+`snap http run` runs [`.http` files](../formats/http.md) and compares each transcript with its verified file, as a
+test would, against a server that is already running:
+
+```sh
+snap http run 'tests/Shop.Tests/http/**/*.http' --env dev --var host=http://localhost:5000
+```
+
+`--env` selects the environment from `http-client.env.json`, `--var name=value` (repeatable) beats file variables and
+the environment, and `--header` (repeatable) writes another response header, as a test's `Headers` option does. It
+sends with the runner's own client, which follows redirects itself and decompresses bodies; secrets come from the
+environment files, `.env` files, the process environment and user secrets, and are redacted as in a test.
+
+Like `snap journey run` it writes received files for `snap review`, never accepts and never writes the run manifest.
+Globs skip `bin`, `obj`, `node_modules` and dot folders. Exit codes: 0 all match, 1 a transcript differs or a request
+failed (a connection refused, a timeout, an unresolved variable), 2 usage or a parse error in a `.http` file, 3 a
+`.http` file, environment file or user secrets file could not be read. An error status such as 404 is a response, not
+a failure.
+
+These two are the only commands that do more than read and write files.

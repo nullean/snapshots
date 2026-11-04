@@ -8,8 +8,9 @@ Non-obvious choices, newest last. Each says what was chosen, and why when the wh
 - Built on AwesomeAssertions.
 - Never auto-accept. Accept with `snap accept` or `SNAPSHOT_ACCEPT=1`; with `CI=true` nothing is ever accepted.
 - We own the JSON/YAML tree diff. `SystemTextJson.JsonDiffPatch` is a test-only oracle, never a runtime dependency.
-- The CLI is a native AOT dotnet tool and works on files only; it references no format package. One exception,
-  `snap journey run`, references `.Browser` and starts Chrome (see "Browser").
+- The CLI is a native AOT dotnet tool and works on files only; it references no format package. Two exceptions:
+  `snap journey run` references `.Browser` and starts Chrome (see "Browser"), and `snap http run` references `.Http`
+  and sends HTTP requests (see "HTTP").
 - Libraries are AOT/trim-clean. AngleSharp, the one suspect, turned out clean too (see "HTML").
 
 ## Where snapshots live
@@ -416,3 +417,48 @@ beyond the BCL; `Nullean.Snapshots.Http` will build on it. It packs its own READ
   on an environment value never prints the value.
 - **Determinism.** Time comes from `HttpFileRunOptions.TimeProvider` and randomness from `HttpFileRunOptions.Random`.
   `$guid` is built from the `Random`'s bytes with the version 4 bits set, so a seeded run repeats.
+
+## HTTP
+
+`Nullean.Snapshots.Http` snapshots HTTP responses and runs `.http` files with `Nullean.HttpFileParser`;
+`.Http.Assertions` holds the AwesomeAssertions extensions, apart from it, so the AOT CLI references the runner without
+AwesomeAssertions (as `.Browser` and `.Browser.Assertions` are split).
+
+- **One format, `.responses`, named "HTTP",** for a single response and for a file's run: a section per response,
+  `## {heading}`, `status: {code} {reason}`, the chosen headers, a blank line and the body. A file's heading is the
+  request as written (`login: POST {{host}}/api/login`), variables unresolved, so hosts and secrets never reach it and a
+  host change renames nothing; a single response's is its method, path and query, or `response` with no request.
+- **Headers are an allow-list:** `content-type` and `location`, plus what `Headers` names, lower case, sorted, several
+  values joined with `, `. Dates, request ids and server names change between runs, so writing every header would
+  make every snapshot need scrubbers. `authorization`, `cookie`, `set-cookie` and `proxy-authorization` are never
+  written, even when named: they carry credentials, and a snapshot is committed.
+- **Bodies are decoded first** (the runner decodes, and `RenderAsync` undoes gzip, deflate and br a handler left in
+  place), so compression never shows; `content-encoding` is written only when chosen. An encoding it cannot undo makes
+  the body binary.
+- **Three kinds of body, by media type.** JSON (`application/json`, `+json`) through `JsonTree.Pretty`, written raw:
+  its lines start with whitespace, a bracket, a quote or a scalar, never `## `. Text (`text/*`, XML, JavaScript,
+  YAML, other JSON types such as NDJSON, form posts, anything with a charset) quoted with `> ` on every line, as journey
+  reads are, so a body can never start a section. Anything else is `binary: {n} bytes, {media type}`: bytes in a
+  committed text file help nobody. Invalid JSON with a JSON type is text, so it can still be read.
+- **Parsed into `[{request, status, headers, body | text | binary}]`,** empty parts left out. The three body kinds are
+  different keys rather than three shapes under `body`, so a JSON string and the same text are not equal. The header
+  map compares in any order; a JSON body's spans are moved to its lines in the whole file. Compared by TreeDiffer, then
+  the line diff, as journeys are.
+- **Redacted twice.** Each exchange goes through `HttpFileRunResult.Redact(exchange)` before rendering, as the parser
+  intends, and the rendered text goes through `Redact(text)` again: pretty-printing unescapes JSON strings, so a value a
+  server echoed as `\u002B…` (System.Text.Json escapes `+`, common in tokens) reads as the value only after rendering.
+  The failure message is redacted too.
+- **A request that stops the run fails the assertion** even when the partial transcript matches, with `Request
+  stopped at {file}:{line}: {request}` and the message first, as a failed journey step does. Error statuses are
+  responses.
+- **`.http` files are keyed by `Snapshot.MatchFile`**, so a test and `snap http run` share
+  `.snapshots/{dir}/{name}.verified.responses`. `[HttpFiles(folder = "http")]` is `[SnapshotFiles(folder, "*.http")]`.
+  A single response (`MatchHttpSnapshot`) is keyed by the test, like any snapshot.
+- **`snap http run`** is `snap journey run`'s shape: the runner's own client (the parser's, which follows redirects
+  itself, keeps a cookie jar and decompresses), never accepts, never writes the manifest, globs over `*.http` skipping
+  `bin`, `obj`, `node_modules` and dot folders. `--env`, `--var name=value` and `--header` match the test options.
+  Exit codes: 0, 1 differs or a request failed, 2 usage or parse errors, 3 when a `.http` file, environment file or
+  user secrets file cannot be read (an `IOException` or `UnauthorizedAccessException`); unlike Chrome failing to
+  start, that is per file, so the other files still run. It adds no trim or AOT warnings to the published tool.
+- **Tests run a real server**: an `HttpListener` on a free port (as the parser's tests do) and, once, ASP.NET Core's
+  in-memory `TestServer` (`Microsoft.AspNetCore.TestHost` 10.0.0, test-only) for the `WebApplicationFactory` path.

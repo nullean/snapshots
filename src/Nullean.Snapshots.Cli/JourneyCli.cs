@@ -64,7 +64,7 @@ internal sealed class JourneyCli(
 		// always the one holding the journey file, found by walking up to its csproj, never this process's assembly.
 		var projects = new SnapshotProjectResolver(fileSystem);
 		var engine = new SnapshotEngine(fileSystem, k => k == SnapshotEnvironment.AcceptVariable ? null : getVariable(k), () => null,
-			(site, _) => WithArtifactsReceived(projects.FromCallerFile(site.FilePath)));
+			(site, _) => WithArtifactsReceived(fileSystem, projects.FromCallerFile(site.FilePath)));
 		var exit = ExitCode.Ok;
 		foreach (var file in files)
 		{
@@ -116,7 +116,7 @@ internal sealed class JourneyCli(
 	/// write to an artifacts path already has <c>{artifacts}/.snapshots/received/{Project}</c>; use that, so a key's
 	/// received file is in one place whichever runner wrote it.
 	/// </summary>
-	private SnapshotProject WithArtifactsReceived(SnapshotProject project)
+	internal static SnapshotProject WithArtifactsReceived(IFileSystem fileSystem, SnapshotProject project)
 	{
 		foreach (var folder in new[] { ".artifacts", "artifacts" })
 		{
@@ -161,7 +161,7 @@ internal sealed class JourneyCli(
 	}
 
 	// As for keys, but "**/" also matches no folder at all: journeys/**/*.journey includes journeys/a.journey.
-	private static string FileGlob(string pattern) =>
+	internal static string FileGlob(string pattern) =>
 		string.Join("(?:.*/)?", pattern.Split("**/").Select(SnapCli.Glob));
 }
 

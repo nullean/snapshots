@@ -1,0 +1,12 @@
+Request stopped at shop.http:7: GET {{host}}/b
+Connection refused (localhost:1)
+HTTP did not match snapshot: tests/Acme.Tests/.snapshots/http/shop.verified.responses
+1 difference(s):
+$[0].status   expected "200 OK"   actual "500 Internal Server Error"   (verified.responses:2:9)
+Line diff:
+@@ line 1 @@
+ ## GET {{host}}/a
+-status: 200 OK
++status: 500 Internal Server Error
+Received: .artifacts/.snapshots/received/Acme.Tests/http/shop.received.responses
+Accept:   snap accept Acme.Tests/http/shop   (or: dnx Nullean.Snapshots.Cli accept Acme.Tests/http/shop)

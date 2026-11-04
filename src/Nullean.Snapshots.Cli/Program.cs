@@ -5,6 +5,7 @@ var app = new ArghApp();
 app.MapRoot(RootCommand.Review);
 app.Map<SnapCommands>();
 app.MapNamespace<JourneyCommands>("journey");
+app.MapNamespace<HttpCommands>("http");
 
 return await app.RunAsync(args);
 

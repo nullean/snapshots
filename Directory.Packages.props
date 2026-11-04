@@ -34,5 +34,8 @@
     <PackageVersion Include="SystemTextJson.JsonDiffPatch" Version="2.0.0" />
     <!-- The PNG oracle for the decoder's tests (a C# port of stb_image). Test-only, never a runtime dependency. -->
     <PackageVersion Include="StbImageSharp" Version="2.30.15" />
+    <!-- ASP.NET Core's in-memory server, for the HTTP tests' WebApplicationFactory-style case. Test-only; the lowest
+         net10 release. -->
+    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.0" />
   </ItemGroup>
 </Project>

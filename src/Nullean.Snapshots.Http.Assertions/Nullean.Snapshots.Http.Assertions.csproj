@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Nullean.Snapshots.Http</RootNamespace>
+    <Description>AwesomeAssertions extensions for Nullean.Snapshots.Http: MatchHttpSnapshot, MatchHttpFileSnapshot and HttpFileTest.</Description>
+    <PackageTags>snapshot;approval;testing;http;http-file;awesomeassertions</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Nullean.Snapshots.Http/Nullean.Snapshots.Http.csproj" />
+    <ProjectReference Include="../Nullean.Snapshots.AwesomeAssertions/Nullean.Snapshots.AwesomeAssertions.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Nullean.Snapshots.Http</RootNamespace>
+    <Description>HTTP snapshots for Nullean.Snapshots: snapshot an HttpResponseMessage, or run a .http file and compare every response, status, chosen headers and JSON bodies as trees, with secrets redacted.</Description>
+    <PackageTags>snapshot;approval;testing;http;http-file;rest;api</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Nullean.Snapshots/Nullean.Snapshots.csproj" />
+    <ProjectReference Include="../Nullean.HttpFileParser/Nullean.HttpFileParser.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Nullean.Snapshots.Http.Tests" />
+    <InternalsVisibleTo Include="snap" />
+    <InternalsVisibleTo Include="Nullean.Snapshots.Cli.Tests" />
+  </ItemGroup>
+
+</Project>

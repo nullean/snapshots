@@ -1,0 +1,14 @@
+# Log in, then use the token: the transcript shows both responses and the 404 after them.
+
+### login
+POST {{host}}/api/login
+Content-Type: application/json
+
+{"user": "ada"}
+
+###
+GET {{host}}/api/orders
+Authorization: Bearer {{login.response.body.$.token}}
+
+###
+GET {{host}}/api/missing

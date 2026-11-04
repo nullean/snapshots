@@ -65,6 +65,8 @@ Accept:   snap accept Shop.Tests/CatalogTests/Serializes   (or: dnx Nullean.Snap
 | [`Nullean.Snapshots.Images`](https://www.nuget.org/packages/Nullean.Snapshots.Images) | `MatchImageSnapshot` for PNG screenshots; compared by pixels, with a diff image on failure |
 | `Nullean.Snapshots.Browser` | browser journeys: agent-browser commands run in Chrome with [Nullean.Cdp](https://cdp.nullean.net), each read compared as a tree (`JourneySnapshot`, `snap journey run`) |
 | `Nullean.Snapshots.Browser.Assertions` | `MatchJourneySnapshot` and `MatchAriaSnapshot` for AwesomeAssertions |
+| `Nullean.Snapshots.Http` | HTTP responses and `.http` files run with [Nullean.HttpFileParser](https://github.com/nullean/snapshots/tree/main/src/Nullean.HttpFileParser): status, chosen headers and JSON bodies compared as trees, secrets redacted (`HttpSnapshot`, `HttpFileSnapshot`, `snap http run`) |
+| `Nullean.Snapshots.Http.Assertions` | `MatchHttpSnapshot`, `MatchHttpFileSnapshot` and `HttpFileTest` for AwesomeAssertions |
 | [`Nullean.Snapshots.TUnit`](https://www.nuget.org/packages/Nullean.Snapshots.TUnit) | the running TUnit test's class, method and arguments, so every case gets its own file |
 | [`Nullean.Snapshots.Cli`](https://www.nuget.org/packages/Nullean.Snapshots.Cli) | `snap`: review, diff, accept, reject, and find orphaned snapshots |
 

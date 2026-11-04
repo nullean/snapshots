@@ -23,6 +23,7 @@ toc:
       - file: yaml.md
       - file: images.md
       - file: browser.md
+      - file: http.md
   - folder: workflow
     children:
       - file: index.md

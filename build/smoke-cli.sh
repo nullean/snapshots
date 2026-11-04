@@ -92,4 +92,20 @@ run "$@" accept --all --root "$fixture"
 run "$@" status --root "$fixture"
 [ "$code" -eq 0 ] || fail "status should exit 0 once everything is accepted"
 
+# snap http run needs no server to fail: a refused connection stops the run, the failure comes first, and the partial
+# transcript is written for review, never accepted.
+mkdir -p "$fixture/tests/Acme.Tests/http"
+printf 'GET {{host}}/never\n' > "$fixture/tests/Acme.Tests/http/down.http"
+export SNAPSHOT_ACCEPT=1
+run "$@" http run 'tests/**/*.http' --var host=http://127.0.0.1:9 --root "$fixture"
+unset SNAPSHOT_ACCEPT
+[ "$code" -eq 1 ] || fail "http run should exit 1 when a request fails"
+case "$out" in *"Request stopped at "*"down.http:1: GET {{host}}/never"*) ;; *) fail "http run should name the failed request first" ;; esac
+case "$out" in *"SNAPSHOT_ACCEPT is ignored"*) ;; *) fail "http run should say it never accepts" ;; esac
+[ -e "$received/http/down.received.responses" ] || fail "http run should write the received transcript"
+[ ! -e "$verified/http/down.verified.responses" ] || fail "http run should never accept"
+
+run "$@" http run 'tests/**/*.http' --var nope --root "$fixture"
+[ "$code" -eq 2 ] || fail "http run with a malformed --var should exit 2"
+
 echo "snap smoke test passed"

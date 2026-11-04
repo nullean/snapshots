@@ -11,6 +11,7 @@ images are stored exactly as given. Each compares in its own way:
 | [YAML](yaml.md) | the YAML as written | as a tree with the YAML 1.2 core schema |
 | [Images](images.md) | the PNG as given | by pixels, perceptually, with anti-aliasing left out |
 | [Browser journeys](browser.md) | a transcript of a journey's reads | section by section, accessibility trees as trees |
+| [HTTP](http.md) | a transcript of each response: status, chosen headers, body | section by section, JSON bodies as trees |
 
 Structural formats never rewrite a verified file that still matches: reformatting it by hand, a whitespace change in
 the output, or an image re-encoded with the same pixels does not fail a test.

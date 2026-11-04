@@ -68,3 +68,11 @@ public class SnapshotFilesAttribute(string folder, string pattern) : DataSourceG
 /// <param name="folder">The folder of journeys, relative to the test project.</param>
 [AttributeUsage(AttributeTargets.Method | AttributeTargets.Parameter, AllowMultiple = false)]
 public sealed class JourneyFilesAttribute(string folder = "journeys") : SnapshotFilesAttribute(folder, "*.journey");
+
+/// <summary>
+/// One test case per <c>*.http</c> file under <paramref name="folder"/> (default <c>http</c>), named after the file.
+/// Pass the case to <c>HttpFileTest.RunAsync</c>.
+/// </summary>
+/// <param name="folder">The folder of <c>.http</c> files, relative to the test project.</param>
+[AttributeUsage(AttributeTargets.Method | AttributeTargets.Parameter, AllowMultiple = false)]
+public sealed class HttpFilesAttribute(string folder = "http") : SnapshotFilesAttribute(folder, "*.http");
