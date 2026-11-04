@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Nullean.Snapshots.Browser</RootNamespace>
+    <Description>AwesomeAssertions extensions for Nullean.Snapshots.Browser: MatchJourneySnapshot and MatchAriaSnapshot.</Description>
+    <PackageTags>snapshot;approval;testing;browser;journey;awesomeassertions</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Nullean.Snapshots.Browser/Nullean.Snapshots.Browser.csproj" />
+    <ProjectReference Include="../Nullean.Snapshots.AwesomeAssertions/Nullean.Snapshots.AwesomeAssertions.csproj" />
+  </ItemGroup>
+
+</Project>

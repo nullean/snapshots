@@ -4,6 +4,7 @@ using Nullean.Snapshots.Cli;
 var app = new ArghApp();
 app.MapRoot(RootCommand.Review);
 app.Map<SnapCommands>();
+app.MapNamespace<JourneyCommands>("journey");
 
 return await app.RunAsync(args);
 

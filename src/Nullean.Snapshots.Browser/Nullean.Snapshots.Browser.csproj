@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Nullean.Snapshots.Browser</RootNamespace>
+    <Description>Browser journeys for Nullean.Snapshots: run agent-browser style journeys with Nullean.Cdp and compare their transcripts, accessibility trees and reads, as trees.</Description>
+    <PackageTags>snapshot;approval;testing;browser;journey;accessibility;cdp</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Nullean.Cdp" />
+    <PackageReference Include="Nullean.Cdp.Journeys" />
+    <ProjectReference Include="../Nullean.Snapshots/Nullean.Snapshots.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Nullean.Snapshots.Browser.Tests" />
+    <InternalsVisibleTo Include="snap" />
+    <InternalsVisibleTo Include="Nullean.Snapshots.Cli.Tests" />
+  </ItemGroup>
+
+</Project>

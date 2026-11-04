@@ -387,9 +387,9 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 		return exact.Count > 0 ? exact : [.. pending.Where(p => p.Key.EndsWith("/" + pattern, StringComparison.Ordinal))];
 	}
 
-	private static bool IsGlob(string pattern) => pattern.AsSpan().IndexOfAny('*', '?') >= 0;
+	internal static bool IsGlob(string pattern) => pattern.AsSpan().IndexOfAny('*', '?') >= 0;
 
-	private static string Glob(string pattern)
+	internal static string Glob(string pattern)
 	{
 		var regex = new StringBuilder();
 		for (var i = 0; i < pattern.Length; i++)

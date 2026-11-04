@@ -45,3 +45,17 @@ one answer per line, so `printf 'a\nr\n' | snap review` works in scripts.
 Each test run writes a manifest of the verified files it used, in the project's received folder. `snap orphans` lists
 verified files the latest run did not use: snapshots of deleted or renamed tests. Run the whole suite first; a
 filtered run leaves out what it skipped. `--delete` removes them.
+
+## Journeys
+
+`snap journey run` runs [browser journeys](../formats/browser.md) in Chrome and compares each transcript with its
+verified file, as a test would, so a journey an agent just wrote can be checked without a test run:
+
+```sh
+snap journey run 'tests/Shop.Tests/journeys/**/*.journey' --base-url http://localhost:5000/
+```
+
+It writes received files for `snap review` and prints the usual failure message, but never accepts (not even with
+`SNAPSHOT_ACCEPT=1`) and never writes the run manifest, so it cannot make other snapshots look orphaned. Exit codes:
+0 all match, 1 a transcript differs or a step failed, 2 usage or a journey error, 3 Chrome could not start. It is the
+one command that does more than read and write files.

@@ -10,7 +10,7 @@
     <ToolCommandName>snap</ToolCommandName>
     <PackageId>Nullean.Snapshots.Cli</PackageId>
     <Title>snap: review and accept Nullean.Snapshots snapshots</Title>
-    <Description>List, diff, accept and reject pending snapshots from Nullean.Snapshots. Works on files only.</Description>
+    <Description>List, diff, accept and reject pending snapshots from Nullean.Snapshots, and run browser journeys.</Description>
     <PackageTags>snapshot;approval;testing;dotnet-tool;cli</PackageTags>
 
     <!-- Native AOT tool packaging, as nullean/curb does it: one package per RID, each built on a matching runner,
@@ -38,10 +38,13 @@
   <ItemGroup>
     <PackageReference Include="Nullean.Argh" />
     <ProjectReference Include="../Nullean.Snapshots/Nullean.Snapshots.csproj" />
+    <!-- For 'snap journey run' only, the one command that starts a browser (DECISIONS.md, "Browser"). -->
+    <ProjectReference Include="../Nullean.Snapshots.Browser/Nullean.Snapshots.Browser.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="Nullean.Snapshots.Cli.Tests" />
+    <InternalsVisibleTo Include="Nullean.Snapshots.Browser.Tests" />
   </ItemGroup>
 
 </Project>
