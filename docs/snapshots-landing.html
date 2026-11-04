@@ -279,6 +279,159 @@
   </div>
 </section>
 
+<section class="band" id="browser">
+  <div class="wrap two">
+    <div>
+      <h2>Browser journeys</h2>
+      <p class="sub">
+        Click through a running site with <a href="https://cdp.nullean.net">Nullean.Cdp</a>: a text file of
+        agent-browser commands, run in Chrome with no Node and no daemon. Every read lands in one transcript per
+        journey, compared as a tree, so a failure names the node that moved.
+      </p>
+      <div class="panel">
+        <div class="panel-bar">● ● ●<span>journeys/shop.journey</span></div>
+<pre><span class="t-dim"># Search, add a lamp, look at the basket.</span>
+open index.html
+find label Search fill lamp
+find role button click --name Search --exact
+<span class="t-hi">snapshot -c -s "#results"</span>
+find role button click --name <span class="t-add">"Add red lamp"</span>
+<span class="t-hi">get text #count</span>
+click "a[href='basket.html']"
+<span class="t-hi">get title</span>
+<span class="t-hi">snapshot -c -s main</span></pre>
+      </div>
+      <div class="panel" style="margin-top: 18px">
+        <div class="panel-bar">● ● ●<span>ShopJourneys.cs</span></div>
+<pre>[Test]
+[JourneyFiles(<span class="t-add">"journeys"</span>)]   <span class="t-dim">// a test case per file</span>
+<span class="t-dim">public</span> Task Run(SnapshotFile journey) =&gt;
+    JourneyTest.RunAsync(journey,
+        <span class="t-dim">new</span>() { BaseUrl = server.Url });</pre>
+      </div>
+      <p class="sub" style="margin-top: 18px">
+        Add <code>a11y</code>, <code>links</code>, <code>network requests --failed</code> or Web Vitals budgets and
+        they snapshot too; screenshots and HAR
+        files land next to the received transcript. <a href="formats/browser/">Browser journeys →</a>
+      </p>
+    </div>
+    <div class="panel" aria-label="A journey transcript">
+      <div class="panel-bar">● ● ●<span>.snapshots/journeys/shop.verified.journey</span></div>
+<pre><span class="t-hi">## snapshot -c -s #results</span>
+<span class="t-dim">url: {origin}/index.html</span>
+- list
+  - listitem [level=1]
+    - StaticText <span class="t-add">"Red lamp "</span>
+    - button <span class="t-add">"Add red lamp"</span>
+  - listitem [level=1]
+    - StaticText <span class="t-add">"Blue lamp "</span>
+    - button <span class="t-add">"Add blue lamp"</span>
+
+<span class="t-hi">## get text #count</span>
+<span class="t-dim">url: {origin}/index.html</span>
+&gt; 1
+
+<span class="t-hi">## get title</span>
+<span class="t-dim">url: {origin}/basket.html</span>
+&gt; Basket
+
+<span class="t-hi">## snapshot -c -s main</span>
+<span class="t-dim">url: {origin}/basket.html</span>
+- main
+  - heading <span class="t-add">"Basket"</span> [level=1]
+  - paragraph
+    - StaticText <span class="t-add">"Your basket is empty."</span>
+  - link <span class="t-add">"Back to the shop"</span></pre>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="http">
+  <div class="wrap two">
+    <div>
+      <h2>HTTP APIs</h2>
+      <p class="sub">
+        Run the <code>.http</code> files you already keep for Visual Studio, Rider or the REST Client against any
+        <code>HttpClient</code>, <code>WebApplicationFactory</code>'s included. Each response is snapshotted:
+        status, the headers you choose, and JSON bodies compared as trees.
+      </p>
+      <div class="panel">
+        <div class="panel-bar">● ● ●<span>http/orders.http</span></div>
+<pre><span class="t-dim">### login</span>
+POST {{host}}/api/login
+Content-Type: application/json
+
+{"user": "ada"}
+
+<span class="t-dim">###</span>
+GET {{host}}/api/orders
+Authorization: Bearer <span class="t-add">{{login.response.body.$.token}}</span>
+
+<span class="t-dim">###</span>
+GET {{host}}/api/missing</pre>
+      </div>
+      <div class="panel" style="margin-top: 18px">
+        <div class="panel-bar">● ● ●<span>ApiTests.cs</span></div>
+<pre>[Test]
+[HttpFiles(<span class="t-add">"http"</span>)]
+<span class="t-dim">public</span> Task Run(SnapshotFile file) =&gt;
+    HttpFileTest.RunAsync(file,
+        <span class="t-dim">new</span>() { Client = factory.CreateClient() });
+
+[Test]
+<span class="t-dim">public async</span> Task Orders() =&gt;
+    <span class="t-dim">await</span> (<span class="t-dim">await</span> client.GetAsync(<span class="t-add">"/api/orders"</span>))
+        .Should().MatchHttpSnapshot();</pre>
+      </div>
+      <p class="sub" style="margin-top: 18px">
+        Secrets from user secrets, configuration or environment variables are redacted from everything written,
+        even when a server echoes them back. <code>snap http run</code> runs the same files against a live host.
+        <a href="formats/http/">HTTP →</a>
+      </p>
+    </div>
+    <div class="panel" aria-label="An HTTP transcript">
+      <div class="panel-bar">● ● ●<span>.snapshots/http/orders.verified.responses</span></div>
+<pre><span class="t-hi">## login: POST {{host}}/api/login</span>
+<span class="t-dim">status:</span> 200 OK
+<span class="t-dim">content-type:</span> application/json; charset=utf-8
+
+{
+  "token": <span class="t-add">"tok-0123456789"</span>,
+  "user": {
+    "name": <span class="t-add">"ada"</span>,
+    "roles": [
+      <span class="t-add">"admin"</span>,
+      <span class="t-add">"dev"</span>
+    ]
+  }
+}
+
+<span class="t-hi">## GET {{host}}/api/orders</span>
+<span class="t-dim">status:</span> 200 OK
+<span class="t-dim">content-type:</span> application/json; charset=utf-8
+
+{
+  "orders": [
+    {
+      "id": 1,
+      "total": 12.5
+    },
+    {
+      "id": 2,
+      "total": 3
+    }
+  ]
+}
+
+<span class="t-hi">## GET {{host}}/api/missing</span>
+<span class="t-dim">status:</span> 404 Not Found
+<span class="t-dim">content-type:</span> text/plain; charset=utf-8
+
+&gt; not found</pre>
+    </div>
+  </div>
+</section>
+
 <section class="band" id="snap">
   <div class="wrap two">
     <div>
