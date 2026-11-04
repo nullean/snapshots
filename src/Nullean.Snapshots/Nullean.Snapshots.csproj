@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Nullean.Snapshots.Json" />
     <InternalsVisibleTo Include="Nullean.Snapshots.Tests" />
     <InternalsVisibleTo Include="Nullean.Snapshots.Browser.Tests" />
     <InternalsVisibleTo Include="Nullean.Snapshots.Html.Tests" />
