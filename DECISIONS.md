@@ -352,3 +352,57 @@ All snapshot IO goes through `System.IO.Abstractions`, wrapped in `Nullean.Scope
 - **No strong naming.** Nothing here needs it, and `InternalsVisibleTo` stays a plain assembly name.
 - **Tests run on Microsoft.Testing.Platform** (`global.json` `test.runner`), so `dotnet test --project ...
   --treenode-filter ...` works, which the failure message prints.
+
+## HTTP file parser
+
+`Nullean.HttpFileParser` parses and runs `.http` files on its own, with no dependency on the snapshot packages and none
+beyond the BCL; `Nullean.Snapshots.Http` will build on it. It packs its own README rather than the repository's.
+
+- **Dialect: the portable subset.** What Visual Studio 17.8+ and the VS Code REST Client share, plus JetBrains'
+  script-free forms: `### name` separators, indented URL continuation lines, `$uuid`/`$random.uuid`/`$isoTimestamp`,
+  `$env.NAME`, `@timeout` with a unit, multipart bodies mixing text and `< ./file` lines (joined with CRLF, as
+  RFC 2046 needs). Custom `$datetime` formats are .NET format strings, as in Visual Studio (REST Client uses Day.js),
+  and `iso8601` is .NET's round-trip format. `$randomInt` with no arguments is any non-negative `int`.
+- **Refused, with the line and a reason:** JetBrains scripts (`> {% %}`, `< {% %}`, `> handler.js`) and `run`/`import`
+  statements, because they need a JavaScript engine; response redirection (`>> file`), because the result holds the
+  response; `@prompt`, because a run cannot ask; `$aadToken`, because it needs an interactive sign-in (use
+  `{{$secret Name}}`); GraphQL, WebSocket and gRPC requests; cURL commands; XPath. Unknown `@directives` are plain
+  comments, unknown `$dynamic` variables are errors.
+- **Errors.** Parsing collects every problem and throws one `HttpFileParseException` listing them as
+  `file:line: message`. `HttpFile.Validate` reports, without sending anything, variables used before their definition
+  or never defined, references to requests that are not earlier in the file and missing body files. Resolution errors
+  during a run name the line of the reference. A `{{` without `}}` on the same line is literal text.
+- **`/`-relative URLs** resolve against `HttpClient.BaseAddress`, our extension: one file runs against a
+  `WebApplicationFactory` client and, through `{{host}}`, against a real host. A URL with no scheme gets `http://`.
+- **Redirects are followed by the runner,** because `AllowAutoRedirect` is fixed per handler and `@no-redirect` is per
+  request. Up to `MaxRedirects` (10); 303, and 301/302 after a POST, become a body-less GET; `Authorization` and
+  `Cookie` are not sent to another origin. Callers should pass clients with `AllowAutoRedirect = false`; a client that
+  follows redirects itself makes `@no-redirect` ineffective, which is documented rather than detected.
+- **Compression.** The runner's own client decompresses (`AutomaticDecompression = All`). For a caller's client, a body
+  still carrying `Content-Encoding: gzip|deflate|br` is decoded by the runner (deflate with or without the zlib
+  wrapper) and the exchange records the encoding it undid. Headers are kept as received.
+- **Cookies.** The runner's own client keeps a cookie jar the runner manages, so `@no-cookie-jar` works per request. A
+  caller's client keeps cookies as its handler does; the runner adds none, to avoid sending them twice.
+- **`{{$secret Name}}`** is our extension: a secret from `HttpFileRunOptions.Secrets`, for values with no environment
+  file entry (tokens a test fixture obtains, for example).
+- **User secrets lookup.** For `AspnetUserSecrets`, `HttpFileRunOptions.Secrets` is asked first. Then the user secrets
+  id comes from `UserSecretsId`, else from an attribute named
+  `Microsoft.Extensions.Configuration.UserSecrets.UserSecretsIdAttribute` on `SecretsAssembly`, read through
+  `CustomAttributeData` so no package is referenced, else from `<UserSecretsId>` in the nearest `*.csproj` above the
+  `.http` file. `secrets.json` is read from `%APPDATA%\Microsoft\UserSecrets\{id}` on Windows and
+  `~/.microsoft/usersecrets/{id}` elsewhere (the root is injectable) and flattened to `Section:Key`, case-insensitive,
+  as Microsoft configuration does. Other providers (`AzureKeyVault`, `Encrypted`) come only from `Secrets`.
+- **Environments.** The nearest folder at or above the `.http` file holding `http-client.env.json` or one of its
+  override files. Layering: `$shared` from the main, `.private` then `.user` file, then the named environment from the
+  same files in the same order. File variables beat the environment; `HttpFileRunOptions.Variables` beats both.
+  `$dotenv` reads the nearest `.env` defining the name, from the `.http` file's folder up to the nearest folder with a
+  project file.
+- **Redaction.** Every value that came from a secret, `$processEnv`, `$env`, `$dotenv` or a `.user`/`.private`
+  environment file is recorded with the reference that produced it (`{{$processEnv API_KEY}}`, `{{ApiKey}}`,
+  `{{$secret Name}}`), and its URL-escaped form too. `Redact` replaces the longest value first, so a value containing
+  another is not half-replaced. Failure messages are redacted when created; exchanges keep the raw wire data and
+  `Redact(exchange)` gives a redacted copy (URI, headers, and bodies that are UTF-8 text). Values shorter than 4
+  characters fail the run: replacing them everywhere would mangle unrelated text. `ToString` on a recorded value and
+  on an environment value never prints the value.
+- **Determinism.** Time comes from `HttpFileRunOptions.TimeProvider` and randomness from `HttpFileRunOptions.Random`.
+  `$guid` is built from the `Random`'s bytes with the version 4 bits set, so a seeded run repeats.

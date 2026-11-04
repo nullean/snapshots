@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Nullean.HttpFileParser</RootNamespace>
+    <PackageId>Nullean.HttpFileParser</PackageId>
+    <Description>Parse, lint and run .http request files (Visual Studio, VS Code REST Client and JetBrains HTTP Client, script-free) against any HttpClient. Environments, user secrets, chained responses and redaction of sensitive values. No dependencies, AOT and trim clean.</Description>
+    <PackageTags>http;rest;http-file;rest-client;httpclient;testing</PackageTags>
+  </PropertyGroup>
+
+  <!-- A standalone package: it ships its own readme instead of the repository's. -->
+  <ItemGroup>
+    <None Remove="$(MSBuildThisFileDirectory)../../README.md" />
+    <None Include="README.md" Pack="true" PackagePath="README.md" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Nullean.HttpFileParser.Tests" />
+  </ItemGroup>
+
+</Project>
