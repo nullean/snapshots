@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="TUnit" />
+    <PackageReference Include="AwesomeAssertions" />
+    <PackageReference Include="CsCheck" />
+    <PackageReference Include="TestableIO.System.IO.Abstractions.TestingHelpers" />
+    <ProjectReference Include="../../src/Nullean.Snapshots.Browser.Assertions/Nullean.Snapshots.Browser.Assertions.csproj" />
+    <!-- 'snap journey run' is tested in process, against the same journeys as the tests. -->
+    <ProjectReference Include="../../src/Nullean.Snapshots.Cli/Nullean.Snapshots.Cli.csproj" />
+    <ProjectReference Include="../../src/Nullean.Snapshots.TUnit/Nullean.Snapshots.TUnit.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="../Nullean.Snapshots.Tests/TestProject.cs" Link="TestProject.cs" />
+  </ItemGroup>
+
+  <Import Project="../../src/Nullean.Snapshots/buildTransitive/Nullean.Snapshots.targets" />
+  <Import Project="../../src/Nullean.Snapshots.TUnit/buildTransitive/Nullean.Snapshots.TUnit.targets" />
+
+</Project>

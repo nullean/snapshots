@@ -8,7 +8,8 @@ Non-obvious choices, newest last. Each says what was chosen, and why when the wh
 - Built on AwesomeAssertions.
 - Never auto-accept. Accept with `snap accept` or `SNAPSHOT_ACCEPT=1`; with `CI=true` nothing is ever accepted.
 - We own the JSON/YAML tree diff. `SystemTextJson.JsonDiffPatch` is a test-only oracle, never a runtime dependency.
-- The CLI is a native AOT dotnet tool and works on files only; it references no format package.
+- The CLI is a native AOT dotnet tool and works on files only; it references no format package. One exception,
+  `snap journey run`, references `.Browser` and starts Chrome (see "Browser").
 - Libraries are AOT/trim-clean. AngleSharp, the one suspect, turned out clean too (see "HTML").
 
 ## Where snapshots live
@@ -266,6 +267,38 @@ its verified file by the prefix swap. Half-written `*.tmp` files are ignored.
 - **Oracles:** PngSuite (free to copy, vendored with its licence) decoded by StbImageSharp, a C# port of stb_image,
   test-only like the JSON oracle. `Validate` decodes the whole actual image before anything is written, so it is
   decoded twice on a comparison; a screenshot takes far longer than that.
+
+## Browser
+
+- **The browser is Nullean.Cdp**, a CDP client in its own repository (nullean/cdp): no Playwright, no Node, no
+  daemon, AOT-clean. Journeys are agent-browser's commands, so agents explore with agent-browser and write the steps
+  down; Nullean.Cdp parses, runs and exports them. This repository only snapshots what a run reads. While Nullean.Cdp
+  is unpublished, `Directory.Packages.props` names a 0.1 prerelease that restores from a local feed only.
+- **A snapshot per journey file.** `Snapshot.MatchFile` keys it by the journey's path, so a test and `snap journey run`
+  share `.snapshots/{dir}/{name}.verified.journey`. One transcript per journey, not a file per read: inserting a step
+  is one inserted section, not renamed files.
+- **The transcript:** a section per read, `## {normalised command}`, `url: {url}`, then the output. Snapshots print the
+  accessibility tree as Nullean.Cdp prints it; every other read is quoted with `> ` on each line, so page text can
+  neither start a section nor pass for a tree. Headings carry no line numbers.
+- **Compared as trees.** The transcript parses into `[{step, url, tree | text}]`, a tree node into `{role, name,
+  attrs, value, children}` with empty parts left out (short paths: `$[0].tree[0].children[3].name`), attribute flags as
+  `true` and values as strings. TreeDiffer's LCS makes an inserted section or list item one difference. Positions point
+  into the verified file, and the line diff follows within the usual caps. `.aria` is the same tree for one page.
+- **Scrubbing:** the base URL's root becomes `{origin}`: the origin of an http(s) URL, the whole folder of a `file:`
+  URL (which differs per machine).
+- **A failed step fails the assertion** even when the partial transcript matches, with `Journey stopped at
+  {file}:{line}: {command}` and the error first. The received file holds the reads before the failure.
+- **One Chrome per test process** (`Lazy<Task<Browser>>`, disposed on `ProcessExit`), a context per journey.
+  `JourneySnapshot.Find` lists `*.journey` under a project folder for a data source; the project comes from the
+  assembly metadata the build targets write, else the nearest `*.csproj` above the caller.
+- **`.Browser.Assertions`** holds `MatchJourneySnapshot` and `MatchAriaSnapshot`, apart from `.Browser`, so the AOT CLI
+  references the runner without AwesomeAssertions.
+- **`snap journey run`** compares through the same engine with no test identity. It never accepts (`SNAPSHOT_ACCEPT` is
+  hidden from it and it says so) and never writes the run manifest: a run of some journeys would make every other
+  snapshot look orphaned. The project is always the one holding the journey (walking up to its csproj), never the
+  process's assembly; its received folder is the artifacts one when that already exists, else `obj/`. Globs skip
+  `bin`, `obj`, `node_modules` and dot folders, since verified transcripts end in `.journey` too, and `**/` matches no
+  folder as well. Exit codes: 0, 1 differs or a step failed, 2 usage or journey errors, 3 Chrome could not start.
 
 ## File system access
 

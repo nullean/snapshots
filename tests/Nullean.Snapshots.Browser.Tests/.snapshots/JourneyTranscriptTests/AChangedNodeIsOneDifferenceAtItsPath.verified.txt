@@ -1,0 +1,10 @@
+1 difference(s):
+$[0].tree[0].children[0].name   expected "Shop"   actual "Store"   (verified.journey:4:13)
+Line diff:
+@@ line 1 @@
+ ## snapshot -c -s main
+ url: {origin}/shop/index.html
+ - main
+-  - heading "Shop" [level=1]
++  - heading "Store" [level=1]
+   - button "Add"

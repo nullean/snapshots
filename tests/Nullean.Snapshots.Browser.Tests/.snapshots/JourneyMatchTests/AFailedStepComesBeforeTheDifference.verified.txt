@@ -1,0 +1,13 @@
+Journey stopped at shop.journey:4: click #pay
+boom
+Journey did not match snapshot: tests/Acme.Tests/.snapshots/journeys/shop.verified.journey
+1 difference(s):
+$[0].text   expected "Shop"   actual "Store"   (verified.journey:3:1)
+Line diff:
+@@ line 1 @@
+ ## get title
+ url: {origin}/index.html
+-> Shop
++> Store
+Received: .artifacts/.snapshots/received/Acme.Tests/journeys/shop.received.journey
+Accept:   snap accept Acme.Tests/journeys/shop   (or: dnx Nullean.Snapshots.Cli accept Acme.Tests/journeys/shop)

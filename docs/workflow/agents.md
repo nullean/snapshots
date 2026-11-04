@@ -18,3 +18,16 @@ differences and where the received file is.
   changed and why.
 - `snap orphans` lists verified files no test uses any more, after a full test run.
 ```
+
+## Browser journeys
+
+An agent that explores a site with agent-browser can leave a [journey](../formats/browser.md) behind:
+
+```markdown
+## Browser journeys
+
+- Journeys live in `tests/<Project>/journeys/*.journey`: one agent-browser command per line.
+- Use `find role … --name`, `find label`, `find text` or CSS, never `@e` refs; they change between runs.
+- Check a new or changed journey with `snap journey run <file> --base-url <url>`, then read the received transcript
+  before accepting it with `snap accept <key>`.
+```

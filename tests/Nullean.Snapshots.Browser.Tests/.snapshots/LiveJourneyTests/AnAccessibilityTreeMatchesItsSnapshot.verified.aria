@@ -1,0 +1,5 @@
+- main
+  - heading "Basket" [level=1]
+  - paragraph
+    - StaticText "Your basket is empty."
+  - link "Back to the shop"

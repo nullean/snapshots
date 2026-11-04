@@ -1,0 +1,10 @@
+# Search, add a lamp, look at the basket.
+open index.html
+find label Search fill lamp
+find role button click --name Search --exact
+snapshot -c -s "#results"
+find role button click --name "Add red lamp"
+get text #count
+click "a[href='basket.html']"
+get title
+snapshot -c -s main
