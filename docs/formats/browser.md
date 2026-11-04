@@ -12,7 +12,7 @@ public async Task Runs(string journey) =>
 ```
 
 A **journey** is a text file of [agent-browser](https://github.com/vercel-labs/agent-browser) commands, one per
-line, run in Chrome by [Nullean.Cdp](https://github.com/nullean/cdp) without Node or a daemon:
+line, run in Chrome by [Nullean.Cdp](https://cdp.nullean.net) without Node or a daemon:
 
 ```text
 # journeys/shop.journey
@@ -26,7 +26,9 @@ get text #count
 
 An agent that explored a site with agent-browser can write down the steps that matter as they were, and the same file
 replays in agent-browser after `Journey.ToAgentBrowserBatch`. The commands, quoting and what is left out (refs,
-screenshots, `eval`, cookies) are documented with Nullean.Cdp.
+`eval`, cookies, tabs) are in Nullean.Cdp's [command reference](https://cdp.nullean.net/journeys/commands/).
+`screenshot` and `network har stop` write files into an artifacts folder, which `JourneySnapshotOptions` does not set,
+so in a snapshot test those steps fail.
 
 ## The transcript
 
