@@ -334,7 +334,9 @@ All snapshot IO goes through `System.IO.Abstractions`, wrapped in `Nullean.Scope
   release decision: the `release` environment has no reviewers (it stays because the nuget.org trusted publishing
   policy names it, and only tags may deploy to it). It publishes with nuget.org trusted publishing (`NuGet/login`,
   the org's `NUGET_USER`), so no API key is stored. The root tool package is pushed last, after the per-RID and `any`
-  packages it points at. A tag push alone never publishes.
+  packages it points at. A tag push alone never publishes. Once the packages are on nuget.org the job creates the
+  GitHub release for the tag (`gh release create --generate-notes`, notes from the pull requests since the previous
+  tag, the packages attached, a `-` version marked as a prerelease); the job needs `contents: write` for it.
 - **No strong naming.** Nothing here needs it, and `InternalsVisibleTo` stays a plain assembly name.
 - **Tests run on Microsoft.Testing.Platform** (`global.json` `test.runner`), so `dotnet test --project ...
   --treenode-filter ...` works, which the failure message prints.
