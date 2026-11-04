@@ -15,6 +15,26 @@ public sealed class JourneySnapshotOptions
 
 	/// <summary>How long each navigation may take; Nullean.Cdp's default (30 s) when unset.</summary>
 	public TimeSpan? NavigationTimeout { get; init; }
+
+	/// <summary>
+	/// Host patterns the journey may reach on top of the base URL's host and its own <c>allow</c> lines: <c>shop.test</c>,
+	/// <c>*.shop.test</c>, or <c>*</c>.
+	/// </summary>
+	public IReadOnlyList<string> AllowedHosts { get; init; } = [];
+
+	/// <summary>
+	/// The one folder <c>file://</c> URLs may point into; the base URL's folder when that is a file URL.
+	/// </summary>
+	public string? FileRoot { get; init; }
+
+	/// <summary>
+	/// Where <c>screenshot</c> and <c>network har stop</c> write. When unset, a test's journey writes into
+	/// <see cref="Snapshot.ArtifactsDirectory"/>: <c>{received}/{folder}/{name}.artifacts</c>, emptied before each run.
+	/// </summary>
+	public string? ArtifactsDirectory { get; init; }
+
+	/// <summary>Resolves <c>$env:NAME</c> references; the process environment when unset.</summary>
+	public Func<string, string?>? Secrets { get; init; }
 }
 
 /// <summary>
@@ -76,6 +96,10 @@ public static class JourneySnapshot
 	)
 	{
 		var file = Path.IsPathRooted(journeyFile) ? journeyFile : Path.Combine(ProjectDirectory(callerFilePath), journeyFile);
+		options ??= new JourneySnapshotOptions();
+		// Only journeys that write files get a folder, so the rest leave nothing behind.
+		if (options.ArtifactsDirectory is null && WritesFiles(file))
+			options = With(options, Snapshot.ArtifactsDirectory(file));
 		var browser = await SharedBrowser.Value.ConfigureAwait(false);
 		return await RunAsync(file, browser, options, cancellationToken).ConfigureAwait(false);
 	}
@@ -93,9 +117,28 @@ public static class JourneySnapshot
 			BaseUrl = options.BaseUrl,
 			ActionTimeout = options.ActionTimeout,
 			NavigationTimeout = options.NavigationTimeout,
+			AllowedHosts = options.AllowedHosts,
+			FileRoot = options.FileRoot,
+			ArtifactsDirectory = options.ArtifactsDirectory,
+			Secrets = options.Secrets ?? Environment.GetEnvironmentVariable,
 		}, cancellationToken).ConfigureAwait(false);
 		return new JourneyTranscript(full, JourneyTranscript.Render(result, options.BaseUrl), result.Failure);
 	}
+
+	/// <summary>Whether a journey file has a step that writes a file (<c>screenshot</c>, <c>network har stop</c>).</summary>
+	internal static bool WritesFiles(string journeyFile) =>
+		Journey.Load(journeyFile).Steps.Any(s => s.Command is ScreenshotCommand or HarCommand { Action: "stop" });
+
+	internal static JourneySnapshotOptions With(JourneySnapshotOptions options, string artifactsDirectory) => new()
+	{
+		BaseUrl = options.BaseUrl,
+		ActionTimeout = options.ActionTimeout,
+		NavigationTimeout = options.NavigationTimeout,
+		AllowedHosts = options.AllowedHosts,
+		FileRoot = options.FileRoot,
+		ArtifactsDirectory = artifactsDirectory,
+		Secrets = options.Secrets,
+	};
 
 	/// <summary>
 	/// Compares the transcript with the journey's verified snapshot. A journey that stopped at a failing step fails

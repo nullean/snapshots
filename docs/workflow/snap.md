@@ -55,6 +55,9 @@ verified file, as a test would, so a journey an agent just wrote can be checked 
 snap journey run 'tests/Shop.Tests/journeys/**/*.journey' --base-url http://localhost:5000/
 ```
 
+`--allow` adds hosts the journeys may reach, `--file-root` sets the folder `file://` URLs may use, and `--artifacts` moves
+screenshots and HAR files out of each journey's folder next to its received transcript.
+
 It writes received files for `snap review` and prints the usual failure message, but never accepts (not even with
 `SNAPSHOT_ACCEPT=1`) and never writes the run manifest, so it cannot make other snapshots look orphaned. Exit codes:
 0 all match, 1 a transcript differs or a step failed, 2 usage or a journey error, 3 Chrome could not start. It is the

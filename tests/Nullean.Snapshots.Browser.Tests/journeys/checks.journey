@@ -1,0 +1,5 @@
+# Nullean.Cdp's checks in a snapshot: accessibility, links, and a screenshot into the journey's artifacts folder.
+open index.html
+a11y
+links --all
+screenshot shots/shop.png --full

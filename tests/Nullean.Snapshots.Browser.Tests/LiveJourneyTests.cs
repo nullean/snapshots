@@ -29,8 +29,12 @@ public class LiveJourneyTests
 
 	public static IEnumerable<string> Journeys() => JourneySnapshot.Find();
 
+	// checks.journey's default artifacts folder is emptied by each run of it, from a test or from snap journey run.
+	private const string ArtifactsFolder = "checks.artifacts";
+
 	[Test]
 	[MethodDataSource(nameof(Journeys))]
+	[NotInParallel(ArtifactsFolder)]
 	public async Task Runs(string journey)
 	{
 		RequireChrome();
@@ -41,7 +45,67 @@ public class LiveJourneyTests
 	}
 
 	[Test]
-	public void FindsTheProjectsJourneys() => Journeys().Should().Equal("journeys/shop.journey");
+	public void FindsTheProjectsJourneys() => Journeys().Should().Equal("journeys/checks.journey", "journeys/shop.journey");
+
+	[Test]
+	[NotInParallel(ArtifactsFolder)]
+	public async Task SnapJourneyRunGivesAJourneyThatWritesFilesAFolder()
+	{
+		RequireChrome();
+		var output = new StringWriter();
+		var error = new StringWriter();
+		await using var browser = await Cdp.Browser.LaunchAsync();
+		var cli = new JourneyCli(new FileSystem(), Project, output, error,
+			(file, options, ct) => JourneySnapshot.RunAsync(file, browser, options, ct),
+			_ => null);
+
+		var exit = await cli.RunAsync(["journeys/checks.journey"], Site.AbsoluteUri, CancellationToken.None);
+
+		error.ToString().Should().BeEmpty();
+		output.ToString().Trim().Should().Be("ok   Nullean.Snapshots.Browser.Tests/journeys/checks", "the screenshot step had a folder to write into");
+		exit.Should().Be(0);
+	}
+
+	[Test]
+	public async Task AllowedHostsReachTheJourney()
+	{
+		RequireChrome();
+		var folder = Directory.CreateTempSubdirectory("journey-allow-");
+		try
+		{
+			var journey = Path.Combine(folder.FullName, "away.journey");
+			File.WriteAllText(journey, "open https://elsewhere.invalid/\n");
+
+			var refused = await JourneySnapshot.RunAsync(journey, new JourneySnapshotOptions { BaseUrl = Site });
+			var allowed = await JourneySnapshot.RunAsync(journey, new JourneySnapshotOptions { BaseUrl = Site, AllowedHosts = ["elsewhere.invalid"] });
+
+			refused.Failure!.Message.Should().Contain("allow list");
+			allowed.Failure!.Message.Should().NotContain("allow list", "the host is allowed, so the navigation is tried (and the name does not resolve)");
+		}
+		finally
+		{
+			folder.Delete(true);
+		}
+	}
+
+	[Test]
+	public async Task OptionsReachTheJourney()
+	{
+		RequireChrome();
+		var artifacts = Directory.CreateTempSubdirectory("journey-artifacts-");
+		try
+		{
+			var transcript = await JourneySnapshot.RunAsync("journeys/checks.journey",
+				new JourneySnapshotOptions { BaseUrl = Site, ArtifactsDirectory = artifacts.FullName });
+
+			transcript.Failure.Should().BeNull();
+			File.Exists(Path.Combine(artifacts.FullName, "shots", "shop.png")).Should().BeTrue();
+		}
+		finally
+		{
+			artifacts.Delete(true);
+		}
+	}
 
 	[Test]
 	public async Task SnapJourneyRunComparesWithTheSameVerifiedFile()
@@ -51,7 +115,7 @@ public class LiveJourneyTests
 		var error = new StringWriter();
 		await using var browser = await Cdp.Browser.LaunchAsync();
 		var cli = new JourneyCli(new FileSystem(), Project, output, error,
-			(file, baseUri, ct) => JourneySnapshot.RunAsync(file, browser, new JourneySnapshotOptions { BaseUrl = baseUri }, ct),
+			(file, options, ct) => JourneySnapshot.RunAsync(file, browser, options, ct),
 			_ => null);
 
 		var exit = await cli.RunAsync(["journeys/shop.journey"], Site.AbsoluteUri, CancellationToken.None);

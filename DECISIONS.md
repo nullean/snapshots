@@ -272,8 +272,8 @@ its verified file by the prefix swap. Half-written `*.tmp` files are ignored.
 
 - **The browser is Nullean.Cdp**, a CDP client in its own repository (nullean/cdp): no Playwright, no Node, no
   daemon, AOT-clean. Journeys are agent-browser's commands, so agents explore with agent-browser and write the steps
-  down; Nullean.Cdp parses, runs and exports them. This repository only snapshots what a run reads. While Nullean.Cdp
-  is unpublished, `Directory.Packages.props` names a 0.1 prerelease that restores from a local feed only.
+  down; Nullean.Cdp parses, runs and exports them. This repository only snapshots what a run reads. Its docs are at
+  cdp.nullean.net.
 - **A snapshot per journey file.** `Snapshot.MatchFile` keys it by the journey's path, so a test and `snap journey run`
   share `.snapshots/{dir}/{name}.verified.journey`. One transcript per journey, not a file per read: inserting a step
   is one inserted section, not renamed files.
@@ -299,6 +299,18 @@ its verified file by the prefix swap. Half-written `*.tmp` files are ignored.
   process's assembly; its received folder is the artifacts one when that already exists, else `obj/`. Globs skip
   `bin`, `obj`, `node_modules` and dot folders, since verified transcripts end in `.journey` too, and `**/` matches no
   folder as well. Exit codes: 0, 1 differs or a step failed, 2 usage or journey errors, 3 Chrome could not start.
+- **Options pass through to Nullean.Cdp:** `AllowedHosts`, `FileRoot`, `ArtifactsDirectory` and `Secrets` (the
+  process environment when unset), and on the CLI `--allow`, `--file-root` and `--artifacts`.
+- **Files a journey writes** (`screenshot`, `network har stop`) go into `Snapshot.ArtifactsDirectory(journey)` unless
+  a folder is given: `{received}/{folder}/{name}.artifacts`, next to the received transcript, emptied before each run
+  so nothing from an earlier run lingers. Inside the received folder, so the library still writes nowhere else. The
+  `.artifacts` suffix keeps it apart from a test class's folder of the same name, whose received files emptying it
+  would otherwise delete; class names have no dots. Only journeys with such a step get a folder. Discovery ignores the
+  files in it, since only `.received.` names are received snapshots.
+- **Checks belong in transcripts when their output is stable:** `a11y`, `links` and `network requests` print
+  deterministic lists (same-site links and request URLs are scrubbed like everything else), `errors` an empty line or
+  the errors. Raw `timings`, `vitals` and `metrics` change every run; with `--budget` they print only whether each
+  reading is within its limit.
 
 ## File system access
 

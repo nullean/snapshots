@@ -70,9 +70,9 @@ public class JourneyMatchTests
 		}
 
 		public Task<int> Invoke(string? baseUrl, params string[] patterns) =>
-			new JourneyCli(P.Fs, P.Project.Directory, Out, Err, (file, b, _) =>
+			new JourneyCli(P.Fs, P.Project.Directory, Out, Err, (file, options, _) =>
 			{
-				Ran.Add((file, b));
+				Ran.Add((file, options.BaseUrl));
 				return Task.FromResult(Transcript!(file));
 			}, k => Env.GetValueOrDefault(k)).RunAsync(patterns, baseUrl, CancellationToken.None);
 

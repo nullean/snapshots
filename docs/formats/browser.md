@@ -27,8 +27,7 @@ get text #count
 An agent that explored a site with agent-browser can write down the steps that matter as they were, and the same file
 replays in agent-browser after `Journey.ToAgentBrowserBatch`. The commands, quoting and what is left out (refs,
 `eval`, cookies, tabs) are in Nullean.Cdp's [command reference](https://cdp.nullean.net/journeys/commands/).
-`screenshot` and `network har stop` write files into an artifacts folder, which `JourneySnapshotOptions` does not set,
-so in a snapshot test those steps fail.
+`screenshot` and `network har stop` write into the journey's [artifacts folder](#screenshots-and-har-files).
 
 ## The transcript
 
@@ -78,6 +77,60 @@ way:
 ```csharp
 (await page.SnapshotAsync(new() { Compact = true })).Should().MatchAriaSnapshot();
 ```
+
+## Checks
+
+Nullean.Cdp's checks are reads, so they land in the transcript like any other, and their output is stable enough to
+snapshot:
+
+```text
+# journeys/checks.journey
+open index.html
+a11y
+links --all
+network requests --failed
+vitals --budget lcp=2500 cls=0.1
+```
+
+```text
+## a11y
+url: {origin}/index.html
+> violations: 0
+
+## links --all
+url: {origin}/index.html
+> links: 2 checked, 0 broken
+> ok /index.html
+> ok /basket.html
+```
+
+A new accessibility problem, a broken link or a failed request is then a difference in the transcript. Raw `timings`,
+`vitals` and `metrics` change on every run, so snapshot them with `--budget`, which prints only whether each reading is
+within its limit. Add `--strict` to `a11y`, `links` or `network requests` to stop the journey at the step instead.
+
+## Screenshots and HAR files
+
+`screenshot` and `network har stop` write files. In a test they go next to the journey's received transcript,
+in a folder emptied before each run:
+
+```text
+.artifacts/.snapshots/received/Shop.Tests/journeys/checkout.artifacts/shots/home.png
+```
+
+`Snapshot.ArtifactsDirectory("journeys/checkout.journey")` returns that folder. Set
+`JourneySnapshotOptions.ArtifactsDirectory`, or `snap journey run --artifacts`, to write somewhere else. Screenshots
+are files, not part of the transcript: pixels differ between machines.
+
+## Options
+
+| `JourneySnapshotOptions` | `snap journey run` | |
+|---|---|---|
+| `BaseUrl` | `--base-url` | what relative `open` URLs resolve against; its root is scrubbed to `{origin}` |
+| `AllowedHosts` | `--allow` | hosts the journey may reach beyond the base URL's and its `allow` lines |
+| `FileRoot` | `--file-root` | the folder `file://` URLs may point into |
+| `ArtifactsDirectory` | `--artifacts` | where screenshots and HAR files go |
+| `Secrets` | | resolves `$env:NAME` references; the environment by default |
+| `ActionTimeout`, `NavigationTimeout` | | Nullean.Cdp's 5 s and 30 s by default |
 
 ## Chrome
 
