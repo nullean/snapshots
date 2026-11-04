@@ -10,6 +10,7 @@
     <Project Path="src/Nullean.Snapshots.Images/Nullean.Snapshots.Images.csproj" />
     <Project Path="src/Nullean.Snapshots.Json/Nullean.Snapshots.Json.csproj" />
     <Project Path="src/Nullean.Snapshots.Yaml/Nullean.Snapshots.Yaml.csproj" />
+    <Project Path="src/Nullean.HttpFileParser/Nullean.HttpFileParser.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Nullean.Snapshots.Tests/Nullean.Snapshots.Tests.csproj" />
@@ -19,5 +20,6 @@
     <Project Path="tests/Nullean.Snapshots.Images.Tests/Nullean.Snapshots.Images.Tests.csproj" />
     <Project Path="tests/Nullean.Snapshots.Json.Tests/Nullean.Snapshots.Json.Tests.csproj" />
     <Project Path="tests/Nullean.Snapshots.Yaml.Tests/Nullean.Snapshots.Yaml.Tests.csproj" />
+    <Project Path="tests/Nullean.HttpFileParser.Tests/Nullean.HttpFileParser.Tests.csproj" />
   </Folder>
 </Solution>
