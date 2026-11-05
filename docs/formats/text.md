@@ -21,3 +21,5 @@ Braces in the content are safe: the message is never used as a format string. Li
 cut, so one minified line cannot flood a log.
 
 Line endings are always normalised, so a checkout with CRLF endings compares the same as one with LF.
+
+For a short value there is `MatchInlineSnapshot`, which keeps the expected value in the test as a literal: see [inline snapshots](inline.md).

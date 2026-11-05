@@ -77,6 +77,107 @@ public static class SnapshotAssertions
 	}
 
 	/// <summary>
+	/// Asserts that the string equals the expected value written in the test itself, as a string literal. Use a raw
+	/// <c>"""</c> literal for several lines. Leave the argument out to write a new snapshot: the assertion fails, and
+	/// <c>snap accept</c> (or <c>SNAPSHOT_ACCEPT=1</c>) writes the literal into the source. Works inside an
+	/// <c>AssertionScope</c>.
+	/// </summary>
+	/// <param name="assertions">The string assertions.</param>
+	/// <param name="expected">
+	/// The expected text, as a literal: <c>snap</c> edits the literal in the source, so a constant or an interpolated
+	/// string compares but cannot be accepted. Normalised like a snapshot file (line endings, one trailing newline).
+	/// </param>
+	/// <param name="options">Per-call options such as scrubbers; they apply to the actual value only.</param>
+	/// <param name="because">An optional reason, shown in the failure message.</param>
+	/// <param name="expectedExpression">Filled in by the compiler: how <paramref name="expected"/> reads in the source.</param>
+	/// <param name="callerFilePath">Filled in by the compiler.</param>
+	/// <param name="callerMemberName">Filled in by the compiler.</param>
+	/// <param name="callerLineNumber">Filled in by the compiler.</param>
+	public static AndConstraint<StringAssertions> MatchInlineSnapshot(
+		this StringAssertions assertions,
+		string? expected = null,
+		SnapshotOptions? options = null,
+		string because = "",
+		[CallerArgumentExpression(nameof(expected))] string? expectedExpression = null,
+		[CallerFilePath] string callerFilePath = "",
+		[CallerMemberName] string callerMemberName = "",
+		[CallerLineNumber] int callerLineNumber = 0
+	) => assertions.MatchInlineSnapshot(SnapshotFormats.Text, expected, options, because, expectedExpression, callerFilePath, callerMemberName, callerLineNumber);
+
+	/// <summary>
+	/// Asserts that the string equals the expected value written in the test, compared in the given
+	/// <paramref name="format"/>. Format packages build their own inline assertions on <see cref="MatchInline"/>.
+	/// </summary>
+	/// <param name="assertions">The string assertions.</param>
+	/// <param name="format">How the value is compared.</param>
+	/// <param name="expected">The expected text, as a literal.</param>
+	/// <param name="options">Per-call options such as scrubbers.</param>
+	/// <param name="because">An optional reason, shown in the failure message.</param>
+	/// <param name="expectedExpression">Filled in by the compiler.</param>
+	/// <param name="callerFilePath">Filled in by the compiler.</param>
+	/// <param name="callerMemberName">Filled in by the compiler.</param>
+	/// <param name="callerLineNumber">Filled in by the compiler.</param>
+	public static AndConstraint<StringAssertions> MatchInlineSnapshot(
+		this StringAssertions assertions,
+		SnapshotFormat format,
+		string? expected = null,
+		SnapshotOptions? options = null,
+		string because = "",
+		[CallerArgumentExpression(nameof(expected))] string? expectedExpression = null,
+		[CallerFilePath] string callerFilePath = "",
+		[CallerMemberName] string callerMemberName = "",
+		[CallerLineNumber] int callerLineNumber = 0
+	)
+	{
+		ArgumentNullException.ThrowIfNull(assertions);
+		return MatchInline(
+			assertions,
+			assertions.Subject,
+			expected,
+			format,
+			new InlineSnapshotCallSite(new SnapshotCallSite(callerFilePath, callerMemberName, callerLineNumber), nameof(MatchInlineSnapshot), expectedExpression),
+			options,
+			because);
+	}
+
+	/// <summary>
+	/// The inline snapshot assertion for format packages: compares <paramref name="actual"/>, already prepared the way
+	/// the format's own snapshot assertion prepares it (pretty-printed JSON, say), with the literal
+	/// <paramref name="expected"/>. <paramref name="site"/> names the calling assertion method, which is searched for in
+	/// the source, so a wrapper must be called directly from the test with <c>expected</c> as a parameter of that name.
+	/// </summary>
+	/// <param name="assertions">The assertions the failure is reported on.</param>
+	/// <param name="actual">The value, or null when the subject was null.</param>
+	/// <param name="expected">The literal's value, or null when the argument was left out.</param>
+	/// <param name="format">How the value is compared.</param>
+	/// <param name="site">Where the assertion is.</param>
+	/// <param name="options">Per-call options such as scrubbers.</param>
+	/// <param name="because">An optional reason, shown in the failure message.</param>
+	public static AndConstraint<StringAssertions> MatchInline(
+		StringAssertions assertions,
+		string? actual,
+		string? expected,
+		SnapshotFormat format,
+		InlineSnapshotCallSite site,
+		SnapshotOptions? options,
+		string because
+	)
+	{
+		ArgumentNullException.ThrowIfNull(assertions);
+		ArgumentNullException.ThrowIfNull(format);
+		var chain = assertions.CurrentAssertionChain;
+		if (actual is null)
+		{
+			chain.FailWith("Expected a value to match a snapshot, but it was <null>.");
+			return new AndConstraint<StringAssertions>(assertions);
+		}
+
+		var result = Snapshot.MatchInline(actual, expected, format, site, options, because);
+		FailUnless(chain, result.Passed, result.FailureMessage ?? string.Empty);
+		return new AndConstraint<StringAssertions>(assertions);
+	}
+
+	/// <summary>
 	/// Fails <paramref name="chain"/> with <paramref name="message"/> shown exactly as given, unless
 	/// <paramref name="condition"/> holds. For format packages building their own assertions.
 	/// </summary>

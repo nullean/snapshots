@@ -9,7 +9,7 @@
 | `snap` or `snap review` | each pending snapshot with its diff; accept, reject, skip or quit | 1 while any are left |
 | `snap status [--json]` | lists pending snapshots | 1 when there are any |
 | `snap diff <key>` | the line diff of one snapshot | 0 |
-| `snap accept <key…> \| --all` | writes them as verified, deletes the received files | 0 |
+| `snap accept <key…> \| --all` | writes them as verified, deletes the received files; an [inline snapshot](../formats/inline.md) is written into its test's source | 0, or 1 when an inline one cannot be |
 | `snap reject <key…> \| --all` | deletes the received files | 0 |
 | `snap orphans [--json] [--delete]` | verified files the last test run did not use | 1 when there are any |
 
@@ -21,6 +21,9 @@ A key is `{Project}/{folder}/{Class}/{Method}[.{name}][.{hash}]`, for instance
 `Shop.Tests/Rendering/CatalogTests/Renders`. Commands take the full key, any unique suffix that starts at a `/`
 (`Renders`, `CatalogTests/Renders`), or a glob: `*` within one segment, `**` across them (`CatalogTests/*`,
 `**/Renders*`). An ambiguous suffix lists the candidates and changes nothing.
+
+An [inline snapshot](../formats/inline.md)'s key ends in the line of its call (`Renders.L12`), and `snap accept` edits the
+string literal in the test's `.cs` file, so read `git diff` of the test files as well as the verified ones.
 
 ## Review
 

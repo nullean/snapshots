@@ -18,7 +18,10 @@ internal sealed class SnapCommands
 	/// <param name="root">The folder to search from. Defaults to the current folder.</param>
 	public static int Diff([Argument] string key, string? root = null) => Cli(root).Diff(key);
 
-	/// <summary>Accept received snapshots: write them as verified and delete the received files.</summary>
+	/// <summary>
+	/// Accept received snapshots: write them as verified and delete the received files. An inline snapshot is written into the
+	/// string literal of its test instead, which edits the test's .cs file.
+	/// </summary>
 	/// <param name="keys">Keys from 'snap status', unique suffixes of them, or globs.</param>
 	/// <param name="all">Accept every pending snapshot.</param>
 	/// <param name="root">The folder to search from. Defaults to the current folder.</param>

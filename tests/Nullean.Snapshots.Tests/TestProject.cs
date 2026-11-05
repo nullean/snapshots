@@ -39,6 +39,21 @@ internal sealed class TestProject
 	public SnapshotResult MatchFile(string actual, string sourceFile, SnapshotOptions? options = null, string? because = null) =>
 		Engine.MatchFile(actual, SnapshotFormats.Text, sourceFile, options, because);
 
+	public SnapshotResult MatchInline(
+		string actual,
+		string? expected,
+		string? expression = null,
+		string method = "MatchInlineSnapshot",
+		int line = 10,
+		string member = "RendersTable",
+		SnapshotOptions? options = null,
+		string? because = null
+	) => Engine.MatchInline(actual, expected, SnapshotFormats.Text, new InlineSnapshotCallSite(Site(member, line), method, expression), options, because);
+
+	/// <summary>Writes the test file the inline assertions are in, so accepting has something to rewrite.</summary>
+	public void AddSource(string text, bool bom = false) =>
+		Fs.AddFile(TestFile, new MockFileData([.. bom ? new byte[] { 0xEF, 0xBB, 0xBF } : [], .. new System.Text.UTF8Encoding(false).GetBytes(text)]));
+
 	public string VerifiedFile(string keyWithinProject, string extension = "txt") =>
 		SnapshotPath.File(Fs, Project.SnapshotsDirectory, keyWithinProject, SnapshotPath.VerifiedInfix, extension);
 

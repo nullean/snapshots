@@ -279,6 +279,48 @@
   </div>
 </section>
 
+<section class="band" id="inline">
+  <div class="wrap two">
+    <div>
+      <h2>Inline snapshots</h2>
+      <p class="sub">
+        Keep a short expected value right in the test, as a string literal, for text, HTML, JSON and YAML. When it
+        changes, <code>snap accept</code> rewrites the literal in your source: a plain string for one line, a raw
+        <code>"""</code> literal for several. Nothing is edited until you accept, and never in CI.
+      </p>
+      <div class="panel">
+        <div class="panel-bar">● ● ●<span>BasketTests.cs</span></div>
+<pre>[Test]
+<span class="t-dim">public void</span> RendersTheBasket() =&gt;
+    basket.Render().Should().<span class="t-hi">MatchInlineSnapshot</span>("""
+        <span class="t-add">2 × beats</span>
+        <span class="t-add">1 × kibana</span>
+        """);
+
+[Test]
+<span class="t-dim">public void</span> Serializes() =&gt;
+    json.Should().<span class="t-hi">MatchInlineJsonSnapshot</span>(<span class="t-dim">/* leave it out: accept writes it */</span>);</pre>
+      </div>
+      <p class="sub" style="margin-top: 18px">
+        The literal is compared as its format is: JSON and YAML as trees, HTML as a DOM. If the test file changed since
+        the run, or the expected value is not a plain literal, accepting says why and edits nothing.
+        <a href="formats/inline/">Inline snapshots →</a>
+      </p>
+    </div>
+    <div class="panel" aria-label="A failing inline snapshot">
+      <div class="panel-bar">● ● ●<span>dotnet test</span></div>
+<pre><span class="t-hi">Text did not match inline snapshot:</span> <span class="t-mut">tests/Shop.Tests/BasketTests.cs:14</span>
+<span class="t-dim">1 difference(s):</span>
+<span class="t-dim">@@ line 1 @@</span>
+ 2 × beats
+<span class="t-del">-1 × lamp</span>
+<span class="t-add">+1 × kibana</span>
+<span class="t-dim">Received:</span> <span class="t-mut">.artifacts/.snapshots/received/Shop.Tests/BasketTests/RendersTheBasket.L14.received.inline</span>
+<span class="t-dim">Accept:</span>   snap accept Shop.Tests/BasketTests/RendersTheBasket.L14</pre>
+    </div>
+  </div>
+</section>
+
 <section class="band" id="browser">
   <div class="wrap two">
     <div>

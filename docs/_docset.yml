@@ -18,6 +18,7 @@ toc:
     children:
       - file: index.md
       - file: text.md
+      - file: inline.md
       - file: html.md
       - file: json.md
       - file: yaml.md

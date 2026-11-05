@@ -1,0 +1,8 @@
+Text did not match inline snapshot: tests/Acme.Tests/Rendering/HtmlTests.cs:10
+1 difference(s):
+@@ line 1 @@
+-old
++new
+Not accepted: the expected value at line 10 is not a plain string literal (Expected); write it as a literal so snap can update it.
+Received: .artifacts/.snapshots/received/Acme.Tests/Rendering/HtmlTests/RendersTable.L10.received.inline
+Accept:   snap accept Acme.Tests/Rendering/HtmlTests/RendersTable.L10   (or: dnx Nullean.Snapshots.Cli accept Acme.Tests/Rendering/HtmlTests/RendersTable.L10)

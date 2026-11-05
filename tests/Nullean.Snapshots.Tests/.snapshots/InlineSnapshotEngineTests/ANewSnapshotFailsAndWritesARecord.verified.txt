@@ -1,0 +1,3 @@
+Text inline snapshot is new: MatchInlineSnapshot() at tests/Acme.Tests/Rendering/HtmlTests.cs:10 has no expected value
+Received: .artifacts/.snapshots/received/Acme.Tests/Rendering/HtmlTests/RendersTable.L10.received.inline
+Accept:   snap accept Acme.Tests/Rendering/HtmlTests/RendersTable.L10   (or: dnx Nullean.Snapshots.Cli accept Acme.Tests/Rendering/HtmlTests/RendersTable.L10)

@@ -44,6 +44,8 @@ Accept:   snap accept Shop.Tests/CatalogTests/Serializes   (or: dnx Nullean.Snap
   whitespace, key order and `1` versus `1.0` do not fail a test, and a changed field is reported by its path, with
   the line and column in the verified file. Images compare by their pixels, perceptually and with anti-aliasing left
   out, so a screenshot passes on every machine.
+- **Verified files, or the value right in the test.** Short values can be [inline snapshots](https://snapshots.nullean.net/formats/inline/):
+  `MatchInlineSnapshot("""…""")` keeps the expected value as a string literal, and accepting rewrites that literal.
 - **Messages people and agents can act on.** Plain text without colour codes, repository-relative paths, at most 20
   differences and 80 lines, and the exact command to accept. They read the same in a terminal, a CI log and an
   agent's context.
@@ -58,10 +60,10 @@ Accept:   snap accept Shop.Tests/CatalogTests/Serializes   (or: dnx Nullean.Snap
 
 | Package | For |
 |---|---|
-| [`Nullean.Snapshots.AwesomeAssertions`](https://www.nuget.org/packages/Nullean.Snapshots.AwesomeAssertions) | `Should().MatchSnapshot()` for text, and the base the format packages build on |
-| [`Nullean.Snapshots.Html`](https://www.nuget.org/packages/Nullean.Snapshots.Html) | `MatchHtmlSnapshot`, `BeHtml`, `ContainHtml`, `NotContainHtml`; select, remove and transform first |
-| [`Nullean.Snapshots.Json`](https://www.nuget.org/packages/Nullean.Snapshots.Json) | `MatchJsonSnapshot` for JSON text and objects (AOT-safe through `JsonTypeInfo<T>`), `BeJson` |
-| [`Nullean.Snapshots.Yaml`](https://www.nuget.org/packages/Nullean.Snapshots.Yaml) | `MatchYamlSnapshot`, `BeYaml`; the YAML 1.2 core schema, anchors and merge keys, stored as written |
+| [`Nullean.Snapshots.AwesomeAssertions`](https://www.nuget.org/packages/Nullean.Snapshots.AwesomeAssertions) | `Should().MatchSnapshot()` and `MatchInlineSnapshot()` for text, and the base the format packages build on |
+| [`Nullean.Snapshots.Html`](https://www.nuget.org/packages/Nullean.Snapshots.Html) | `MatchHtmlSnapshot`, `MatchInlineHtmlSnapshot`, `BeHtml`, `ContainHtml`, `NotContainHtml`; select, remove and transform first |
+| [`Nullean.Snapshots.Json`](https://www.nuget.org/packages/Nullean.Snapshots.Json) | `MatchJsonSnapshot` and `MatchInlineJsonSnapshot` for JSON text and objects (AOT-safe through `JsonTypeInfo<T>`), `BeJson` |
+| [`Nullean.Snapshots.Yaml`](https://www.nuget.org/packages/Nullean.Snapshots.Yaml) | `MatchYamlSnapshot`, `MatchInlineYamlSnapshot`, `BeYaml`; the YAML 1.2 core schema, anchors and merge keys, stored as written |
 | [`Nullean.Snapshots.Images`](https://www.nuget.org/packages/Nullean.Snapshots.Images) | `MatchImageSnapshot` for PNG screenshots; compared by pixels, with a diff image on failure |
 | `Nullean.Snapshots.Browser` | browser journeys: agent-browser commands run in Chrome with [Nullean.Cdp](https://cdp.nullean.net), each read compared as a tree (`JourneySnapshot`, `snap journey run`) |
 | `Nullean.Snapshots.Browser.Assertions` | `MatchJourneySnapshot` and `MatchAriaSnapshot` for AwesomeAssertions |
