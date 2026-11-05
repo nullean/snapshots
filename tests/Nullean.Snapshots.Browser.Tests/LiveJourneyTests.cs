@@ -17,6 +17,17 @@ public class LiveJourneyTests
 
 	internal static Uri Site => new(Path.Combine(Project, "site") + Path.DirectorySeparatorChar);
 
+	// One Chrome for the tests that need a page of their own, next to JourneySnapshot's shared one that runs journeys. A Chrome
+	// per test (up to five at once, about 3 GB) is more than a 7 GB macOS runner survives alongside the other test projects.
+	private static readonly Lazy<Task<Cdp.Browser>> PageBrowser = new(LaunchPageBrowserAsync, LazyThreadSafetyMode.ExecutionAndPublication);
+
+	private static async Task<Cdp.Browser> LaunchPageBrowserAsync()
+	{
+		var browser = await Cdp.Browser.LaunchAsync();
+		AppDomain.CurrentDomain.ProcessExit += (_, _) => browser.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(10));
+		return browser;
+	}
+
 	internal static void RequireChrome()
 	{
 		var location = new ChromeLocator().Locate();
@@ -49,9 +60,8 @@ public class LiveJourneyTests
 		RequireChrome();
 		var output = new StringWriter();
 		var error = new StringWriter();
-		await using var browser = await Cdp.Browser.LaunchAsync();
 		var cli = new JourneyCli(new FileSystem(), Project, output, error,
-			(file, options, ct) => JourneySnapshot.RunAsync(file, browser, options, ct),
+			(file, options, ct) => JourneySnapshot.RunAsync(file, options, ct),
 			_ => null);
 
 		// Its own copy of checks.journey: a journey's artifacts folder belongs to one run at a time.
@@ -109,9 +119,8 @@ public class LiveJourneyTests
 		RequireChrome();
 		var output = new StringWriter();
 		var error = new StringWriter();
-		await using var browser = await Cdp.Browser.LaunchAsync();
 		var cli = new JourneyCli(new FileSystem(), Project, output, error,
-			(file, options, ct) => JourneySnapshot.RunAsync(file, browser, options, ct),
+			(file, options, ct) => JourneySnapshot.RunAsync(file, options, ct),
 			_ => null);
 
 		var exit = await cli.RunAsync(["journeys/shop.journey"], Site.AbsoluteUri, CancellationToken.None);
@@ -179,9 +188,8 @@ public class LiveJourneyTests
 		RequireChrome();
 		var output = new StringWriter();
 		var error = new StringWriter();
-		await using var browser = await Cdp.Browser.LaunchAsync();
 		var cli = new JourneyCli(new FileSystem(), Project, output, error,
-			(file, options, ct) => JourneySnapshot.RunAsync(file, browser, options, ct),
+			(file, options, ct) => JourneySnapshot.RunAsync(file, options, ct),
 			_ => null);
 
 		var exit = await cli.RunAsync(["cli-journeys/expect-fails.journey"], Site.AbsoluteUri, CancellationToken.None);
@@ -197,7 +205,7 @@ public class LiveJourneyTests
 	public async Task AnAccessibilityTreeMatchesItsSnapshot()
 	{
 		RequireChrome();
-		await using var browser = await Cdp.Browser.LaunchAsync();
+		var browser = await PageBrowser.Value;
 		await using var context = await browser.NewContextAsync();
 		var page = await context.NewPageAsync();
 		await page.GotoAsync(new Uri(Site, "basket.html").AbsoluteUri);

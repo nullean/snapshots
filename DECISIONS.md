@@ -388,6 +388,13 @@ beyond the BCL; `Nullean.Snapshots.Http` will build on it. It packs its own READ
   Linux only). That could not be confirmed: GitHub discards the log of a cancelled job. The Test step has its own 10-minute
   timeout so the next hang fails with its log. The browser tests are never skipped: without Chrome, or when it cannot be
   started, they fail (the runner images have Chrome, and a skipped test would hide exactly that).
+- **The browser tests use two Chromes, not five.** Four `LiveJourneyTests` each launched their own, next to the one
+  `JourneySnapshot` shares, and TUnit runs them in parallel. Three now run through the shared one; the accessibility-tree test,
+  which needs a page, uses one shared browser of its own. Measured locally this cuts the Chrome instances running at once from
+  5 to 2, but not the memory (about 3 GB either way: it is the concurrent pages and renderers), so it is **not** a fix for the
+  macOS freeze; the hypothesis that five Chromes exhaust the 7 GB runner did not hold. What it plausibly helps is the other
+  flake, Chrome not opening its DevTools port within 30 s when several start together. Evidence that the freeze is the whole
+  VM and not one test: the Test step's 10-minute timeout did not fire on a macOS job that ran for 17 minutes.
 - **Test servers never share a port with a refusal test.** `TestServer.FreePort()` binds port 0 and releases it, so a port it
   returns can be handed to another test's server before the first test uses it. A test that expects a refused connection
   therefore uses `TestServer.RefusedPort` (port 1: well-known, outside the range ports are handed out from, refused on every
