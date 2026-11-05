@@ -1,0 +1,4 @@
+# For the snap journey run test: an assertion that does not hold stops the run like any failing step.
+open index.html
+get title
+expect --timeout 300 text #count 5

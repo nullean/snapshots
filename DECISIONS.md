@@ -322,6 +322,14 @@ its verified file by the prefix swap. Half-written `*.tmp` files are ignored.
   deterministic lists (same-site links and request URLs are scrubbed like everything else), `errors` an empty line or
   the errors. Raw `timings`, `vitals` and `metrics` change every run; with `--budget` they print only whether each
   reading is within its limit.
+- **Assertions are not transcript.** An `expect` line (Nullean.Cdp 0.6) records nothing when it passes, so adding one to a
+  journey changes no verified file, and a failure is an ordinary stopped step: `Journey stopped at {file}:{line}: expect …`
+  and the assertion's own message, with the reads before it in the received transcript. Nothing in this repository is
+  assertion-aware; `LiveJourneyTests` pins it (the live `shop.journey` carries `expect` lines and its verified transcript
+  is unchanged; a failing assertion through `JourneySnapshot.RunAsync` and through `snap journey run`, exit code 1).
+- **Journeys on Playwright and Synthetics are documented, not owned here.** The npm package `@nullean/journeys` lives in
+  nullean/cdp; its Playwright snapshot trees differ from Nullean.Cdp's, so a transcript is only ever compared from the .NET
+  run.
 
 ## File system access
 

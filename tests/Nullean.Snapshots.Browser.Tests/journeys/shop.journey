@@ -1,10 +1,16 @@
-# Search, add a lamp, look at the basket.
+# Search, add a lamp, look at the basket. The expect lines are assertions: they record nothing, so they do not change the
+# verified transcript.
 open index.html
+expect title "Fixture shop"
+expect hidden "#results"
 find label Search fill lamp
 find role button click --name Search --exact
+expect visible "#results"
 snapshot -c -s "#results"
 find role button click --name "Add red lamp"
+expect text "#count" 1
 get text #count
 click "a[href='basket.html']"
+expect url "**/basket.html"
 get title
 snapshot -c -s main
