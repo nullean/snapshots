@@ -48,7 +48,15 @@ jobs:
       - name: Build
         run: dotnet build -c Release
 
+      # Two different things have cancelled the macOS job. Most often it never got a runner at all (no steps, cancelled at
+      # exactly 15 minutes: GitHub's macOS pool was full), which only a re-run fixes. The other time it had a runner and
+      # the Test step hung until the job's own timeout, and GitHub discards the log of a cancelled job, so nobody could say
+      # which test it was. A step timeout fails the step instead, with its log kept. Linux must have Chrome, so the browser
+      # tests cannot be skipped there without anyone noticing.
       - name: Test
+        timeout-minutes: 10
+        env:
+          SNAPSHOTS_BROWSER_REQUIRED: ${{ matrix.os == 'ubuntu-latest' && '1' || '0' }}
         run: dotnet test -c Release --no-build
 
       # The CLI is a RID-specific tool and is packed by the jobs below; --no-build cannot pack it.
