@@ -91,7 +91,8 @@ jobs:
   browser-macos:
     runs-on: macos-latest
     name: Browser tests (macos-latest)
-    timeout-minutes: 20
+    # A healthy run takes 1-2 minutes; when the runner freezes nothing else answers either, so do not wait long for it.
+    timeout-minutes: 10
     continue-on-error: true
 
     steps:
