@@ -388,6 +388,13 @@ beyond the BCL; `Nullean.Snapshots.Http` will build on it. It packs its own READ
   Linux only). That could not be confirmed: GitHub discards the log of a cancelled job. The Test step has its own 10-minute
   timeout so the next hang fails with its log. The browser tests are never skipped: without Chrome, or when it cannot be
   started, they fail (the runner images have Chrome, and a skipped test would hide exactly that).
+- **Test servers never share a port with a refusal test.** `TestServer.FreePort()` binds port 0 and releases it, so a port it
+  returns can be handed to another test's server before the first test uses it. A test that expects a refused connection
+  therefore uses `TestServer.RefusedPort` (port 1: well-known, outside the range ports are handed out from, refused on every
+  platform) and never a released port; this was the intermittent `AConnectionFailureStopsTheRunAndKeepsEarlierExchanges`
+  (`Succeeded` true: another test's server was listening on the "closed" port). A bound socket that never listens is not
+  an alternative: it refuses on Linux but macOS drops the connection and the connect times out after about 8 s.
+  `TestServer` itself picks another port if the one it chose is taken before it binds.
 - **Dialect: the portable subset.** What Visual Studio 17.8+ and the VS Code REST Client share, plus JetBrains'
   script-free forms: `### name` separators, indented URL continuation lines, `$uuid`/`$random.uuid`/`$isoTimestamp`,
   `$env.NAME`, `@timeout` with a unit, multipart bodies mixing text and `< ./file` lines (joined with CRLF, as

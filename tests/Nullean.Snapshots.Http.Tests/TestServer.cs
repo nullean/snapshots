@@ -20,15 +20,33 @@ internal sealed class TestServer : IAsyncDisposable
 	/// <summary>One server for the whole test process, started on first use.</summary>
 	public static TestServer Shared => SharedServer.Value;
 
-	private readonly HttpListener _listener = new();
+	private readonly HttpListener _listener;
 	private readonly CancellationTokenSource _stop = new();
 	private readonly Task _loop;
 
 	public TestServer()
 	{
-		Port = FreePort();
-		_listener.Prefixes.Add($"http://localhost:{Port}/");
-		_listener.Start();
+		// FreePort releases the port again, so another test's server can take it before this one binds it: pick again.
+		for (var attempt = 1; ; attempt++)
+		{
+			var port = FreePort();
+			var listener = new HttpListener();
+			listener.Prefixes.Add($"http://localhost:{port}/");
+			try
+			{
+				listener.Start();
+			}
+			catch (HttpListenerException) when (attempt < 10)
+			{
+				listener.Close();
+				continue;
+			}
+
+			_listener = listener;
+			Port = port;
+			break;
+		}
+
 		_loop = Task.Run(LoopAsync);
 	}
 
@@ -38,6 +56,14 @@ internal sealed class TestServer : IAsyncDisposable
 	public string Host => $"http://localhost:{Port}";
 
 	public Uri BaseAddress => new($"http://localhost:{Port}/");
+
+	/// <summary>
+	/// A port that refuses connections. A port from <see cref="FreePort"/> is released at once, so a test that expects a
+	/// refusal there can find another test's server listening on it. Port 1 is well-known: outside the range ports are
+	/// handed out from, so no parallel test's server can take it, and a connection to it is refused on every platform.
+	/// (A bound socket that never listens does not do: macOS drops the connection and the connect times out.)
+	/// </summary>
+	public const int RefusedPort = 1;
 
 	public static int FreePort()
 	{

@@ -219,11 +219,10 @@ public class RunnerTests
 	public async Task AConnectionFailureStopsTheRunAndKeepsEarlierExchanges()
 	{
 		await using var server = new TestServer();
-		var closed = TestServer.FreePort();
 		var file = Write($$$"""
 			GET {{host}}/target
 			###
-			GET http://localhost:{{{closed}}}/nothing
+			GET http://localhost:{{{TestServer.RefusedPort}}}/nothing
 			###
 			GET {{host}}/target
 			""");
@@ -234,6 +233,34 @@ public class RunnerTests
 		result.Failure.Request.Index.Should().Be(1);
 		result.Failure.Exception.Should().BeOfType<HttpRequestException>();
 		result.Failure.Message.Should().Contain("refused");
+	}
+
+	[Test]
+	public async Task TheRefusedPortRefusesConnectionsQuickly()
+	{
+		using var client = new System.Net.Sockets.TcpClient();
+		var started = System.Diagnostics.Stopwatch.StartNew();
+
+		var thrown = await FluentActions.Awaiting(() => client.ConnectAsync(System.Net.IPAddress.Loopback, TestServer.RefusedPort)).Should().ThrowAsync<System.Net.Sockets.SocketException>();
+
+		thrown.Which.SocketErrorCode.Should().Be(System.Net.Sockets.SocketError.ConnectionRefused);
+		started.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(3), "a refusal is immediate; a dropped connection is not");
+	}
+
+	[Test]
+	public async Task ServersStartedTogetherEachGetTheirOwnPort()
+	{
+		// Many servers at once, as parallel tests start them: each must bind a port of its own.
+		var servers = await Task.WhenAll(Enumerable.Range(0, 40).Select(_ => Task.Run(() => new TestServer())));
+		try
+		{
+			servers.Select(s => s.Port).Distinct().Should().HaveCount(40);
+		}
+		finally
+		{
+			foreach (var server in servers)
+				await server.DisposeAsync();
+		}
 	}
 
 	[Test]
