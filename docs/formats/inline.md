@@ -46,7 +46,8 @@ Accept:   snap accept App.Tests/ReportTests/Renders.L12   (or: dnx Nullean.Snaps
 
 `snap accept` then writes the value into the source: a regular literal for one line, a raw `"""` literal for several,
 indented one level past the line of the call and with more quotes when the value holds `"""`. The same happens when a
-literal is wrong. `snap review`, `snap diff` and `snap status` treat an inline snapshot like any other, with the test
+literal is wrong. This is a plain text edit made by `snap` itself, so updating expected strings does not need an agent
+or an editor. `snap review`, `snap diff` and `snap status` treat an inline snapshot like any other, with the test
 file and line in place of a verified file.
 
 ```sh
