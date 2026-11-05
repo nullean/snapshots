@@ -393,7 +393,9 @@ beyond the BCL; `Nullean.Snapshots.Http` will build on it. It packs its own READ
   therefore uses `TestServer.RefusedPort` (port 1: well-known, outside the range ports are handed out from, refused on every
   platform) and never a released port; this was the intermittent `AConnectionFailureStopsTheRunAndKeepsEarlierExchanges`
   (`Succeeded` true: another test's server was listening on the "closed" port). A bound socket that never listens is not
-  an alternative: it refuses on Linux but macOS drops the connection and the connect times out after about 8 s.
+  an alternative: it refuses on Linux but macOS drops the connection and the connect times out after about 8 s. A refusal
+  is not instant everywhere either: Windows takes a few seconds to report one, so no test asserts how fast it is, only that
+  it is a `ConnectionRefused` and not a timeout.
   `TestServer` itself picks another port if the one it chose is taken before it binds.
 - **Dialect: the portable subset.** What Visual Studio 17.8+ and the VS Code REST Client share, plus JetBrains'
   script-free forms: `### name` separators, indented URL continuation lines, `$uuid`/`$random.uuid`/`$isoTimestamp`,

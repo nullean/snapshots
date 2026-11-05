@@ -236,15 +236,14 @@ public class RunnerTests
 	}
 
 	[Test]
-	public async Task TheRefusedPortRefusesConnectionsQuickly()
+	public async Task TheRefusedPortRefusesConnections()
 	{
 		using var client = new System.Net.Sockets.TcpClient();
-		var started = System.Diagnostics.Stopwatch.StartNew();
 
+		// A refusal, not a dropped connection (which would end as TimedOut). Windows takes a few seconds to say so.
 		var thrown = await FluentActions.Awaiting(() => client.ConnectAsync(System.Net.IPAddress.Loopback, TestServer.RefusedPort)).Should().ThrowAsync<System.Net.Sockets.SocketException>();
 
 		thrown.Which.SocketErrorCode.Should().Be(System.Net.Sockets.SocketError.ConnectionRefused);
-		started.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(3), "a refusal is immediate; a dropped connection is not");
 	}
 
 	[Test]
