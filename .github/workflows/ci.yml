@@ -20,7 +20,7 @@ permissions:
 #   pull requests            build, test and pack the libraries on linux, windows and macos
 #   main, tags, manual runs  that, plus the native AOT pack for every RID on a matching runner, the root and
 #                            portable 'any' tool packages, and an install-and-run smoke test on each OS
-# Nothing here publishes packages. Publishing is a separate, manually approved step.
+# A pushed tag (X.Y.Z or X.Y.Z-pre.N) also publishes, once all of that has passed: see the release job.
 
 jobs:
   build:
@@ -200,13 +200,13 @@ jobs:
           "$GITHUB_WORKSPACE/build/smoke-cli.sh" "$temp/tool/$snap"
           "$GITHUB_WORKSPACE/build/smoke-cli.sh" dotnet dnx "Nullean.Snapshots.Cli@$root" --add-source "$feed" --yes
 
-  # Publishing to nuget.org: only from a manual run on a tag (gh workflow run ci.yml --ref <tag>), and only once every
-  # gate above has passed. Starting that run is the release decision; pushing a tag alone runs CI but never publishes.
+  # Publishing to nuget.org: a pushed tag (X.Y.Z or X.Y.Z-pre.N) publishes, and only once every gate above has passed.
+  # Pushing the tag is the release decision. A failed run can be re-run: pushing is skipped for packages already there.
   # The 'release' environment has no reviewers: it is kept because the nuget.org trusted publishing policy names it,
   # and it only lets tags deploy.
   # nuget.org trusts this workflow file (ci.yml) through a trusted publishing policy, so there is no long-lived key.
   release:
-    if: github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/')
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
     needs: [build, aot-pack, tool-pack, tool-smoke]
     runs-on: ubuntu-latest
     name: Publish to nuget.org
