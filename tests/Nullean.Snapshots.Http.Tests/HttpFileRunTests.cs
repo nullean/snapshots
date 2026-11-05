@@ -153,7 +153,7 @@ public class HttpFileRunTests
 	[Test]
 	public async Task AConnectionFailureStopsTheRunAndComesFirst()
 	{
-		var file = Files(("down.http", $"GET {{{{host}}}}/api/plain\n\n###\nGET http://localhost:{TestServer.FreePort()}/never\n\n###\nGET {{{{host}}}}/api/plain\n"));
+		var file = Files(("down.http", $"GET {{{{host}}}}/api/plain\n\n###\nGET http://localhost:{TestServer.RefusedPort}/never\n\n###\nGET {{{{host}}}}/api/plain\n"));
 
 		var transcript = await HttpFileSnapshot.RunAsync(file, new HttpFileSnapshotOptions { Variables = Host() });
 
