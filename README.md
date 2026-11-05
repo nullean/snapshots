@@ -18,7 +18,8 @@
 ---
 
 Nullean.Snapshots is snapshot testing on [AwesomeAssertions](https://awesomeassertions.org) for text, HTML, JSON,
-YAML and PNG images. A test's output is compared with a verified file kept with your tests; when it differs, the test fails with
+YAML, PNG images, browser journeys and HTTP responses. A test's output is compared with a verified file kept with your
+tests, or with a string literal right in the test (inline snapshots); when it differs, the test fails with
 a short, plain message that says exactly what moved and how to accept it. A small native AOT CLI, `snap`, reviews and
 accepts what changed.
 
@@ -60,17 +61,19 @@ Accept:   snap accept Shop.Tests/CatalogTests/Serializes   (or: dnx Nullean.Snap
 
 | Package | For |
 |---|---|
+| [`Nullean.Snapshots`](https://www.nuget.org/packages/Nullean.Snapshots) | the core: the snapshot store, accept modes, scrubbers, the line and tree differs and the failure messages; the other packages build on it |
 | [`Nullean.Snapshots.AwesomeAssertions`](https://www.nuget.org/packages/Nullean.Snapshots.AwesomeAssertions) | `Should().MatchSnapshot()` and `MatchInlineSnapshot()` for text, and the base the format packages build on |
 | [`Nullean.Snapshots.Html`](https://www.nuget.org/packages/Nullean.Snapshots.Html) | `MatchHtmlSnapshot`, `MatchInlineHtmlSnapshot`, `BeHtml`, `ContainHtml`, `NotContainHtml`; select, remove and transform first |
 | [`Nullean.Snapshots.Json`](https://www.nuget.org/packages/Nullean.Snapshots.Json) | `MatchJsonSnapshot` and `MatchInlineJsonSnapshot` for JSON text and objects (AOT-safe through `JsonTypeInfo<T>`), `BeJson` |
 | [`Nullean.Snapshots.Yaml`](https://www.nuget.org/packages/Nullean.Snapshots.Yaml) | `MatchYamlSnapshot`, `MatchInlineYamlSnapshot`, `BeYaml`; the YAML 1.2 core schema, anchors and merge keys, stored as written |
 | [`Nullean.Snapshots.Images`](https://www.nuget.org/packages/Nullean.Snapshots.Images) | `MatchImageSnapshot` for PNG screenshots; compared by pixels, with a diff image on failure |
-| `Nullean.Snapshots.Browser` | browser journeys: agent-browser commands run in Chrome with [Nullean.Cdp](https://cdp.nullean.net), each read compared as a tree (`JourneySnapshot`, `snap journey run`) |
-| `Nullean.Snapshots.Browser.Assertions` | `MatchJourneySnapshot` and `MatchAriaSnapshot` for AwesomeAssertions |
-| `Nullean.Snapshots.Http` | HTTP responses and `.http` files run with [Nullean.HttpFileParser](https://github.com/nullean/snapshots/tree/main/src/Nullean.HttpFileParser): status, chosen headers and JSON bodies compared as trees, secrets redacted (`HttpSnapshot`, `HttpFileSnapshot`, `snap http run`) |
-| `Nullean.Snapshots.Http.Assertions` | `MatchHttpSnapshot`, `MatchHttpFileSnapshot` and `HttpFileTest` for AwesomeAssertions |
+| [`Nullean.Snapshots.Browser`](https://www.nuget.org/packages/Nullean.Snapshots.Browser) | browser journeys: agent-browser commands run in Chrome with [Nullean.Cdp](https://cdp.nullean.net), each read compared as a tree (`JourneySnapshot`, `snap journey run`) |
+| [`Nullean.Snapshots.Browser.Assertions`](https://www.nuget.org/packages/Nullean.Snapshots.Browser.Assertions) | `MatchJourneySnapshot` and `MatchAriaSnapshot` for AwesomeAssertions |
+| [`Nullean.Snapshots.Http`](https://www.nuget.org/packages/Nullean.Snapshots.Http) | HTTP responses and `.http` files run with [Nullean.HttpFileParser](https://www.nuget.org/packages/Nullean.HttpFileParser): status, chosen headers and JSON bodies compared as trees, secrets redacted (`HttpSnapshot`, `HttpFileSnapshot`, `snap http run`) |
+| [`Nullean.Snapshots.Http.Assertions`](https://www.nuget.org/packages/Nullean.Snapshots.Http.Assertions) | `MatchHttpSnapshot`, `MatchHttpFileSnapshot` and `HttpFileTest` for AwesomeAssertions |
+| [`Nullean.HttpFileParser`](https://www.nuget.org/packages/Nullean.HttpFileParser) | parses, lints and runs `.http` files on its own, with no dependency on the snapshot packages; the portable subset of the Visual Studio, REST Client and JetBrains dialects |
 | [`Nullean.Snapshots.TUnit`](https://www.nuget.org/packages/Nullean.Snapshots.TUnit) | the running TUnit test's class, method and arguments, so every case gets its own file |
-| [`Nullean.Snapshots.Cli`](https://www.nuget.org/packages/Nullean.Snapshots.Cli) | `snap`: review, diff, accept, reject, and find orphaned snapshots |
+| [`Nullean.Snapshots.Cli`](https://www.nuget.org/packages/Nullean.Snapshots.Cli) | `snap`: review, diff, accept, reject, and find orphaned snapshots; accepting an inline snapshot rewrites the literal in the test; `snap journey run` and `snap http run` check journeys and `.http` files without a test run |
 
 ## Getting started
 
