@@ -388,6 +388,14 @@ beyond the BCL; `Nullean.Snapshots.Http` will build on it. It packs its own READ
   Linux only). That could not be confirmed: GitHub discards the log of a cancelled job. The Test step has its own 10-minute
   timeout so the next hang fails with its log. The browser tests are never skipped: without Chrome, or when it cannot be
   started, they fail (the runner images have Chrome, and a skipped test would hide exactly that).
+  The timeout did not capture a log: on a later freeze the Test step ran 17 minutes past its 10-minute limit, so the whole
+  VM stops answering and the agent cannot enforce it. Memory was ruled out as the obvious cause (five parallel Chromes
+  became two with no change in peak memory). So on macOS the Chrome-driven tests run in their own job, `browser-macos`:
+  still on macOS, still failing if Chrome is missing or cannot start, but outside the release job's `needs` and with
+  `continue-on-error`, so a frozen runner cannot hold up a release or fail the workflow. Every other test project runs on
+  every OS, one project at a time. This is also the experiment: if the gating macOS job still freezes without the browser
+  tests, they were not the cause. Six runs of the change answered it: the gating macOS job (browser tests out) passed every time (77 to 120 s), and the
+  browser job froze three times in six (the three that finished took 53 to 83 s), so the freeze is in the Chrome-driven tests.
 - **The browser tests use two Chromes, not five.** Four `LiveJourneyTests` each launched their own, next to the one
   `JourneySnapshot` shares, and TUnit runs them in parallel. Three now run through the shared one; the accessibility-tree test,
   which needs a page, uses one shared browser of its own. Measured locally this cuts the Chrome instances running at once from

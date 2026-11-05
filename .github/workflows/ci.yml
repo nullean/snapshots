@@ -48,13 +48,24 @@ jobs:
       - name: Build
         run: dotnet build -c Release
 
-      # Two different things have cancelled the macOS job. Most often it never got a runner at all (no steps, cancelled at
-      # exactly 15 minutes: GitHub's macOS pool was full), which only a re-run fixes. The other time it had a runner and
-      # the Test step hung until the job's own timeout, and GitHub discards the log of a cancelled job, so nobody could say
-      # which test it was. A step timeout fails the step instead, with its log kept.
+      # The macOS job has been cancelled in two ways. Most often it never got a runner at all (no steps, cancelled at exactly
+      # 15 minutes: GitHub's macOS pool was full), which only a re-run fixes. The other time it had a runner and the Test step
+      # froze: the whole VM stops answering, so not even this step's timeout fires and GitHub discards the log. The cause is
+      # not known, and the Chrome-driven tests are the main suspect, so on macOS they run in their own job below, which does
+      # not gate a release. Every other test project runs on every OS, one project at a time, so a failure names its project.
       - name: Test
         timeout-minutes: 10
-        run: dotnet test -c Release --no-build
+        shell: bash
+        run: |
+          failed=0
+          for project in tests/*/*.csproj; do
+            if [ "$RUNNER_OS" = "macOS" ] && [ "$(basename "$project")" = "Nullean.Snapshots.Browser.Tests.csproj" ]; then
+              echo "Skipping $project here: it runs in the browser-macos job."
+              continue
+            fi
+            dotnet test -c Release --no-build --project "$project" || failed=1
+          done
+          exit $failed
 
       # The CLI is a RID-specific tool and is packed by the jobs below; --no-build cannot pack it.
       - name: Pack the libraries
@@ -73,6 +84,36 @@ jobs:
           name: nupkg-libraries
           path: .artifacts/package-output/*.nupkg
           if-no-files-found: error
+
+  # The Chrome-driven tests on macOS, apart from the build job above so that a frozen runner cannot hold up a release: this job
+  # is not in the release job's needs, and continue-on-error keeps a failure from failing the workflow run. The tests still run
+  # on macOS and still fail, in this job's result, if Chrome is missing or cannot start.
+  browser-macos:
+    runs-on: macos-latest
+    name: Browser tests (macos-latest)
+    # A healthy run takes 1-2 minutes; when the runner freezes nothing else answers either, so do not wait long for it.
+    timeout-minutes: 10
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      # MinVer derives the version from tags, so the full tag list must be present.
+      - run: git fetch --prune --tags
+        shell: bash
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Build
+        run: dotnet build tests/Nullean.Snapshots.Browser.Tests -c Release
+
+      - name: Test
+        timeout-minutes: 10
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests
 
   # Native AOT cannot cross-compile between operating systems, so each RID packs on a matching runner.
   aot-pack:
