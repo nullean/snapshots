@@ -145,6 +145,58 @@ public class LiveJourneyTests
 	}
 
 	[Test]
+	public async Task PassingAssertionsAreNotInTheTranscript()
+	{
+		RequireChrome();
+
+		var transcript = await JourneySnapshot.RunAsync("journeys/shop.journey", new JourneySnapshotOptions { BaseUrl = Site });
+
+		transcript.Failure.Should().BeNull();
+		transcript.Text.Should().NotContain("expect", "a passing assertion records nothing, so the verified transcript is the one without it");
+	}
+
+	[Test]
+	public async Task AFailingAssertionFailsTheStepWithTheAssertionsMessage()
+	{
+		RequireChrome();
+		var file = Path.Combine(Path.GetTempPath(), $"expect-{Guid.NewGuid():N}.journey");
+		await File.WriteAllTextAsync(file, "open index.html\nget title\nexpect --timeout 200 text #count 5\nget url\n");
+		try
+		{
+			var transcript = await JourneySnapshot.RunAsync(file, new JourneySnapshotOptions { BaseUrl = Site });
+
+			transcript.Text.Should().Be("## get title\nurl: {origin}/index.html\n> Fixture shop\n", "the reads before the assertion stay, and nothing after it runs");
+			transcript.Failure!.Line.Should().Be(3);
+			transcript.Failure.Command.Should().Be("expect --timeout 200 text #count 5");
+			transcript.Failure.Message.Should().Be("Timed out after 0.2s waiting for css #count to have text \"5\": received \"0\".");
+		}
+		finally
+		{
+			File.Delete(file);
+		}
+	}
+
+	[Test]
+	public async Task SnapJourneyRunReportsAFailingAssertionAndExitsOne()
+	{
+		RequireChrome();
+		var output = new StringWriter();
+		var error = new StringWriter();
+		await using var browser = await Cdp.Browser.LaunchAsync();
+		var cli = new JourneyCli(new FileSystem(), Project, output, error,
+			(file, options, ct) => JourneySnapshot.RunAsync(file, browser, options, ct),
+			_ => null);
+
+		var exit = await cli.RunAsync(["cli-journeys/expect-fails.journey"], Site.AbsoluteUri, CancellationToken.None);
+
+		exit.Should().Be(1);
+		// The message names the journey by path, which differs per machine and per checkout.
+		(output.ToString() + error.ToString()).Replace("\r\n", "\n", StringComparison.Ordinal)
+			.Replace(Project.Replace('\\', '/').TrimEnd('/') + "/", "{project}/", StringComparison.Ordinal)
+			.Should().MatchSnapshot();
+	}
+
+	[Test]
 	public async Task AnAccessibilityTreeMatchesItsSnapshot()
 	{
 		RequireChrome();

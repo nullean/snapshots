@@ -131,6 +131,33 @@ A new accessibility problem, a broken link or a failed request is then a differe
 `vitals` and `metrics` change on every run, so snapshot them with `--budget`, which prints only whether each reading is
 within its limit. Add `--strict` to `a11y`, `links` or `network requests` to stop the journey at the step instead.
 
+## Assertions
+
+A journey can assert as well as read. An `expect` line checks again and again until it holds or times out (5 s, or
+`--timeout <ms>`), then fails the step:
+
+```text
+# journeys/shop.journey
+open index.html
+expect title "Fixture shop"
+find role button click --name "Add red lamp"
+expect text #count 1
+get text #count
+```
+
+A passing assertion records nothing, so it changes no verified transcript: `shop.verified.journey` above holds the
+`get text` and nothing for the `expect` lines. A failing one stops the journey like any failing step, and the received
+transcript keeps the reads before it, so the failure and the diff of what was read come together. Had line 5 expected `2`:
+
+```text
+Journey stopped at tests/Shop.Tests/journeys/shop.journey:5: expect text #count 2
+Timed out after 5s waiting for css #count to have text "2": received "1".
+```
+
+The matchers (visible, enabled, text, value, attribute, class, count, title, URL, negated with `--not`) are in Nullean.Cdp's
+[command reference](https://cdp.nullean.net/journeys/commands/#expect). `snap journey run`, `[JourneyFiles]` test cases
+and `JourneyTest.RunAsync` need nothing extra: they run the same lines.
+
 ## Screenshots and HAR files
 
 `screenshot` and `network har stop` write files. In a test they go next to the journey's received transcript,
@@ -160,3 +187,12 @@ are files, not part of the transcript: pixels differ between machines.
 Chrome is found from `CDP_CHROME`, `CHROME_PATH`, the usual install folders, then the `PATH`; GitHub's runner images
 have it. One Chrome is started per test process and each journey gets its own context, so journeys run in parallel
 without sharing cookies or storage.
+
+## Playwright and Elastic Synthetics
+
+The journey files are plain text, so the same file can also run on [Playwright](https://playwright.dev) or be pushed to
+[Elastic Synthetics](https://www.elastic.co/docs/solutions/observability/synthetics) as a browser monitor, through the
+`@nullean/journeys` npm package: [Playwright and Elastic Synthetics](https://cdp.nullean.net/journeys/playwright/) in
+Nullean.Cdp's documentation. Snapshots stay with the .NET run: it is `cdp run`'s reads that are compared with the verified
+transcript, and the Playwright runs show that the same journey still passes elsewhere. Playwright's accessibility tree is
+not the tree Nullean.Cdp prints, so a `snapshot` read on Playwright is never compared with a `.verified.journey`.

@@ -1,0 +1,2 @@
+Journey stopped at {project}/cli-journeys/expect-fails.journey:4: expect --timeout 300 text #count 5
+Timed out after 0.3s waiting for css #count to have text "5": received "0".
