@@ -354,13 +354,14 @@ All snapshot IO goes through `System.IO.Abstractions`, wrapped in `Nullean.Scope
   root and portable `any` packages, and install the tool from a local feed on each OS to run `build/smoke-cli.sh`,
   installed and through `dnx`. A plain `dotnet pack` of the tool emits managed per-RID packages too; those are dropped,
   as curb does, so only the AOT ones ship.
-- **Releasing.** Push a tag (`0.1.0-alpha.1`: MinVer takes the version from it), then start CI by hand on that tag
-  (`gh workflow run ci.yml --ref 0.1.0-alpha.1`). The `release` job runs only for such a manual run, needs every other
-  job including the smoke tests, and checks that every package carries the tag's version. Starting that run is the
-  release decision: the `release` environment has no reviewers (it stays because the nuget.org trusted publishing
-  policy names it, and only tags may deploy to it). It publishes with nuget.org trusted publishing (`NuGet/login`,
-  the org's `NUGET_USER`), so no API key is stored. The root tool package is pushed last, after the per-RID and `any`
-  packages it points at. A tag push alone never publishes. Once the packages are on nuget.org the job creates the
+- **Releasing.** Push a tag (`0.1.0-alpha.1`: MinVer takes the version from it), as nullean/entities and nullean/curb
+  do. The `release` job runs for a pushed tag, needs every other job including the smoke tests, and checks that every
+  package carries the tag's version. Pushing the tag is the release decision, so tag only what is meant to ship; a
+  failed run is fixed and re-run (the pushes skip what is already there). It was a manual run on the tag until the
+  repositories were aligned. The `release` environment has no reviewers (it stays because the nuget.org trusted
+  publishing policy names it, and only tags may deploy to it). It publishes with nuget.org trusted publishing
+  (`NuGet/login`, the org's `NUGET_USER`), so no API key is stored. The root tool package is pushed last, after the
+  per-RID and `any` packages it points at. Once the packages are on nuget.org the job creates the
   GitHub release for the tag (`gh release create --generate-notes`, notes from the pull requests since the previous
   tag, the packages attached, a `-` version marked as a prerelease); the job needs `contents: write` for it.
 - **No strong naming.** Nothing here needs it, and `InternalsVisibleTo` stays a plain assembly name.
