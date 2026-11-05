@@ -42,3 +42,5 @@ Aliases are the anchored value, and `<<` merge keys are resolved: explicit keys 
 merged mappings the first wins. A YAML snapshot with anchors compares equal to the same data written out in full.
 
 A stream of several documents compares document by document, with paths such as `$doc[1].name`.
+
+For a short value there is `MatchInlineYamlSnapshot`, which keeps the expected value in the test as a literal: see [inline snapshots](inline.md).

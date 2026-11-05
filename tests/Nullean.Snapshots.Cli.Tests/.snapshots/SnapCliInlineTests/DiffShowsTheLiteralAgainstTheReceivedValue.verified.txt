@@ -1,0 +1,6 @@
+--- tests/Acme.Tests/Rendering/HtmlTests.cs:3 (inline)
++++ .artifacts/.snapshots/received/Acme.Tests/Rendering/HtmlTests/A.L3.received.inline
+@@ line 1 @@
+-one
++1
++2

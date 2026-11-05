@@ -29,6 +29,9 @@ internal sealed record SnapshotFailure(
 	/// <summary>Further received files to point at, such as a diff image: a label and a repository-relative path.</summary>
 	public IReadOnlyList<(string Label, string Path)> Attachments { get; init; } = [];
 
+	/// <summary>Set for an inline snapshot: it has no verified file, its expected value is in the test's source.</summary>
+	public InlineFailure? Inline { get; init; }
+
 	/// <summary>True when there was no verified file to compare with.</summary>
 	public bool IsNew => Comparison is null;
 
@@ -40,8 +43,26 @@ internal sealed record SnapshotFailure(
 	{
 		var message = new StringBuilder();
 		var because = Because is { Length: > 0 } b ? " " + b : string.Empty;
-		if (Comparison is null)
+		if (Inline is { } inline)
+		{
+			if (Comparison is null)
+			{
+				message.Append(FormatName).Append(" inline snapshot is new").Append(because).Append(": ").Append(inline.Method)
+					.Append("() at ").Append(inline.Location).Append(" has no expected value\n");
+			}
+			else
+			{
+				message.Append(FormatName).Append(" did not match inline snapshot").Append(because).Append(": ").Append(inline.Location).Append('\n');
+				AppendComparison(message, Comparison);
+			}
+
+			if (inline.Note is { Length: > 0 } note)
+				message.Append(note).Append('\n');
+		}
+		else if (Comparison is null)
+		{
 			message.Append(FormatName).Append(" snapshot is new").Append(because).Append(": no verified file at ").Append(VerifiedPath).Append('\n');
+		}
 		else
 		{
 			message.Append(FormatName).Append(" did not match snapshot").Append(because).Append(": ").Append(VerifiedPath).Append('\n');
@@ -129,6 +150,12 @@ internal sealed record SnapshotFailure(
 		return lines;
 	}
 }
+
+/// <summary>An inline snapshot's place in the source, for its failure message.</summary>
+/// <param name="Location">Repository-relative file and line: <c>tests/Acme.Tests/Rendering/X.cs:42</c>.</param>
+/// <param name="Method">The assertion method, e.g. <c>MatchInlineSnapshot</c>.</param>
+/// <param name="Note">Why <c>SNAPSHOT_ACCEPT=1</c> could not rewrite the literal, if it tried and could not.</param>
+internal sealed record InlineFailure(string Location, string Method, string? Note);
 
 /// <summary>Renders comparisons the way failure messages do, for assertions that compare inline values.</summary>
 public static class SnapshotMessages

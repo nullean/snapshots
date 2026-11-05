@@ -47,3 +47,5 @@ page.Should().MatchHtmlSnapshot(html);
 ```
 
 `ContainHtml` ignores indentation, so a fragment matches wherever it is nested.
+
+For a short value there is `MatchInlineHtmlSnapshot`, which keeps the expected value in the test as a literal: see [inline snapshots](inline.md).

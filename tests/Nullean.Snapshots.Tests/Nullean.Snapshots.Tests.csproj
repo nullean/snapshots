@@ -4,6 +4,7 @@
     <PackageReference Include="TUnit" />
     <PackageReference Include="AwesomeAssertions" />
     <PackageReference Include="CsCheck" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     <PackageReference Include="TestableIO.System.IO.Abstractions.TestingHelpers" />
     <ProjectReference Include="../../src/Nullean.Snapshots/Nullean.Snapshots.csproj" />
     <ProjectReference Include="../../src/Nullean.Snapshots.AwesomeAssertions/Nullean.Snapshots.AwesomeAssertions.csproj" />

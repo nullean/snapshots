@@ -33,6 +33,9 @@
     <!-- The JSON oracle for the tree differ's property tests. Test-only, never a runtime dependency. -->
     <PackageVersion Include="SystemTextJson.JsonDiffPatch" Version="2.0.0" />
     <!-- The PNG oracle for the decoder's tests (a C# port of stb_image). Test-only, never a runtime dependency. -->
+    <!-- The oracle for the inline snapshot rewriter's tests: Roslyn must parse what it writes back to the same value.
+         Test-only, never a runtime dependency; the CLI lexes C# itself to stay small and AOT. -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
     <PackageVersion Include="StbImageSharp" Version="2.30.15" />
     <!-- ASP.NET Core's in-memory server, for the HTTP tests' WebApplicationFactory-style case. Test-only; the lowest
          net10 release. -->

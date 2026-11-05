@@ -41,3 +41,5 @@ See [paths and options](../reference/options.md).
 
 The overload that takes `JsonSerializerOptions` serializes with reflection and is marked as such; use the
 `JsonTypeInfo<T>` overload with a source-generated context in trimmed or native AOT test projects.
+
+For a short value there is `MatchInlineJsonSnapshot`, which keeps the expected value in the test as a literal: see [inline snapshots](inline.md).

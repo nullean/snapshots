@@ -333,6 +333,9 @@ All snapshot IO goes through `System.IO.Abstractions`, wrapped in `Nullean.Scope
 - **CLI:** scoped to `--root`. A marker whose verified folder lies outside the root is skipped with a warning instead
   of widening the scope, so a stray marker cannot point writes elsewhere.
 - Writes are atomic: a temporary file in the same folder, then a move.
+- **The one exception is inline snapshots** (see "Inline snapshots"): they edit a test's `.cs` file. The library does it
+  only under `SNAPSHOT_ACCEPT=1` (never in CI), through a file system scoped to the test project's directory, and only
+  for `.cs` files; the CLI only inside `--root`, and only for `.cs` files.
 
 ## Dependencies
 
@@ -462,3 +465,55 @@ AwesomeAssertions (as `.Browser` and `.Browser.Assertions` are split).
   start, that is per file, so the other files still run. It adds no trim or AOT warnings to the published tool.
 - **Tests run a real server**: an `HttpListener` on a free port (as the parser's tests do) and, once, ASP.NET Core's
   in-memory `TestServer` (`Microsoft.AspNetCore.TestHost` 10.0.0, test-only) for the `WebApplicationFactory` path.
+
+## Inline snapshots
+
+`MatchInlineSnapshot` (and `MatchInlineJsonSnapshot`, `MatchInlineYamlSnapshot`, `MatchInlineHtmlSnapshot`) keep the
+expected value as a string literal in the test; accepting rewrites that literal. Text, JSON, YAML and HTML only: an
+image or a transcript is not something to read in a source file.
+
+- **Finding the literal needs no Roslyn.** The compiler fills in `[CallerLineNumber]` and
+  `[CallerArgumentExpression(nameof(expected))]`; the source text of the argument says which of a call's arguments is the
+  literal (a named `expected:`, the second argument of the format overload, one of two calls on a line), and the method
+  name and line say which call. The line is the one of the `.MatchInlineSnapshot(` name for a chain over several lines
+  (checked against the real compiler, with a test that reads its own source), and the finder also accepts any line of
+  the call or its statement. A small C# lexer (comments, characters, regular, verbatim, interpolated and raw strings)
+  does the rest, because `snap` is a native AOT tool and Roslyn would be megabytes. Roslyn is a test-only oracle
+  (`Microsoft.CodeAnalysis.CSharp`): a property test checks that what the rewriter writes parses to the same value, and
+  that our reader agrees with Roslyn on literals it did not write.
+- **Wrappers must be called directly from the test**, with a parameter named `expected`: the finder searches the source
+  for the wrapper's method name (`InlineSnapshotCallSite.MethodName`). A helper that forwards to `MatchInlineSnapshot`
+  would put the line of the helper, not the test, in the record.
+- **No verified file; a received record.** A failing inline snapshot writes `{key}.L{line}.received.inline`, JSON with
+  the format, method, test file (relative to the received folder, as the marker's `verified=` is), line, the argument's
+  text, the value the literal held (null when left out) and the value to write. It sits in the received tree, so discovery,
+  `reject`, the `.tmp` rule and `snap status` need nothing new; `PendingSnapshot.VerifiedPath` is the test file, which is
+  where accepting writes. The key is `{Project}/{dir}/{Class}/{Method}.L{line}[.{argsHash}]`: the line tells two calls in
+  one test apart without a name, which a literal in the source could not carry. The project still gets a run manifest
+  (with no entries), so a project of only inline snapshots does not read as "no manifest" in `snap orphans`.
+- **The expected literal is not scrubbed, the actual value is.** As for a verified file. The literal is compared
+  normalised (line endings, one trailing newline), so `"a"` and `"a\n"` are the same snapshot.
+- **What is refused, with the reason, leaving the snapshot pending:** an expected value that is not a plain literal
+  (interpolated, constant, concatenation, variable); a literal that no longer holds the value the test ran with; test
+  cases of a data-driven test that disagree about one literal (all of them, since none is more right); a test file
+  outside the project (library) or `--root` (CLI), or one that is not `.cs`. Cases that agree are fine.
+- **A hash of the test file is in the record.** Accepting one literal can move the lines of the next (one line becomes
+  five), and a later record would then locate its call by a stale line; with a repeated literal text it could land on
+  the wrong call. So an accept is refused when the file's hash differs from the one the test saw ("run the tests
+  again"), and everything pending for one file is applied in one rewrite from the original text, bottom-up, so the
+  edits cannot disturb each other. `snap review` collects its accepts and applies them together when the walk ends.
+  Without a hash (the test could not read its source) the located call, the argument text and the old value still must
+  agree.
+- **`SNAPSHOT_ACCEPT=1` edits at process exit,** not during the test: the literal is located and checked at the
+  assertion (so a literal that cannot be rewritten fails at once with the reason, and the record is written), the edit is
+  queued, and `ProcessExit` applies them, with the manifests, one write per file, atomically, keeping the file's line
+  endings and byte order mark. A failure to apply writes the records back and says so on stderr. The test host may be
+  running the assembly built from the old text meanwhile; that is fine, it is already loaded.
+- **The literal:** a regular literal with C# escapes when the value is one line; otherwise a raw `"""` literal indented
+  one level (a tab in a tab-indented file, else four spaces) past the line that holds the call, with as many quotes as
+  the value's longest run of quotes needs plus one, at least three. A multi-line value with control characters, a
+  separator Roslyn treats as a line break (U+0085, U+2028, U+2029) or a lone surrogate is written as a regular literal
+  with escapes, because a raw literal would not read back as the same text.
+- **Known limit:** a tree format reports a changed value by its position in the verified file (`(verified.json:14:5)`).
+  Inline, that position is a line and column in the expected text, which the message still calls `verified.json`.
+  Relabelling it needs a name on `SnapshotFormat.Compare`; not done here.

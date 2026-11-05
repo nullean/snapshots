@@ -1,0 +1,4 @@
+2 pending snapshot(s):
+  changed  Acme.Tests/Rendering/HtmlTests/A.L3  .inline
+  changed  Acme.Tests/Rendering/HtmlTests/B.L4  .inline
+Review with 'snap diff <key>', then 'snap accept <key>' or 'snap reject <key>' (or --all).

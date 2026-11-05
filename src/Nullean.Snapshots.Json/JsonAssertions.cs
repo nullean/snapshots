@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using AwesomeAssertions;
+using AwesomeAssertions.Execution;
 using AwesomeAssertions.Primitives;
 using Nullean.Snapshots.Trees;
 
@@ -113,7 +114,7 @@ public static class JsonAssertions
 	/// <param name="expected">The expected JSON.</param>
 	/// <param name="diff">How trees are compared.</param>
 	/// <param name="because">An optional reason, shown in the failure message.</param>
-	public static AndConstraint<StringAssertions> BeJson(this StringAssertions assertions, string expected, TreeDiffOptions? diff = null, string because = "")
+	public static AndConstraint<StringAssertions> BeJson(this StringAssertions assertions, [StringSyntax(StringSyntaxAttribute.Json)] string expected, TreeDiffOptions? diff = null, string because = "")
 	{
 		ArgumentNullException.ThrowIfNull(assertions);
 		ArgumentNullException.ThrowIfNull(expected);
@@ -136,6 +137,130 @@ public static class JsonAssertions
 			: $"JSON did not match the expected JSON{Because(because)}:\n{SnapshotMessages.Describe(comparison)}";
 		SnapshotAssertions.FailUnless(assertions.CurrentAssertionChain, comparison.IsMatch, message);
 		return new AndConstraint<StringAssertions>(assertions);
+	}
+
+	/// <summary>
+	/// Asserts that the JSON text equals the expected JSON written in the test as a string literal (a raw <c>"""</c>
+	/// literal for several lines), compared as a tree. Leave <paramref name="expected"/> out to write a new snapshot:
+	/// the assertion fails, and <c>snap accept</c> (or <c>SNAPSHOT_ACCEPT=1</c>) writes the pretty-printed JSON into the
+	/// source.
+	/// </summary>
+	/// <param name="assertions">The string assertions.</param>
+	/// <param name="expected">The expected JSON, as a literal.</param>
+	/// <param name="diff">How trees are compared: key order, strict numbers, ignored paths.</param>
+	/// <param name="options">Per-call snapshot options such as scrubbers; they run on the pretty-printed JSON.</param>
+	/// <param name="because">An optional reason, shown in the failure message.</param>
+	/// <param name="expectedExpression">Filled in by the compiler: how <paramref name="expected"/> reads in the source.</param>
+	/// <param name="callerFilePath">Filled in by the compiler.</param>
+	/// <param name="callerMemberName">Filled in by the compiler.</param>
+	/// <param name="callerLineNumber">Filled in by the compiler.</param>
+	public static AndConstraint<StringAssertions> MatchInlineJsonSnapshot(
+		this StringAssertions assertions,
+		[StringSyntax(StringSyntaxAttribute.Json)] string? expected = null,
+		TreeDiffOptions? diff = null,
+		SnapshotOptions? options = null,
+		string because = "",
+		[CallerArgumentExpression(nameof(expected))] string? expectedExpression = null,
+		[CallerFilePath] string callerFilePath = "",
+		[CallerMemberName] string callerMemberName = "",
+		[CallerLineNumber] int callerLineNumber = 0
+	)
+	{
+		ArgumentNullException.ThrowIfNull(assertions);
+		if (assertions.Subject is null)
+			return FailNull(assertions);
+		MatchInline(assertions.CurrentAssertionChain, assertions.Subject, expected, diff, options, because, expectedExpression, callerFilePath, callerMemberName, callerLineNumber);
+		return new AndConstraint<StringAssertions>(assertions);
+	}
+
+	/// <summary>
+	/// Asserts that the object, serialized with <paramref name="typeInfo"/>, equals the expected JSON written in the test
+	/// as a string literal. Safe for trimming and native AOT.
+	/// </summary>
+	/// <param name="assertions">The object assertions.</param>
+	/// <param name="typeInfo">The serialization metadata for <typeparamref name="T"/>.</param>
+	/// <param name="expected">The expected JSON, as a literal.</param>
+	/// <param name="diff">How trees are compared.</param>
+	/// <param name="options">Per-call snapshot options such as scrubbers.</param>
+	/// <param name="because">An optional reason, shown in the failure message.</param>
+	/// <param name="expectedExpression">Filled in by the compiler.</param>
+	/// <param name="callerFilePath">Filled in by the compiler.</param>
+	/// <param name="callerMemberName">Filled in by the compiler.</param>
+	/// <param name="callerLineNumber">Filled in by the compiler.</param>
+	public static AndConstraint<ObjectAssertions> MatchInlineJsonSnapshot<T>(
+		this ObjectAssertions assertions,
+		JsonTypeInfo<T> typeInfo,
+		[StringSyntax(StringSyntaxAttribute.Json)] string? expected = null,
+		TreeDiffOptions? diff = null,
+		SnapshotOptions? options = null,
+		string because = "",
+		[CallerArgumentExpression(nameof(expected))] string? expectedExpression = null,
+		[CallerFilePath] string callerFilePath = "",
+		[CallerMemberName] string callerMemberName = "",
+		[CallerLineNumber] int callerLineNumber = 0
+	)
+	{
+		ArgumentNullException.ThrowIfNull(assertions);
+		ArgumentNullException.ThrowIfNull(typeInfo);
+		var json = JsonSerializer.Serialize((T)assertions.Subject, typeInfo);
+		MatchInline(assertions.CurrentAssertionChain, json, expected, diff, options, because, expectedExpression, callerFilePath, callerMemberName, callerLineNumber);
+		return new AndConstraint<ObjectAssertions>(assertions);
+	}
+
+	/// <summary>
+	/// Asserts that the object, serialized with <paramref name="serializerOptions"/>, equals the expected JSON written in
+	/// the test as a string literal.
+	/// </summary>
+	/// <param name="assertions">The object assertions.</param>
+	/// <param name="expected">The expected JSON, as a literal.</param>
+	/// <param name="serializerOptions">How to serialize; <see cref="JsonSerializerOptions.Default"/> when null.</param>
+	/// <param name="diff">How trees are compared.</param>
+	/// <param name="options">Per-call snapshot options such as scrubbers.</param>
+	/// <param name="because">An optional reason, shown in the failure message.</param>
+	/// <param name="expectedExpression">Filled in by the compiler.</param>
+	/// <param name="callerFilePath">Filled in by the compiler.</param>
+	/// <param name="callerMemberName">Filled in by the compiler.</param>
+	/// <param name="callerLineNumber">Filled in by the compiler.</param>
+	[RequiresUnreferencedCode(ReflectionReason)]
+	[RequiresDynamicCode(ReflectionReason)]
+	public static AndConstraint<ObjectAssertions> MatchInlineJsonSnapshot(
+		this ObjectAssertions assertions,
+		[StringSyntax(StringSyntaxAttribute.Json)] string? expected = null,
+		JsonSerializerOptions? serializerOptions = null,
+		TreeDiffOptions? diff = null,
+		SnapshotOptions? options = null,
+		string because = "",
+		[CallerArgumentExpression(nameof(expected))] string? expectedExpression = null,
+		[CallerFilePath] string callerFilePath = "",
+		[CallerMemberName] string callerMemberName = "",
+		[CallerLineNumber] int callerLineNumber = 0
+	)
+	{
+		ArgumentNullException.ThrowIfNull(assertions);
+		var subject = assertions.Subject;
+		var json = subject is null
+			? "null"
+			: JsonSerializer.Serialize(subject, subject.GetType(), serializerOptions ?? JsonSerializerOptions.Default);
+		MatchInline(assertions.CurrentAssertionChain, json, expected, diff, options, because, expectedExpression, callerFilePath, callerMemberName, callerLineNumber);
+		return new AndConstraint<ObjectAssertions>(assertions);
+	}
+
+	private static void MatchInline(
+		AssertionChain chain,
+		string json,
+		string? expected,
+		TreeDiffOptions? diff,
+		SnapshotOptions? options,
+		string because,
+		string? expression,
+		string file,
+		string member,
+		int line
+	)
+	{
+		var site = new InlineSnapshotCallSite(new SnapshotCallSite(file, member, line), nameof(MatchInlineJsonSnapshot), expression);
+		var result = Snapshot.MatchInline(JsonSnapshot.Pretty(json), expected, JsonSnapshot.FormatWith(diff), site, options, because);
+		SnapshotAssertions.FailUnless(chain, result.Passed, result.FailureMessage ?? string.Empty);
 	}
 
 	private static void Match(string json, TreeDiffOptions? diff, string? name, SnapshotOptions? options, string because, string file, string member, int line) =>

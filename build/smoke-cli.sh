@@ -92,6 +92,64 @@ run "$@" accept --all --root "$fixture"
 run "$@" status --root "$fixture"
 [ "$code" -eq 0 ] || fail "status should exit 0 once everything is accepted"
 
+# An inline snapshot: the received record names a test file and the line of the call, and accepting rewrites the string
+# literal there. The record carries the file's hash, as the library writes it, so the same check runs here.
+sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | cut -d' ' -f1; else shasum -a 256 "$1" | cut -d' ' -f1; fi; }
+mkdir -p "$fixture/tests/Acme.Tests/Rendering"
+source="$fixture/tests/Acme.Tests/Rendering/HtmlTests.cs"
+cat > "$source" <<'EOF_SOURCE'
+class HtmlTests
+{
+    void A() => x.Should().MatchInlineSnapshot("one");
+}
+EOF_SOURCE
+cat > "$received/Rendering/HtmlTests/A.L3.received.inline" <<EOF_RECORD
+{
+  "format": "Text",
+  "method": "MatchInlineSnapshot",
+  "source": "../../../../tests/Acme.Tests/Rendering/HtmlTests.cs",
+  "sourceHash": "$(sha "$source")",
+  "line": 3,
+  "expression": "\"one\"",
+  "expected": "one",
+  "actual": "1\n2\n"
+}
+EOF_RECORD
+
+run "$@" status --root "$fixture"
+[ "$code" -eq 1 ] || fail "status should exit 1 with a pending inline snapshot"
+case "$out" in *"A.L3  .inline"*) ;; *) fail "status should list the inline snapshot" ;; esac
+
+run "$@" diff A.L3 --root "$fixture"
+[ "$code" -eq 0 ] || fail "diff of an inline snapshot should exit 0"
+case "$out" in *"HtmlTests.cs:3 (inline)"*"+2"*) ;; *) fail "diff should show the literal against the received value" ;; esac
+
+run "$@" accept A.L3 --root "$fixture"
+[ "$code" -eq 0 ] || fail "accept of an inline snapshot should exit 0"
+case "$(cat "$source")" in *'MatchInlineSnapshot("""'*) ;; *) fail "accept should rewrite the literal as a raw string" ;; esac
+[ ! -e "$received/Rendering/HtmlTests/A.L3.received.inline" ] || fail "accept should delete the inline record"
+
+# The file changed since the test ran: nothing is edited, the record stays, and the command says so.
+cat > "$received/Rendering/HtmlTests/A.L3.received.inline" <<EOF_RECORD
+{
+  "format": "Text",
+  "method": "MatchInlineSnapshot",
+  "source": "../../../../tests/Acme.Tests/Rendering/HtmlTests.cs",
+  "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "line": 3,
+  "expression": "\"one\"",
+  "expected": "one",
+  "actual": "3\n"
+}
+EOF_RECORD
+before="$(cat "$source")"
+run "$@" accept A.L3 --root "$fixture"
+[ "$code" -eq 1 ] || fail "accept of an inline snapshot whose file changed should exit 1"
+case "$out" in *"the file changed since the test ran"*) ;; *) fail "accept should say why it refused" ;; esac
+[ "$(cat "$source")" = "$before" ] || fail "a refused inline accept should leave the source alone"
+run "$@" reject A.L3 --root "$fixture"
+[ "$code" -eq 0 ] || fail "reject of an inline snapshot should exit 0"
+
 # snap http run needs no server to fail: a refused connection stops the run, the failure comes first, and the partial
 # transcript is written for review, never accepted.
 mkdir -p "$fixture/tests/Acme.Tests/http"

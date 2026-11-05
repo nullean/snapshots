@@ -6,12 +6,15 @@ images are stored exactly as given. Each compares in its own way:
 | Format | Stored as | Compared |
 |---|---|---|
 | [Text](text.md) | the text | line by line, shown as unified hunks |
+| [Inline](inline.md) | a string literal in the test | as its format: text, HTML, JSON or YAML |
 | [HTML](html.md) | pretty-printed HTML | as a DOM with AngleSharp.Diffing, plus a line diff |
 | [JSON](json.md) | pretty-printed JSON | as a tree: keys in any order, numbers by value |
 | [YAML](yaml.md) | the YAML as written | as a tree with the YAML 1.2 core schema |
 | [Images](images.md) | the PNG as given | by pixels, perceptually, with anti-aliasing left out |
 | [Browser journeys](browser.md) | a transcript of a journey's reads | section by section, accessibility trees as trees |
 | [HTTP](http.md) | a transcript of each response: status, chosen headers, body | section by section, JSON bodies as trees |
+
+Any of the text formats can also live in the test itself, as an [inline snapshot](inline.md).
 
 Structural formats never rewrite a verified file that still matches: reformatting it by hand, a whitespace change in
 the output, or an image re-encoded with the same pixels does not fail a test.

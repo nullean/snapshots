@@ -68,9 +68,10 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 	{
 		if (Select(pending, patterns, all) is not { } selected)
 			return ExitCode.Usage;
-		foreach (var snapshot in selected)
+		foreach (var snapshot in selected.Where(s => s.Inline is null))
 			AcceptOne(fs, snapshot);
-		return ExitCode.Ok;
+		// An edit that cannot be made leaves its snapshot pending, so the command exits 1 as 'snap status' would.
+		return AcceptInline(fs, [.. selected.Where(s => s.Inline is not null)]) == 0 ? ExitCode.Ok : ExitCode.Pending;
 	});
 
 	public int Reject(IReadOnlyList<string> patterns, bool all) => Run((pending, fs) =>
@@ -95,6 +96,9 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 		}
 
 		int accepted = 0, rejected = 0, left = pending.Count;
+		// Inline snapshots are edited together once the walk is over: accepting one grows the file and moves the lines
+		// the next one was recorded at.
+		var inline = new List<PendingSnapshot>();
 		for (var i = 0; i < pending.Count; i++)
 		{
 			var snapshot = pending[i];
@@ -104,7 +108,11 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 			var answer = Ask(prompt);
 			if (answer == 'q')
 				break;
-			if (answer == 'a')
+			if (answer == 'a' && snapshot.Inline is not null)
+			{
+				inline.Add(snapshot);
+			}
+			else if (answer == 'a')
 			{
 				AcceptOne(fs, snapshot);
 				accepted++;
@@ -116,6 +124,14 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 				rejected++;
 				left--;
 			}
+		}
+
+		if (inline.Count > 0)
+		{
+			output.WriteLine();
+			var applied = inline.Count - AcceptInline(fs, inline);
+			accepted += applied;
+			left -= applied;
 		}
 
 		output.WriteLine();
@@ -209,6 +225,12 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 
 	private void WriteDiff(IFileSystem fs, PendingSnapshot snapshot, bool color)
 	{
+		if (snapshot.Inline is { } inline)
+		{
+			WriteInlineDiff(snapshot, inline, color);
+			return;
+		}
+
 		var bytes = fs.File.ReadAllBytes(snapshot.ReceivedPath);
 		if (SnapshotPath.IsBinary(bytes))
 		{
@@ -225,6 +247,70 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 			foreach (var line in hunk)
 				output.WriteLine(color ? Colored(line) : line);
 		}
+	}
+
+	/// <summary>An inline snapshot's diff: the literal in the test's source against the value the test produced.</summary>
+	private void WriteInlineDiff(PendingSnapshot snapshot, InlineRecord record, bool color)
+	{
+		output.WriteLine($"--- {InlineLocation(snapshot)} ({(snapshot.IsNew ? "inline, new: no expected value" : "inline")})");
+		output.WriteLine("+++ " + Relative(snapshot.ReceivedPath));
+		var expected = SnapshotText.Normalize(record.Edit.Expected ?? string.Empty);
+		foreach (var hunk in LineDiff.Hunks(expected, SnapshotText.Normalize(record.Edit.NewValue)))
+		{
+			foreach (var line in hunk)
+				output.WriteLine(color ? Colored(line) : line);
+		}
+	}
+
+	private string InlineLocation(PendingSnapshot snapshot) =>
+		Relative(snapshot.VerifiedPath) + ":" + snapshot.Inline!.Edit.Line.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+	/// <summary>
+	/// Writes the accepted values into the literals of their test files, one write per file, and removes the received
+	/// records of those that were. A snapshot whose literal cannot be rewritten (the file changed since the test ran, the
+	/// expected value is not a plain literal, test cases disagree) stays pending with its reason on stderr. Returns how
+	/// many stayed pending.
+	/// </summary>
+	private int AcceptInline(IFileSystem fs, IReadOnlyList<PendingSnapshot> snapshots)
+	{
+		var refused = 0;
+		foreach (var file in snapshots.GroupBy(s => s.VerifiedPath, StringComparer.Ordinal))
+		{
+			var items = file.ToList();
+			var errors = new string?[items.Count];
+			if (!file.Key.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) || !fs.File.Exists(file.Key))
+			{
+				Array.Fill(errors, $"{Relative(file.Key)} is not a C# file that exists.");
+			}
+			else
+			{
+				var bytes = fs.File.ReadAllBytes(file.Key);
+				var hash = InlineSnapshotSource.Hash(bytes);
+				var text = InlineSnapshotSource.ReadText(bytes, out var bom);
+				var changed = items.Select(i => i.Inline!.SourceHash is not null && i.Inline.SourceHash != hash).ToArray();
+				var eligible = Enumerable.Range(0, items.Count).Where(i => !changed[i]).ToList();
+				var rewrite = InlineSnapshotSource.Rewrite(text, [.. eligible.Select(i => items[i].Inline!.Edit)]);
+				for (var i = 0; i < items.Count; i++)
+					errors[i] = changed[i] ? "the file changed since the test ran; run the tests again." : rewrite.Errors[eligible.IndexOf(i)];
+				if (errors.Any(e => e is null))
+					AtomicFile.Write(fs, file.Key, InlineSnapshotSource.ToBytes(rewrite.Source, bom));
+			}
+
+			for (var i = 0; i < items.Count; i++)
+			{
+				if (errors[i] is { } reason)
+				{
+					refused++;
+					error.WriteLine($"not accepted  {items[i].Key}  ({InlineLocation(items[i])}): {reason}");
+					continue;
+				}
+
+				DeleteReceived(fs, items[i]);
+				output.WriteLine($"accepted  {items[i].Key}  -> {InlineLocation(items[i])}");
+			}
+		}
+
+		return refused;
 	}
 
 	/// <summary>A binary snapshot has no line diff: its paths, sizes and attachments (a diff image) instead.</summary>
@@ -266,6 +352,9 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 	/// </summary>
 	private void AcceptOne(IFileSystem fs, PendingSnapshot snapshot)
 	{
+		// An inline record is JSON about an edit; copying it over its target would destroy the test's source.
+		if (snapshot.Inline is not null)
+			throw new InvalidOperationException($"{snapshot.Key} is an inline snapshot; it is accepted with AcceptInline.");
 		var bytes = fs.File.ReadAllBytes(snapshot.ReceivedPath);
 		if (SnapshotPath.IsBinary(bytes))
 			AtomicFile.Write(fs, snapshot.VerifiedPath, bytes.AsMemory());
@@ -319,13 +408,23 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 					error.WriteLine($"Skipping {Relative(found.Directory)}: its verified folder {found.VerifiedDirectory} is outside {_root}. Pass --root.");
 			}
 
-			return command(new RunContext(scoped, roots, discovery.Find(roots)));
+			var pending = discovery.Find(roots, (file, why) => error.WriteLine($"Skipping {Relative(file)}: {why}"));
+			return command(new RunContext(scoped, roots, [.. pending.Where(UsableInline)]));
 		}
 		catch (Exception e) when (e is IOException or UnauthorizedAccessException or SecurityException)
 		{
 			error.WriteLine("Error: " + e.Message);
 			return ExitCode.Io;
 		}
+	}
+
+	/// <summary>An inline snapshot whose test file is outside the root is skipped with a warning, as a marker's verified folder is.</summary>
+	private bool UsableInline(PendingSnapshot snapshot)
+	{
+		if (snapshot.Inline is null || IsSameOrInside(snapshot.VerifiedPath, _root))
+			return true;
+		error.WriteLine($"Skipping {snapshot.Key}: its test file {snapshot.VerifiedPath} is outside {_root}. Pass --root.");
+		return false;
 	}
 
 	/// <summary>
@@ -427,11 +526,13 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 				json.WriteString("key", p.Key);
 				json.WriteString("ext", p.Extension);
 				json.WriteString("state", p.IsNew ? "new" : "changed");
-				if (p.IsNew)
+				if (p.IsNew || p.Inline is not null)
 					json.WriteNull("verified");
 				else
 					json.WriteString("verified", Relative(p.VerifiedPath));
 				json.WriteString("received", Relative(p.ReceivedPath));
+				if (p.Inline is not null)
+					json.WriteString("source", InlineLocation(p));
 				json.WriteEndObject();
 			}
 
@@ -463,7 +564,7 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 
 	private string Relative(string path) => SnapshotPath.Relative(fileSystem, _root, path);
 
-	private Nullean.ScopedFileSystem.ScopedFileSystem Scoped(string scopeRoot) =>
+	private ScopedFileSystem.ScopedFileSystem Scoped(string scopeRoot) =>
 		new(fileSystem, new ScopedFileSystemOptions(scopeRoot)
 		{
 			AllowedHiddenFolderNames = AllowedHiddenFolders,

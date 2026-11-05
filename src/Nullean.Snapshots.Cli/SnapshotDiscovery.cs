@@ -8,10 +8,11 @@ internal sealed record ReceivedRoot(string Directory, string Project, string Ver
 /// <summary>A received file waiting to be accepted or rejected.</summary>
 /// <param name="Key">The snapshot key, <c>{Project}/{dir}/{Class}/{Method}[.{name}][.{hash}]</c>.</param>
 /// <param name="Extension">The file extension without a dot.</param>
-/// <param name="VerifiedPath">Where accepting writes to.</param>
+/// <param name="VerifiedPath">Where accepting writes to: the verified file, or for an inline snapshot the test's source file.</param>
 /// <param name="ReceivedPath">The received file.</param>
-/// <param name="IsNew">True when there is no verified file yet.</param>
-internal sealed record PendingSnapshot(string Key, string Extension, string VerifiedPath, string ReceivedPath, bool IsNew);
+/// <param name="IsNew">True when there is no verified file yet, or for an inline snapshot no expected value.</param>
+/// <param name="Inline">The record of an inline snapshot (<c>.received.inline</c>); null for every other kind.</param>
+internal sealed record PendingSnapshot(string Key, string Extension, string VerifiedPath, string ReceivedPath, bool IsNew, InlineRecord? Inline = null);
 
 /// <summary>
 /// Finds received files without globbing the whole tree: it probes the artifacts folders, then <c>obj/</c> next to
@@ -53,7 +54,11 @@ internal sealed class SnapshotDiscovery(IFileSystem fs)
 		return roots;
 	}
 
-	public IReadOnlyList<PendingSnapshot> Find(IReadOnlyList<ReceivedRoot> roots)
+	/// <summary>
+	/// The received files under <paramref name="roots"/>. <paramref name="warn"/> hears about files that cannot be used (an
+	/// inline record that does not parse), with the file's path and why.
+	/// </summary>
+	public IReadOnlyList<PendingSnapshot> Find(IReadOnlyList<ReceivedRoot> roots, Action<string, string>? warn = null)
 	{
 		var pending = new List<PendingSnapshot>();
 		foreach (var root in roots)
@@ -67,6 +72,22 @@ internal sealed class SnapshotDiscovery(IFileSystem fs)
 				var extension = name[(at + SnapshotPath.ReceivedInfix.Length)..];
 				var relative = SnapshotPath.Relative(fs, root.Directory, file);
 				var withinProject = relative[..(relative.Length - name.Length + at)];
+				if (extension == "inline")
+				{
+					try
+					{
+						var record = InlineRecord.Parse(fs.File.ReadAllText(file, SnapshotText.Encoding));
+						var source = fs.Path.GetFullPath(fs.Path.Combine(root.Directory, record.Source.Replace('/', fs.Path.DirectorySeparatorChar)));
+						pending.Add(new PendingSnapshot(root.Project + "/" + withinProject, extension, source, file, record.Edit.Expected is null, record));
+					}
+					catch (FormatException e)
+					{
+						warn?.Invoke(file, e.Message);
+					}
+
+					continue;
+				}
+
 				var verified = SnapshotPath.File(fs, root.VerifiedDirectory, withinProject, SnapshotPath.VerifiedInfix, extension);
 				pending.Add(new PendingSnapshot(root.Project + "/" + withinProject, extension, verified, file, !fs.File.Exists(verified)));
 			}

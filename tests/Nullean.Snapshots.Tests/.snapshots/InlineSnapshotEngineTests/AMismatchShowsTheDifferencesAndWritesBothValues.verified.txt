@@ -1,0 +1,9 @@
+Text did not match inline snapshot: tests/Acme.Tests/Rendering/HtmlTests.cs:10
+1 difference(s):
+@@ line 1 @@
+ a
+-b
++B
+ c
+Received: .artifacts/.snapshots/received/Acme.Tests/Rendering/HtmlTests/RendersTable.L10.received.inline
+Accept:   snap accept Acme.Tests/Rendering/HtmlTests/RendersTable.L10   (or: dnx Nullean.Snapshots.Cli accept Acme.Tests/Rendering/HtmlTests/RendersTable.L10)
