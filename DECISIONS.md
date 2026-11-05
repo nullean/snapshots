@@ -386,8 +386,8 @@ beyond the BCL; `Nullean.Snapshots.Http` will build on it. It packs its own READ
   only a re-run helps. (2) It had a runner and the Test step ran until the job's timeout (6 jobs, cancelled at 1500 s),
   most likely the Chrome-driven tests (cdp's workflow records the same on small macOS runners, and runs browser tests on
   Linux only). That could not be confirmed: GitHub discards the log of a cancelled job. The Test step has its own 10-minute
-  timeout so the next hang fails with its log, and the Linux job sets `SNAPSHOTS_BROWSER_REQUIRED=1` so Chrome tests cannot
-  silently skip there.
+  timeout so the next hang fails with its log. The browser tests are never skipped: without Chrome, or when it cannot be
+  started, they fail (the runner images have Chrome, and a skipped test would hide exactly that).
 - **Dialect: the portable subset.** What Visual Studio 17.8+ and the VS Code REST Client share, plus JetBrains'
   script-free forms: `### name` separators, indented URL continuation lines, `$uuid`/`$random.uuid`/`$isoTimestamp`,
   `$env.NAME`, `@timeout` with a unit, multipart bodies mixing text and `< ./file` lines (joined with CRLF, as

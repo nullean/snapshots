@@ -6,8 +6,8 @@ using Nullean.Snapshots.Cli;
 namespace Nullean.Snapshots.Browser.Tests;
 
 /// <summary>
-/// Journeys in a real Chrome against the pages in site/. Without a Chrome they are skipped with the reason, unless
-/// SNAPSHOTS_BROWSER_REQUIRED=1 (CI) makes that a failure.
+/// Journeys in a real Chrome against the pages in site/. The runner images have Chrome; without one, or when it cannot
+/// be started, these tests fail: they are never skipped.
 /// </summary>
 public class LiveJourneyTests
 {
@@ -20,11 +20,8 @@ public class LiveJourneyTests
 	internal static void RequireChrome()
 	{
 		var location = new ChromeLocator().Locate();
-		if (location.Found)
-			return;
-		if (Environment.GetEnvironmentVariable("SNAPSHOTS_BROWSER_REQUIRED") == "1")
-			throw new InvalidOperationException("SNAPSHOTS_BROWSER_REQUIRED=1 but " + location.Describe());
-		Skip.Test(location.Describe());
+		if (!location.Found)
+			throw new InvalidOperationException("The browser tests need Chrome. " + location.Describe());
 	}
 
 	public static IEnumerable<string> Journeys() => JourneySnapshot.Find();
