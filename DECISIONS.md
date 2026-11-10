@@ -631,3 +631,10 @@ image or a transcript is not something to read in a source file.
   step or request and leaves out names that are not valid; the parsers report them when the file runs.
 - **Display names are set explicitly.** A `TestDataRow` shows its data expression (`Run(file)`) unless given a display
   name, so the data source writes `Run(<name>)` itself, as the arguments used to render.
+
+## `snap journey run` and usage text
+
+- **Words that look like options are one error, not one per word.** `[--variant plain]` copied from usage text reaches the
+  command as the files `[--variant` and `plain]`, and each used to print `no journey matches`. A word that starts with `-`
+  or `[-`, or ends with `]` without a `[`, and matches no file, is reported together with the command it spells without
+  the brackets. A real glob keeps its own error, and a journey whose name starts with `-` still runs when the file exists.

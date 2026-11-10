@@ -183,6 +183,23 @@ public class LiveJourneyTests
 	}
 
 	[Test]
+	public async Task SnapJourneyRunExplainsUsageTextPastedWithItsBrackets()
+	{
+		var error = new StringWriter();
+		var cli = new JourneyCli(new FileSystem(), Project, new StringWriter(), error,
+			(_, _, _) => throw new InvalidOperationException("nothing should run"),
+			_ => null);
+
+		var exit = await cli.RunAsync(["cli-journeys/checks.journey", "[--variant", "plain]", "[--transcript", "off]", "missing.journey"], null, CancellationToken.None);
+
+		exit.Should().Be(2);
+		error.ToString().Replace("\r\n", "\n", StringComparison.Ordinal).Should().MatchInlineSnapshot("""
+			Error: no journey matches 'missing.journey'.
+			Error: '[--variant', 'plain]', '[--transcript', 'off]' look like options from usage text, not journeys. Brackets there mark an optional part and are not typed: write --variant plain --transcript off.
+			""");
+	}
+
+	[Test]
 	public async Task SnapJourneyRunReportsAFailingAssertionAndExitsOne()
 	{
 		RequireChrome();
