@@ -40,6 +40,7 @@
     <ProjectReference Include="../Nullean.Snapshots/Nullean.Snapshots.csproj" />
     <!-- For 'snap journey run' only, the one command that starts a browser (DECISIONS.md, "Browser"). -->
     <ProjectReference Include="../Nullean.Snapshots.Browser/Nullean.Snapshots.Browser.csproj" />
+    <ProjectReference Include="../Nullean.Snapshots.Browser.Console/Nullean.Snapshots.Browser.Console.csproj" />
     <!-- For 'snap http run' only, the one command that sends HTTP requests (DECISIONS.md, "HTTP"). -->
     <ProjectReference Include="../Nullean.Snapshots.Http/Nullean.Snapshots.Http.csproj" />
   </ItemGroup>

@@ -253,10 +253,11 @@ are files, not part of the transcript: pixels differ between machines.
 | `ActionTimeout`, `NavigationTimeout` | | Nullean.Cdp's 5 s and 30 s by default |
 | `Transcript` | `--transcript compare\|off` | `Off` runs the steps and `expect` lines and compares no transcript; see [a live site](#a-live-site-and-variants) |
 | `Variant` | `--variant <name>` | compares with `{journey}.{variant}.verified.journey`; see [a live site](#a-live-site-and-variants) |
-| `Features`, `BuildType`, `Env` | | what `feature` blocks and `@requires` are judged against; see [journeys that apply](#journeys-that-apply-to-some-sites) |
-| `ReadOnly`, `WritableUrls` | | refuse writes, except to these URL globs |
-| `Viewport` | | the size every journey starts with; Chrome's default is a phone layout on a responsive site |
-| `UserAgent`, `Headers` | | what every page of the run sends, such as the identity a site uses to tell a monitor from a visitor |
+| `Features`, `BuildType`, `Env` | `--feature`, `--build-type`, `--env` | what `feature` blocks and `@requires` are judged against; see [journeys that apply](#journeys-that-apply-to-some-sites) |
+| `ReadOnly`, `WritableUrls` | `--read-only`, `--writable` | refuse writes, except to these URL globs |
+| `Viewport` | `--viewport` | the size every journey starts with; Chrome's default is a phone layout on a responsive site |
+| `UserAgent`, `Headers` | `--user-agent`, `--header` | what every page of the run sends, such as the identity a site uses to tell a monitor from a visitor |
+| `OnStep` | | called before each step, for a progress display |
 
 ## Run a suite from the console
 

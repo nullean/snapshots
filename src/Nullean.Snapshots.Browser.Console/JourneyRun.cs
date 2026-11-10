@@ -109,8 +109,11 @@ public sealed class JourneyRunOptions
 	/// <summary>Write a JUnit XML report here.</summary>
 	public string? JUnitPath { get; init; }
 
-	/// <summary>Append a table of the outcomes to the file <c>GITHUB_STEP_SUMMARY</c> names, when that variable is set. Default: <c>true</c>.</summary>
+	/// <summary>Append a table of the outcomes to <see cref="StepSummaryPath"/>. Default: <c>true</c>.</summary>
 	public bool StepSummary { get; init; } = true;
+
+	/// <summary>The file the table is appended to; the one <c>GITHUB_STEP_SUMMARY</c> names when unset, and none when that is not set either.</summary>
+	public string? StepSummaryPath { get; init; }
 
 	/// <summary>The command that reruns one journey, with <c>{id}</c> standing for it. No rerun line when unset.</summary>
 	public string? Rerun { get; init; }

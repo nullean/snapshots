@@ -654,3 +654,7 @@ image or a transcript is not something to read in a source file.
   command as the files `[--variant` and `plain]`, and each used to print `no journey matches`. A word that starts with `-`
   or `[-`, or ends with `]` without a `[`, and matches no file, is reported together with the command it spells without
   the brackets. A real glob keeps its own error, and a journey whose name starts with `-` still runs when the file exists.
+- **`snap journey run` is the first user of the runner and changes its output.** A passing journey prints `ok      <path> (time)`
+  where it printed `ok   <key>`, and every run ends with the totals. It now honours `@requires` and `@mutates`, runs four
+  journeys at a time, and a run where every journey was skipped exits with 1 unless `--allow-all-skipped`. The ids are paths
+  relative to the root, because a journey of a `snap` run is a file, not a snapshot key; the failure message still names the key.

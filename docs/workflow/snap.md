@@ -63,9 +63,23 @@ screenshots and HAR files out of each journey's folder next to its received tran
 with `{journey}.{variant}.verified.journey`, and `--transcript off` runs the steps and `expect` lines without comparing
 the transcript, so no verified file is needed.
 
+A run reads the site the way a test does. `--feature <name>` (repeatable), `--env` and `--build-type` say what `feature`
+blocks and `# @requires` lines are judged against, and a journey that does not apply is skipped with its reason.
+`--tag <name>` (repeatable) runs only journeys with that `# @tags`. `--read-only` refuses every request that is not
+GET, HEAD or OPTIONS, skips journeys marked `# @mutates` (`--allow-mutations` runs them), and `--writable <glob>`
+(repeatable) lets a URL be written anyway. `--viewport 1280x800`, `--user-agent` and `--header "Name: value"`
+(repeatable) set what every page of the run sends. `--parallel <n>` (default 4) sets how many journeys run at once in one
+Chrome, `--junit <file>` writes a JUnit report, and `--allow-all-skipped` exits with 0 when every journey was skipped.
+
+It prints each journey as it finishes, collapses a skip reason that many journeys share (`--verbose` lists them), and
+repeats the failures at the end with the totals. On a terminal that adds a status line, icons, colour, and the journey's
+lines around a failing one; in CI, in a pipe, or with `NO_COLOR` the output is plain lines.
+
 It writes received files for `snap review` and prints the usual failure message, but never accepts (not even with
 `SNAPSHOT_ACCEPT=1`) and never writes the run manifest, so it cannot make other snapshots look orphaned. Exit codes:
-0 all match, 1 a transcript differs or a step failed, 2 usage or a journey error, 3 Chrome could not start.
+0 all match, 1 a transcript differs, a step failed, or every journey was skipped, 2 usage or a journey error, 3 Chrome could
+not start. A tool that wants the same output calls
+[`JourneyConsoleRunner`](../formats/browser.md#run-a-suite-from-the-console).
 
 ## HTTP files
 

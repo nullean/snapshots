@@ -194,7 +194,7 @@ public sealed class ConsoleJourneyReporter : IJourneyReporter
 		if (file.Display is { } display)
 			return display;
 		var relative = System.IO.Path.GetRelativePath(Directory.GetCurrentDirectory(), file.Path).Replace('\\', '/');
-		return relative.StartsWith("..", StringComparison.Ordinal) ? file.Path : relative;
+		return relative.StartsWith("..", StringComparison.Ordinal) ? file.Path.Replace('\\', '/') : relative;
 	}
 
 	/// <summary>
