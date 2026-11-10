@@ -2,7 +2,7 @@ FAILED  cli-journeys/expect-fails
 
 Journey stopped at {project}/cli-journeys/expect-fails.journey:4: expect --timeout 300 text #count 5
 Timed out after 0.3s waiting for css #count to have text "5": received "0".
-Last open: file://{project}/site/index.html
+Page:       file://{project}/site/index.html
 Rerun:     snap journey run cli-journeys/expect-fails.journey --base-url file://{project}/site/
 
 0 passed, 1 failed, 0 skipped in <t>s, against file://{project}/site/

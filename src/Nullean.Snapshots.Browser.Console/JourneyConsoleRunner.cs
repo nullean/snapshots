@@ -203,6 +203,7 @@ public static class JourneyConsoleRunner
 		UserAgent = options.UserAgent,
 		Headers = options.Headers,
 		OnStep = onStep,
+		ScreenshotOnFailure = options.ScreenshotOnFailure,
 	};
 
 	/// <summary>One Chrome for the whole run, started when the first journey needs it.</summary>

@@ -109,6 +109,12 @@ public sealed class JourneyRunOptions
 	/// <summary>Write a JUnit XML report here.</summary>
 	public string? JUnitPath { get; init; }
 
+	/// <summary>
+	/// Take a screenshot when a step fails and, on a terminal that can show images, draw it under the failure. Off unless asked for:
+	/// a page can show private data. Without <see cref="ArtifactsFor"/> the image is drawn and not kept.
+	/// </summary>
+	public bool ScreenshotOnFailure { get; init; }
+
 	/// <summary>Append a table of the outcomes to <see cref="StepSummaryPath"/>. Default: <c>true</c>.</summary>
 	public bool StepSummary { get; init; } = true;
 

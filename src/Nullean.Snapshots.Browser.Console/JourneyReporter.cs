@@ -2,6 +2,8 @@ using System.Globalization;
 using System.Diagnostics;
 using System.Text;
 using Nullean.Cdp.Journeys;
+using Nullean.TerminalImages;
+using Nullean.TerminalImages.Detection;
 
 namespace Nullean.Snapshots.Browser.Console;
 
@@ -54,6 +56,7 @@ public sealed class ConsoleJourneyReporter : IJourneyReporter
 	private int _total;
 	private int _statusWidth;
 	private bool _stale;
+	private TerminalImageCapabilities? _capabilities;
 
 	/// <summary>Writes to <paramref name="output"/>; <paramref name="interactive"/> adds colour, icons and the status line.</summary>
 	public ConsoleJourneyReporter(TextWriter output, JourneyRunOptions options, bool interactive)
@@ -131,7 +134,17 @@ public sealed class ConsoleJourneyReporter : IJourneyReporter
 			{
 				_output.WriteLine();
 				var rerun = _options.Rerun?.Replace("{id}", outcome.File.Id, StringComparison.Ordinal);
-				_output.Write(_interactive ? PrettyFailure(outcome, rerun) : FailureBlock(outcome, rerun));
+				if (!_interactive)
+				{
+					_output.Write(FailureBlock(outcome, rerun));
+					continue;
+				}
+
+				var (head, foot) = PrettyFailureParts(outcome, rerun);
+				_output.Write(head);
+				if (_options.ScreenshotOnFailure && outcome.Transcript?.Failure?.Screenshot is { } png && TryDrawScreenshot(png))
+					_output.WriteLine();
+				_output.Write(foot);
 			}
 			_output.WriteLine();
 			var passed = outcomes.Count(o => o.Passed);
@@ -210,7 +223,8 @@ public sealed class ConsoleJourneyReporter : IJourneyReporter
 		else if (outcome.Transcript?.Failure is { } failure)
 		{
 			_ = text.AppendLine(CultureInfo.InvariantCulture, $"Journey stopped at {failure.Describe(where)}");
-			if (_pages.TryGetValue(outcome.File.Id, out var page))
+			// Describe names the page the step stopped on; the last page the journey opened says something only when it could not.
+			if (failure.Url is null && _pages.TryGetValue(outcome.File.Id, out var page))
 				_ = text.AppendLine("Last open:".PadRight(Label) + page);
 		}
 		else
@@ -220,6 +234,13 @@ public sealed class ConsoleJourneyReporter : IJourneyReporter
 
 	/// <summary>A failure for a person: the journey's lines around the one that failed, the error wrapped, the page and the rerun command.</summary>
 	internal string PrettyFailure(JourneyOutcome outcome, string? rerun)
+	{
+		var (head, foot) = PrettyFailureParts(outcome, rerun);
+		return head + foot;
+	}
+
+	/// <summary>The failure in two parts, so a screenshot can be drawn between the error and the page.</summary>
+	private (string Head, string Foot) PrettyFailureParts(JourneyOutcome outcome, string? rerun)
 	{
 		var where = DisplayPath(outcome.File);
 		var text = new StringBuilder();
@@ -239,11 +260,36 @@ public sealed class ConsoleJourneyReporter : IJourneyReporter
 			foreach (var line in Wrap(outcome.Error ?? failure!.Message, Width - 4))
 				_ = text.AppendLine(CultureInfo.InvariantCulture, $"  {line}");
 		_ = text.AppendLine();
-		if (_pages.TryGetValue(outcome.File.Id, out var page))
-			_ = text.AppendLine(CultureInfo.InvariantCulture, $"  {Ansi.Dim("last open".PadRight(10))}{Ansi.Cyan(page.ToString())}");
+		var foot = new StringBuilder();
+		if (failure?.Url is { Length: > 0 } stoppedOn)
+			_ = foot.AppendLine(CultureInfo.InvariantCulture, $"  {Ansi.Dim("page".PadRight(10))}{Ansi.Cyan(stoppedOn)}");
+		else if (_pages.TryGetValue(outcome.File.Id, out var page))
+			_ = foot.AppendLine(CultureInfo.InvariantCulture, $"  {Ansi.Dim("last open".PadRight(10))}{Ansi.Cyan(page.ToString())}");
+		if (failure?.ScreenshotPath is { } screenshot)
+			_ = foot.AppendLine(CultureInfo.InvariantCulture, $"  {Ansi.Dim("screenshot".PadRight(10))}{screenshot}");
 		if (rerun is not null)
-			_ = text.AppendLine(CultureInfo.InvariantCulture, $"  {Ansi.Dim("rerun".PadRight(10))}{rerun}");
-		return text.ToString();
+			_ = foot.AppendLine(CultureInfo.InvariantCulture, $"  {Ansi.Dim("rerun".PadRight(10))}{rerun}");
+		return (text.ToString(), foot.ToString());
+	}
+
+	/// <summary>
+	/// Draws <paramref name="png"/> with the best protocol the terminal has. False when it cannot show images, or drawing failed:
+	/// a screenshot is a help to the reader and must never fail a run.
+	/// </summary>
+	private bool TryDrawScreenshot(byte[] png)
+	{
+		try
+		{
+			_capabilities ??= Task.Run(async () => await TerminalImageDetector.DetectAsync().ConfigureAwait(false)).GetAwaiter().GetResult();
+			var renderer = new TerminalImageRenderer(_capabilities, new TerminalImageRenderOptions { MaxColumns = Math.Min(100, Width - 2), MaxRows = 30 });
+			return renderer.RenderPng(png, _output);
+		}
+#pragma warning disable CA1031 // A screenshot is a convenience: whatever goes wrong drawing it, the failure text above stands.
+		catch (Exception)
+#pragma warning restore CA1031
+		{
+			return false;
+		}
 	}
 
 	private static void AppendSource(StringBuilder text, string path, int failedLine)
