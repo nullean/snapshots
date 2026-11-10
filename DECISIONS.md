@@ -598,3 +598,13 @@ image or a transcript is not something to read in a source file.
 - **Read-only is decided by the method, with `# @readonly` as the way out.** A run against production must not depend on
   each author remembering to mark writes, so everything that is not GET, HEAD or OPTIONS is refused before anything is
   sent. A JSON-RPC call over POST that only reads (MCP `tools/list`) says so on the request, where a reader sees it.
+
+## Journeys that apply to some sites
+
+- **The library reports, the test skips.** `JourneyTest.Unmet` and `SkipReason` return a reason; the core package has no
+  test framework, so the skip itself is one line in the test (`Skip.Test(why)` in TUnit). A run that quietly passed a
+  journey it did not run would look the same as one that ran it.
+- **A skip is decided at run time.** The flags of a site are known only once its host is up, after TUnit has discovered
+  the tests, so discovery cannot skip a journey. It can name them (tags), not decide.
+- **`SkipReason` also reads `@mutates`.** A read-only run is the one place the header and the options meet. The guard in
+  the browser still refuses the write if the header was forgotten.

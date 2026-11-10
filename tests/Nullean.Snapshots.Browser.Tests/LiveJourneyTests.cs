@@ -39,7 +39,7 @@ public class LiveJourneyTests
 
 	[Test]
 	public void FindsTheProjectsJourneys() =>
-		Journeys().Should().Equal("journeys/basket/empty.journey", "journeys/checks.journey", "journeys/shop.journey");
+		Journeys().Should().Equal("journeys/basket/empty.journey", "journeys/checks.journey", "journeys/preview-only.journey", "journeys/shop.journey");
 
 	[Test]
 	public void AMoreSpecificFolderClaimsItsJourneys()
@@ -49,7 +49,7 @@ public class LiveJourneyTests
 		var outer = new Nullean.Snapshots.TUnit.JourneyFilesAttribute("journeys");
 		var basket = new Nullean.Snapshots.TUnit.JourneyFilesAttribute("journeys/basket");
 
-		outer.Files(assembly, SnapshotFile.Find(assembly, outer.Folder, outer.Pattern)).Select(f => f.Name).Should().Equal("checks", "shop");
+		outer.Files(assembly, SnapshotFile.Find(assembly, outer.Folder, outer.Pattern)).Select(f => f.Name).Should().Equal("checks", "preview-only", "shop");
 		basket.Files(assembly, SnapshotFile.Find(assembly, basket.Folder, basket.Pattern))
 			.Should().Equal(new SnapshotFile("journeys/basket/empty.journey", "empty"));
 	}
