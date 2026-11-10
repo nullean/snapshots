@@ -47,6 +47,39 @@ public sealed class JourneySnapshotOptions
 	/// that legitimately differs per flag set or build type. Letters, digits, <c>.</c>, <c>-</c> and <c>_</c>.
 	/// </summary>
 	public string? Variant { get; init; }
+
+	/// <summary>
+	/// The enabled feature flags of the site under test. <c>feature</c> blocks and <c>@requires</c> lines are judged
+	/// against them (see <see cref="Context"/>); a block the run does not meet shows in the transcript as skipped.
+	/// </summary>
+	public IReadOnlySet<string> Features { get; init; } = new HashSet<string>(StringComparer.Ordinal);
+
+	/// <summary>The build type of the site under test, such as <c>isolated</c> or <c>assembler</c>; unknown when <c>null</c>.</summary>
+	public string? BuildType { get; init; }
+
+	/// <summary>The environment of the site under test, such as <c>prod</c> or <c>edge</c>; unknown when <c>null</c>.</summary>
+	public string? Env { get; init; }
+
+	/// <summary>
+	/// Refuses every request that is not GET, HEAD or OPTIONS, so the run cannot change a live site. A journey marked
+	/// <c>@mutates</c> is skipped on such a run (see <see cref="JourneySnapshot.SkipReason(string, JourneySnapshotOptions, string)"/>).
+	/// </summary>
+	public bool ReadOnly { get; init; }
+
+	/// <summary>URL globs a read-only run may write to anyway, such as a telemetry endpoint.</summary>
+	public IReadOnlyList<string> WritableUrls { get; init; } = [];
+
+	/// <summary>The viewport every journey of the run starts with; Chrome's default when <c>null</c>. A journey's own <c>set viewport</c> replaces it.</summary>
+	public JourneyViewport? Viewport { get; init; }
+
+	/// <summary>The user agent of the run. A journey's own <c>set useragent</c> replaces it.</summary>
+	public string? UserAgent { get; init; }
+
+	/// <summary>Request headers every page of the run sends. A journey's own <c>set headers</c> adds to them.</summary>
+	public IReadOnlyDictionary<string, string> Headers { get; init; } = new Dictionary<string, string>();
+
+	/// <summary>What <c>feature</c> blocks and <c>@requires</c> lines are judged against.</summary>
+	public JourneyContext Context => new(Features, BuildType, Env);
 }
 
 /// <summary>
@@ -133,6 +166,14 @@ public static class JourneySnapshot
 			FileRoot = options.FileRoot,
 			ArtifactsDirectory = options.ArtifactsDirectory,
 			Secrets = options.Secrets ?? Environment.GetEnvironmentVariable,
+			Features = options.Features,
+			BuildType = options.BuildType,
+			Env = options.Env,
+			ReadOnly = options.ReadOnly,
+			WritableUrls = options.WritableUrls,
+			Viewport = options.Viewport,
+			UserAgent = options.UserAgent,
+			Headers = options.Headers,
 		}, cancellationToken).ConfigureAwait(false);
 		return new JourneyTranscript(full, JourneyTranscript.Render(result, options.BaseUrl), result.Failure)
 		{
@@ -156,7 +197,54 @@ public static class JourneySnapshot
 		Secrets = options.Secrets,
 		Transcript = options.Transcript,
 		Variant = options.Variant,
+		Features = options.Features,
+		BuildType = options.BuildType,
+		Env = options.Env,
+		ReadOnly = options.ReadOnly,
+		WritableUrls = options.WritableUrls,
+		Viewport = options.Viewport,
+		UserAgent = options.UserAgent,
+		Headers = options.Headers,
 	};
+
+	/// <summary>
+	/// Why a journey should not run in <paramref name="context"/>: the first <c>@requires</c> condition it does not meet,
+	/// as written (<c>@requires navigation-preview</c>). <c>null</c> when it applies. A journey without directives always applies.
+	/// </summary>
+	/// <param name="journeyFile">A journey file; a relative path is relative to the test project, as for <c>RunAsync</c>.</param>
+	/// <param name="context">What the run knows about the site.</param>
+	/// <param name="callerFilePath">Filled in by the compiler.</param>
+	/// <exception cref="JourneyParseException">The journey has errors.</exception>
+	public static string? Unmet(string journeyFile, JourneyContext context, [CallerFilePath] string callerFilePath = "")
+	{
+		ArgumentException.ThrowIfNullOrEmpty(journeyFile);
+		ArgumentNullException.ThrowIfNull(context);
+		return Journey.Load(ResolveFile(journeyFile, callerFilePath)).Metadata.Unmet(context) is { } unmet ? $"@requires {unmet}" : null;
+	}
+
+	/// <summary>
+	/// Why a journey should be skipped in a run with <paramref name="options"/>, or <c>null</c> when it should run: an unmet
+	/// <c>@requires</c> condition, or <c>@mutates</c> on a <see cref="JourneySnapshotOptions.ReadOnly"/> run.
+	/// </summary>
+	public static string? SkipReason(string journeyFile, JourneySnapshotOptions options, [CallerFilePath] string callerFilePath = "")
+	{
+		ArgumentException.ThrowIfNullOrEmpty(journeyFile);
+		ArgumentNullException.ThrowIfNull(options);
+		var metadata = Journey.Load(ResolveFile(journeyFile, callerFilePath)).Metadata;
+		if (metadata.Unmet(options.Context) is { } unmet)
+			return $"@requires {unmet}";
+		return metadata.Mutates && options.ReadOnly ? "@mutates, and the run is read-only" : null;
+	}
+
+	/// <summary>The journey's header directives: tags, requirements, monitor, alerts, <c>@mutates</c>.</summary>
+	public static JourneyMetadata Metadata(string journeyFile, [CallerFilePath] string callerFilePath = "")
+	{
+		ArgumentException.ThrowIfNullOrEmpty(journeyFile);
+		return Journey.Load(ResolveFile(journeyFile, callerFilePath)).Metadata;
+	}
+
+	private static string ResolveFile(string journeyFile, string callerFilePath) =>
+		Path.IsPathRooted(journeyFile) ? journeyFile : Path.Combine(ProjectDirectory(callerFilePath), journeyFile);
 
 	/// <summary>
 	/// Compares the transcript with the journey's verified snapshot. A journey that stopped at a failing step fails
