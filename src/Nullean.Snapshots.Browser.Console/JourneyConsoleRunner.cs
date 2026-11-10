@@ -63,8 +63,15 @@ public static class JourneyConsoleRunner
 		}
 
 		using var gate = new SemaphoreSlim(Math.Max(1, options.Parallel));
-		var tasks = plan.Select(item => RunOneAsync(item, options, executor, reporter, gate, cancellationToken));
+		var launched = new LaunchFailure();
+		var tasks = plan.Select(item => RunOneAsync(item, options, executor, reporter, gate, launched, cancellationToken));
 		var outcomes = await Task.WhenAll(tasks).ConfigureAwait(false);
+		if (launched.Error is { } launchError)
+		{
+			await error.WriteLineAsync("Error: " + launchError).ConfigureAwait(false);
+			return JourneyExitCode.Browser;
+		}
+
 		reporter.Complete(outcomes, clock.Elapsed);
 
 		if (options.JUnitPath is { } junit)
@@ -83,6 +90,12 @@ public static class JourneyConsoleRunner
 		return exit == JourneyExitCode.Ok && !outcomes.Any(o => o.Passed) && !options.AllowAllSkipped ? JourneyExitCode.Failed : exit;
 	}
 
+	/// <summary>Chrome failing to start while a journey runs: the run ends with <see cref="JourneyExitCode.Browser"/> and no journey is shown as failed.</summary>
+	private sealed class LaunchFailure
+	{
+		public string? Error { get; set; }
+	}
+
 	private sealed record Planned(JourneyRunFile File, Journey? Journey, string? Error, string? Skip);
 
 	private static Planned Plan(JourneyRunFile file, JourneyRunOptions options)
@@ -90,7 +103,7 @@ public static class JourneyConsoleRunner
 		Journey journey;
 		try
 		{
-			journey = Journey.Load(file.Path);
+			journey = (options.Load ?? Journey.Load)(file.Path);
 		}
 		catch (Exception e) when (e is JourneyParseException or IOException)
 		{
@@ -115,6 +128,7 @@ public static class JourneyConsoleRunner
 		IJourneyExecutor executor,
 		IJourneyReporter reporter,
 		SemaphoreSlim gate,
+		LaunchFailure launched,
 		CancellationToken cancellationToken
 	)
 	{
@@ -142,8 +156,18 @@ public static class JourneyConsoleRunner
 				reporter.StepStarted(file, step);
 			});
 			var transcript = await executor.RunAsync(file.Path, run, cancellationToken).ConfigureAwait(false);
-			var compared = options.Compare is { } compare && transcript.Failure is null ? compare(file, transcript) : null;
+			// As in a test, a failed step still compares the partial transcript, so a received file is written for review.
+			var compared = options.Compare is { } compare ? compare(file, transcript) : null;
 			return Finish(new JourneyOutcome(file, transcript, compared, null, null, clock.Elapsed) { LastOpened = lastOpened });
+		}
+		catch (BrowserLaunchException e)
+		{
+			launched.Error ??= e.Message;
+			return new JourneyOutcome(file, null, null, e.Message, null, clock.Elapsed);
+		}
+		catch (JourneyParseException e)
+		{
+			return Finish(new JourneyOutcome(file, null, null, e.Message, null, clock.Elapsed) { IsParseError = true });
 		}
 		catch (Exception e) when (e is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
 		{

@@ -112,6 +112,9 @@ public sealed class JourneyRunOptions
 	/// <summary>The command that reruns one journey, with <c>{id}</c> standing for it. No rerun line when unset.</summary>
 	public string? Rerun { get; init; }
 
+	/// <summary>Reads a journey to judge whether it applies. <see cref="Journey.Load(string)"/> when unset; a tool with its own file system passes its own.</summary>
+	public Func<string, Journey>? Load { get; init; }
+
 	/// <summary>The exit code for a journey that cannot be parsed. Default: <see cref="JourneyExitCode.Usage"/>.</summary>
 	public int ParseErrorExitCode { get; init; } = JourneyExitCode.Usage;
 }

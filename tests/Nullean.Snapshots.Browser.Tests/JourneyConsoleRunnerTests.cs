@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
+using Nullean.Cdp;
 using Nullean.Cdp.Journeys;
 using Nullean.Snapshots.Browser.Console;
 
@@ -187,16 +188,51 @@ public partial class JourneyConsoleRunnerTests
 	}
 
 	[Test]
-	public async Task AStepFailureSkipsTheComparisonOfThePartialTranscript()
+	public async Task AStepFailureStillComparesSoTheReceivedFileIsWrittenButShowsTheStep()
 	{
 		using var folder = new Folder();
 		var files = new[] { folder.Add("a/shop", "open /\nget title") };
 		var compared = false;
-		var options = new JourneyRunOptions { Files = files, Compare = (_, _) => { compared = true; return new SnapshotResult(true, null, "k", "v", "r"); } };
+		var options = new JourneyRunOptions
+		{
+			Files = files,
+			Compare = (_, _) =>
+			{
+				compared = true;
+				return new SnapshotResult(false, "partial transcript differs", "k", "v", "r");
+			},
+		};
 
-		await RunAsync(options, (file, _) => new JourneyTranscript(file, "", new JourneyFailure(1, "open /", "boom")));
+		var (_, output, _) = await RunAsync(options, (file, _) => new JourneyTranscript(file, "", new JourneyFailure(1, "open /", "boom")));
 
-		compared.Should().BeFalse();
+		compared.Should().BeTrue();
+		output.Should().Contain("Journey stopped at journeys/a/shop.journey:1: open /").And.NotContain("partial transcript differs");
+	}
+
+	[Test]
+	public async Task ABrowserThatCannotStartEndsTheRunWithTheBrowserExitCode()
+	{
+		using var folder = new Folder();
+		var files = new[] { folder.Add("a/shop", "open /") };
+
+		var (exit, output, error) = await RunAsync(
+			new JourneyRunOptions { Files = files },
+			(_, _) => throw new BrowserLaunchException("No Chrome found."));
+
+		exit.Should().Be(JourneyExitCode.Browser);
+		error.Should().Be("Error: No Chrome found.\n".ReplaceLineEndings());
+		output.Should().NotContain("FAILED");
+	}
+
+	[Test]
+	public async Task ALoaderReplacesReadingTheFileFromDisk()
+	{
+		var file = new JourneyRunFile("a/virtual", "/no/such/file.journey");
+		var options = new JourneyRunOptions { Files = [file], Load = path => Journey.Parse("# @requires env:prod\nopen /", path), Env = "demo" };
+
+		var (_, output, _) = await RunAsync(options);
+
+		output.Should().Contain("skipped a/virtual (requires env:prod)");
 	}
 
 	[Test]
