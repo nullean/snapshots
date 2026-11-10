@@ -643,8 +643,9 @@ image or a transcript is not something to read in a source file.
   only checks `expect` lines passes no `Compare`.
 - **The runner does not learn about sites.** Features, build type and env are inputs. Reading them from a page (docs-builder's
   `docs:*` tags) is the wrapper's job, because the tag names are the site's.
-- **A step failure and a differing transcript are shown differently.** A failing step shows the step and the error, and the
-  partial transcript is not compared. A transcript that differs shows the comparison's own message as written, never reflowed.
+- **A step failure and a differing transcript are shown differently.** A failing step shows the step and the error. The partial
+  transcript is still compared, as in a test, so a received file is written for review, but its diff is left out of the output.
+  A transcript that differs after every step passed shows the comparison's own message as written, never reflowed.
 - **The exit code for a journey that cannot be parsed is an option.** `snap` documents 2 for it and docs-builder documents 1.
 
 ## `snap journey run` and usage text
