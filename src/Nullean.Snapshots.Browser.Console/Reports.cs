@@ -62,10 +62,10 @@ internal static class JUnitReport
 
 internal static class StepSummary
 {
-	/// <summary>Appends a table of the outcomes to the file <c>GITHUB_STEP_SUMMARY</c> names, when it is set.</summary>
-	public static void Write(Uri? site, IReadOnlyList<JourneyOutcome> outcomes)
+	/// <summary>Appends a table of the outcomes to <paramref name="path"/>, when there is one.</summary>
+	public static void Write(string? path, Uri? site, IReadOnlyList<JourneyOutcome> outcomes)
 	{
-		if (Environment.GetEnvironmentVariable("GITHUB_STEP_SUMMARY") is not { Length: > 0 } path)
+		if (path is not { Length: > 0 })
 			return;
 		var text = new StringBuilder()
 			.AppendLine(site is null ? "### Journeys" : $"### Journeys against {site}")

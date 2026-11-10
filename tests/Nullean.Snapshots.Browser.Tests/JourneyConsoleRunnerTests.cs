@@ -10,9 +10,6 @@ namespace Nullean.Snapshots.Browser.Tests;
 [NotInParallel("console-runner")]
 public partial class JourneyConsoleRunnerTests
 {
-	// CI points GITHUB_STEP_SUMMARY at a real file; these runs must not append to it, least of all from several tests at once.
-	static JourneyConsoleRunnerTests() => Environment.SetEnvironmentVariable("GITHUB_STEP_SUMMARY", null);
-
 	private sealed class Fake(Func<string, JourneySnapshotOptions, JourneyTranscript> run) : JourneyConsoleRunner.IJourneyExecutor
 	{
 		public Task EnsureReadyAsync(CancellationToken cancellationToken) => Task.CompletedTask;
@@ -287,24 +284,16 @@ public partial class JourneyConsoleRunnerTests
 		using var folder = new Folder();
 		var files = new[] { folder.Add("a/ok", "open /") };
 		var summary = Path.Combine(folder.Path, "summary.md");
-		Environment.SetEnvironmentVariable("GITHUB_STEP_SUMMARY", summary);
-		try
-		{
-			await RunAsync(new JourneyRunOptions { Files = files, StepSummary = false });
-			File.Exists(summary).Should().BeFalse();
 
-			await RunAsync(new JourneyRunOptions { Files = files, BaseUrl = new Uri("https://shop.test/") });
-			File.ReadAllText(summary).Should().Contain("### Journeys against https://shop.test/").And.Contain("| `a/ok` | passed |");
+		await RunAsync(new JourneyRunOptions { Files = files, StepSummary = false, StepSummaryPath = summary });
+		File.Exists(summary).Should().BeFalse();
 
-			// A folder where the file should be: appending fails, and the run still ends normally.
-			var blocked = Path.Combine(folder.Path, "blocked");
-			Directory.CreateDirectory(blocked);
-			Environment.SetEnvironmentVariable("GITHUB_STEP_SUMMARY", blocked);
-			(await RunAsync(new JourneyRunOptions { Files = files })).Exit.Should().Be(JourneyExitCode.Ok);
-		}
-		finally
-		{
-			Environment.SetEnvironmentVariable("GITHUB_STEP_SUMMARY", null);
-		}
+		await RunAsync(new JourneyRunOptions { Files = files, BaseUrl = new Uri("https://shop.test/"), StepSummaryPath = summary });
+		File.ReadAllText(summary).Should().Contain("### Journeys against https://shop.test/").And.Contain("| `a/ok` | passed |");
+
+		// A folder where the file should be: appending fails, and the run still ends normally.
+		var blocked = Path.Combine(folder.Path, "blocked");
+		Directory.CreateDirectory(blocked);
+		(await RunAsync(new JourneyRunOptions { Files = files, StepSummaryPath = blocked })).Exit.Should().Be(JourneyExitCode.Ok);
 	}
 }
