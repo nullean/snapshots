@@ -77,6 +77,13 @@ internal static class StepSummary
 				CultureInfo.InvariantCulture,
 				$"| `{outcome.File.Id}` | {(outcome.Skipped ? $"skipped: {outcome.SkipReason}" : outcome.Passed ? "passed" : "**failed**")} |"
 			);
-		File.AppendAllText(path, text.ToString());
+		try
+		{
+			File.AppendAllText(path, text.ToString());
+		}
+		catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+		{
+			// A summary is for the reader of the CI page: failing to add to it must not fail the run.
+		}
 	}
 }

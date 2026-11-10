@@ -76,7 +76,8 @@ public static class JourneyConsoleRunner
 
 		if (options.JUnitPath is { } junit)
 			JUnitReport.Write(junit, options.Site?.Host ?? options.BaseUrl?.Host ?? "journeys", outcomes);
-		StepSummary.Write(options.Site ?? options.BaseUrl, outcomes);
+		if (options.StepSummary)
+			Browser.Console.StepSummary.Write(options.Site ?? options.BaseUrl, outcomes);
 		return ExitCodeOf(outcomes, options);
 	}
 
