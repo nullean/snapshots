@@ -557,3 +557,17 @@ image or a transcript is not something to read in a source file.
 - **Known limit:** a tree format reports a changed value by its position in the verified file (`(verified.json:14:5)`).
   Inline, that position is a line and column in the expected text, which the message still calls `verified.json`.
   Relabelling it needs a name on `SnapshotFormat.Compare`; not done here.
+
+## Transcript modes and variants
+
+- **`TranscriptMode.Off` keeps the run's own assertions and drops the comparison.** A live site or service returns text
+  that drifts, so a journey or `.http` file against one fails on content nobody changed. `Off` runs everything and fails
+  only when a step or request fails, an `expect` line included. It writes no received file and claims no key, so no
+  verified file exists to go stale or look orphaned. It lives in core (`Nullean.Snapshots`) because the journey and
+  `.http` packages share it.
+- **A variant is the snapshot's `name`.** `MatchFile(..., variant)` puts it where a test's `name` goes in the key
+  (`journeys/shop.preview`), so the verified file is `shop.preview.verified.journey`, the received file, the run
+  manifest line and `snap accept <key>` all follow the existing rules and `snap orphans` needs no special case.
+  Variants use the same name check as `name` (letters, digits, `.`, `-`, `_`, no leading or trailing dot).
+- **A variant never falls back to the plain file.** A variant with no verified file of its own is a new snapshot, as
+  any other missing verified file is. A fallback would let a flag-on run pass against flag-off output.

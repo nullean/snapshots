@@ -176,8 +176,21 @@ this is not detected. `WebApplicationFactory.CreateClient()` follows redirects b
 | `Secrets` | | answers `{{$secret Name}}` and secret providers by name |
 | `UserSecretsId`, `SecretsAssembly`, `UserSecretsRoot` | | where user secrets are read |
 | `TimeProvider`, `Random` | | the clock and randomness for `$datetime`, `$guid` and the like |
+| `Transcript` | `--transcript compare\|off` | `Off` sends the requests and compares no transcript; see [a live service](#a-live-service-and-variants) |
+| `Variant` | `--variant <name>` | compares with `{file}.{variant}.verified.responses`; see [a live service](#a-live-service-and-variants) |
 
 `HttpSnapshotOptions.Headers` chooses headers for `MatchHttpSnapshot` and `RenderAsync`.
+
+## A live service and variants
+
+A live service's responses drift, so a transcript compared with a verified file fails for reasons that are not bugs.
+`Transcript = TranscriptMode.Off` sends every request and fails the test on a request that fails (a refused connection,
+a timeout, an unresolved variable), without comparing the transcript or needing a verified file. An error status such as
+404 is still a response, not a failure.
+
+`Variant = "edge"` compares `http/orders.http` with `.snapshots/http/orders.edge.verified.responses` and leaves
+`orders.verified.responses` alone, for responses that legitimately differ per environment or flag set. A variant is
+letters, digits, `.`, `-` and `_`.
 
 ## CLI
 

@@ -41,6 +41,138 @@ public class JourneyMatchTests
 		p.Read(p.ReceivedFile("journeys/shop", "journey")).Should().Be(Changed, "the partial transcript is written for review");
 	}
 
+	[Test]
+	public void AVariantIsComparedWithItsOwnVerifiedFile()
+	{
+		var p = new TestProject();
+		p.Fs.AddFile(p.VerifiedFile("journeys/shop.preview", "journey"), new MockFileData(Good));
+		var changed = new JourneyTranscript(Journey(p), Changed, null) { Variant = "preview" };
+
+		var plain = p.Engine.MatchFile(Good, JourneySnapshot.Format, Journey(p), null, null);
+		var preview = p.Engine.MatchFile(Good, JourneySnapshot.Format, Journey(p), null, null, "preview");
+		var previewChanged = p.Engine.MatchFile(changed.Text, JourneySnapshot.Format, changed.File, null, null, changed.Variant);
+
+		plain.Passed.Should().BeFalse("only the variant has a verified file");
+		preview.Passed.Should().BeTrue();
+		preview.Key.Should().Be("Acme.Tests/journeys/shop.preview");
+		previewChanged.Passed.Should().BeFalse();
+		p.Read(p.ReceivedFile("journeys/shop.preview", "journey")).Should().Be(Changed);
+	}
+
+	[Test]
+	public void MatchUsesTheTranscriptsVariant()
+	{
+		var p = new TestProject();
+		p.Fs.AddFile(p.VerifiedFile("journeys/shop.preview", "journey"), new MockFileData(Good));
+		Snapshot.EngineOverride.Value = p.Engine;
+		try
+		{
+			var preview = JourneySnapshot.Match(new JourneyTranscript(Journey(p), Good, null) { Variant = "preview" });
+			var plain = JourneySnapshot.Match(new JourneyTranscript(Journey(p), Good, null));
+
+			preview.Passed.Should().BeTrue();
+			plain.Passed.Should().BeFalse("the plain file has no verified snapshot");
+		}
+		finally
+		{
+			Snapshot.EngineOverride.Value = null;
+		}
+	}
+
+	[Test]
+	public void ARunManifestNamesTheVariantFileSoItIsNeverAnOrphan()
+	{
+		var p = new TestProject();
+		p.Fs.AddFile(p.VerifiedFile("journeys/shop.preview", "journey"), new MockFileData(Good));
+
+		_ = p.Engine.MatchFile(Good, JourneySnapshot.Format, Journey(p), null, null, "preview");
+		p.Engine.FlushManifests();
+
+		var manifest = p.Fs.AllFiles.Single(f => f.EndsWith(RunManifest.FileName, StringComparison.Ordinal));
+		p.Read(manifest).Should().Contain("journeys/shop.preview.verified.journey").And.NotContain("journeys/shop.verified.journey");
+	}
+
+	[Test]
+	[Arguments("")]
+	[Arguments(".preview")]
+	[Arguments("pre view")]
+	[Arguments("a/b")]
+	public void AnInvalidVariantIsRejected(string variant)
+	{
+		var p = new TestProject();
+
+		var act = () => p.Engine.MatchFile(Good, JourneySnapshot.Format, Journey(p), null, null, variant);
+
+		act.Should().Throw<ArgumentException>().WithMessage("The variant '*' must be a non-empty name*");
+	}
+
+	[Test]
+	public void WithTheTranscriptOffNoVerifiedFileIsNeeded()
+	{
+		var p = new TestProject();
+		var transcript = new JourneyTranscript(Journey(p), Changed, null) { Mode = TranscriptMode.Off };
+
+		var result = JourneySnapshot.Match(transcript);
+
+		result.Passed.Should().BeTrue();
+		p.Fs.AllFiles.Should().NotContain(f => f.Contains(".snapshots", StringComparison.Ordinal) || f.Contains("received", StringComparison.Ordinal));
+	}
+
+	[Test]
+	public void WithTheTranscriptOffAFailedStepStillFails()
+	{
+		var p = new TestProject();
+		var failure = new JourneyFailure(3, "expect visible #pay", "Timed out after 5s waiting for css #pay to be visible: no element matches.");
+		var transcript = new JourneyTranscript(Journey(p), Good, failure) { Mode = TranscriptMode.Off };
+
+		var result = JourneySnapshot.Match(transcript);
+
+		result.Passed.Should().BeFalse();
+		result.FailureMessage.Should().Be(
+			$"Journey stopped at {Relative(transcript.File)}:3: expect visible #pay\nTimed out after 5s waiting for css #pay to be visible: no element matches.");
+	}
+
+	[Test]
+	public async Task TheVariantFlagComparesWithTheVariantFile()
+	{
+		var run = new Run();
+		run.P.Fs.AddFile(run.P.VerifiedFile("journeys/shop.preview", "journey"), new MockFileData(Good));
+
+		(await run.InvokeWith(null, "preview", null, "journeys/shop.journey")).Should().Be(0);
+
+		run.Output.Should().Be("ok   Acme.Tests/journeys/shop.preview\n");
+		run.Ran.Should().ContainSingle();
+	}
+
+	[Test]
+	public async Task TheTranscriptFlagOffNeedsNoVerifiedFileAndStillReportsAFailedStep()
+	{
+		var run = new Run();
+		run.Transcript = file => file.EndsWith("basket.journey", StringComparison.Ordinal)
+			? new JourneyTranscript(file, Good, new JourneyFailure(2, "expect visible #pay", "no element matches."))
+			: new JourneyTranscript(file, Changed, null);
+
+		(await run.InvokeWith(null, null, "off", "journeys/**/*.journey")).Should().Be(1);
+
+		run.Output.Should().StartWith("Journey stopped at ");
+		run.Output.Should().Contain("ok   journeys/shop.journey (transcript off)");
+		run.P.Fs.AllFiles.Should().NotContain(f => f.Contains("received", StringComparison.Ordinal));
+	}
+
+	[Test]
+	public async Task ABadTranscriptOrVariantFlagExitsTwo()
+	{
+		var run = new Run();
+
+		(await run.InvokeWith(null, null, "maybe", "journeys/shop.journey")).Should().Be(2);
+		(await run.InvokeWith(null, ".bad", null, "journeys/shop.journey")).Should().Be(2);
+
+		run.Err.ToString().Replace("\r\n", "\n", StringComparison.Ordinal).Should().Be(
+			"Error: --transcript 'maybe' is not 'compare' or 'off'.\n" +
+			"Error: --variant '.bad' must be a name of letters, digits, '.', '-' and '_', without a leading or trailing dot.\n");
+		run.Ran.Should().BeEmpty();
+	}
+
 	private static string Relative(string file)
 	{
 		var relative = Path.GetRelativePath(Directory.GetCurrentDirectory(), file);
@@ -69,12 +201,14 @@ public class JourneyMatchTests
 			P.Fs.AddDirectory(P.Project.ReceivedDirectory);
 		}
 
-		public Task<int> Invoke(string? baseUrl, params string[] patterns) =>
+		public Task<int> Invoke(string? baseUrl, params string[] patterns) => InvokeWith(baseUrl, null, null, patterns);
+
+		public Task<int> InvokeWith(string? baseUrl, string? variant, string? transcript, params string[] patterns) =>
 			new JourneyCli(P.Fs, P.Project.Directory, Out, Err, (file, options, _) =>
 			{
 				Ran.Add((file, options.BaseUrl));
 				return Task.FromResult(Transcript!(file));
-			}, k => Env.GetValueOrDefault(k)).RunAsync(patterns, baseUrl, CancellationToken.None);
+			}, k => Env.GetValueOrDefault(k)).RunAsync(patterns, baseUrl, CancellationToken.None, variant: variant, transcript: transcript);
 
 		public string Output => Out.ToString().Replace("\r\n", "\n", StringComparison.Ordinal);
 	}

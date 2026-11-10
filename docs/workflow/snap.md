@@ -59,7 +59,9 @@ snap journey run 'tests/Shop.Tests/journeys/**/*.journey' --base-url http://loca
 ```
 
 `--allow` adds hosts the journeys may reach, `--file-root` sets the folder `file://` URLs may use, and `--artifacts` moves
-screenshots and HAR files out of each journey's folder next to its received transcript.
+screenshots and HAR files out of each journey's folder next to its received transcript. `--variant <name>` compares
+with `{journey}.{variant}.verified.journey`, and `--transcript off` runs the steps and `expect` lines without comparing
+the transcript, so no verified file is needed.
 
 It writes received files for `snap review` and prints the usual failure message, but never accepts (not even with
 `SNAPSHOT_ACCEPT=1`) and never writes the run manifest, so it cannot make other snapshots look orphaned. Exit codes:
@@ -75,7 +77,9 @@ snap http run 'tests/Shop.Tests/http/**/*.http' --env dev --var host=http://loca
 ```
 
 `--env` selects the environment from `http-client.env.json`, `--var name=value` (repeatable) beats file variables and
-the environment, and `--header` (repeatable) writes another response header, as a test's `Headers` option does. It
+the environment, and `--header` (repeatable) writes another response header, as a test's `Headers` option does.
+`--variant <name>` compares with `{file}.{variant}.verified.responses`, and `--transcript off` sends the requests
+without comparing the transcript. It
 sends with the runner's own client, which follows redirects itself and decompresses bodies; secrets come from the
 environment files, `.env` files, the process environment and user secrets, and are redacted as in a test.
 

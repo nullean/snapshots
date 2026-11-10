@@ -33,12 +33,20 @@ internal sealed class HttpCli(
 		string? environment,
 		IReadOnlyList<string>? variables,
 		CancellationToken cancellationToken,
-		IReadOnlyList<string>? headers = null
+		IReadOnlyList<string>? headers = null,
+		string? variant = null,
+		string? transcript = null
 	)
 	{
 		if (patterns.Count == 0)
 		{
 			error.WriteLine("Error: name the .http files to run: files or globs such as 'http/**/*.http'.");
+			return ExitCode.Usage;
+		}
+
+		if (!JourneyCli.TryParseTranscript(transcript, out var mode, out var problem) || !JourneyCli.TryCheckVariant(variant, out problem))
+		{
+			error.WriteLine(problem);
 			return ExitCode.Usage;
 		}
 
@@ -69,14 +77,14 @@ internal sealed class HttpCli(
 		var projects = new SnapshotProjectResolver(fileSystem);
 		var engine = new SnapshotEngine(fileSystem, k => k == SnapshotEnvironment.AcceptVariable ? null : getVariable(k), () => null,
 			(site, _) => JourneyCli.WithArtifactsReceived(fileSystem, projects.FromCallerFile(site.FilePath)));
-		var options = new HttpFileSnapshotOptions { Environment = environment, Variables = values, Headers = headers ?? [] };
+		var options = new HttpFileSnapshotOptions { Environment = environment, Variables = values, Headers = headers ?? [], Transcript = mode, Variant = variant };
 		var exit = ExitCode.Ok;
 		foreach (var file in files)
 		{
-			HttpTranscript transcript;
+			HttpTranscript recorded;
 			try
 			{
-				transcript = await run(file, options, cancellationToken).ConfigureAwait(false);
+				recorded = await run(file, options, cancellationToken).ConfigureAwait(false);
 			}
 			catch (HttpFileParseException e)
 			{
@@ -92,9 +100,14 @@ internal sealed class HttpCli(
 				continue;
 			}
 
-			var result = HttpFileSnapshot.WithFailure(transcript, engine.MatchFile(transcript.Text, HttpFileSnapshot.Format, file, null, null));
+			var compared = mode == TranscriptMode.Off
+				? new SnapshotResult(true, null, string.Empty, string.Empty, string.Empty)
+				: engine.MatchFile(recorded.Text, HttpFileSnapshot.Format, file, null, null, variant);
+			var result = HttpFileSnapshot.WithFailure(recorded, compared);
 			if (result.Passed)
-				output.WriteLine($"ok   {result.Key}");
+				output.WriteLine(mode == TranscriptMode.Off
+					? $"ok   {fileSystem.Path.GetRelativePath(_root, file).Replace('\\', '/')} (transcript off)"
+					: $"ok   {result.Key}");
 			else
 			{
 				output.WriteLine(result.FailureMessage);
@@ -151,16 +164,20 @@ internal sealed class HttpCommands
 	/// <param name="var">A variable as name=value; beats file variables and the environment.</param>
 	/// <param name="header">Another response header to write besides content-type and location (repeatable), as the tests' Headers option does.</param>
 	/// <param name="root">The folder files and globs are relative to. Defaults to the current folder.</param>
+	/// <param name="variant">Compare with {file}.{variant}.verified.responses, for output that differs per environment or flag set.</param>
+	/// <param name="transcript">compare (the default), or off to send the requests without comparing the transcript.</param>
 	public static async Task<int> Run(
 		[Argument] string[] files,
 		string? env = null,
 		string[]? var = null,
 		string[]? header = null,
-		string? root = null
+		string? root = null,
+		string? variant = null,
+		string? transcript = null
 	)
 	{
 		var cli = new HttpCli(new FileSystem(), root ?? Directory.GetCurrentDirectory(), Console.Out, Console.Error,
 			HttpFileSnapshot.RunFileAsync, Environment.GetEnvironmentVariable);
-		return await cli.RunAsync(files, env, var, CancellationToken.None, header).ConfigureAwait(false);
+		return await cli.RunAsync(files, env, var, CancellationToken.None, header, variant, transcript).ConfigureAwait(false);
 	}
 }

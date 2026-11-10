@@ -28,6 +28,12 @@ namespace Nullean.Snapshots.Browser;
 /// <param name="Failure">The step the journey stopped at, if it did not finish.</param>
 public sealed record JourneyTranscript(string File, string Text, JourneyFailure? Failure)
 {
+	/// <summary>Whether the transcript is compared; <see cref="TranscriptMode.Off"/> checks only that no step failed.</summary>
+	public TranscriptMode Mode { get; init; } = TranscriptMode.Compare;
+
+	/// <summary>The variant of the verified file the transcript is compared with, or <see langword="null"/> for the plain one.</summary>
+	public string? Variant { get; init; }
+
 	/// <summary>What the base URL's root is replaced with.</summary>
 	public const string Origin = "{origin}";
 

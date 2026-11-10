@@ -66,13 +66,18 @@ public static class Snapshot
 	/// </param>
 	/// <param name="options">Per-call options such as scrubbers.</param>
 	/// <param name="because">An optional reason, shown in the failure message.</param>
+	/// <param name="variant">
+	/// Keeps a separate verified file for output that legitimately differs, such as per feature flag set:
+	/// <c>{name}.{variant}.verified.{ext}</c>. Letters, digits, <c>.</c>, <c>-</c> and <c>_</c>.
+	/// </param>
 	public static SnapshotResult MatchFile(
 		string actual,
 		SnapshotFormat format,
 		string sourceFile,
 		SnapshotOptions? options = null,
-		string? because = null
-	) => (EngineOverride.Value ?? Engine).MatchFile(actual, format, sourceFile, options, because);
+		string? because = null,
+		string? variant = null
+	) => (EngineOverride.Value ?? Engine).MatchFile(actual, format, sourceFile, options, because, variant);
 
 	/// <summary>
 	/// An empty folder for the files a run of <paramref name="sourceFile"/> writes, such as a journey's screenshots and
@@ -368,16 +373,18 @@ internal sealed class SnapshotEngine(
 
 	internal static string InlineName(int line) => "L" + line.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
-	public SnapshotResult MatchFile(string actual, SnapshotFormat format, string sourceFile, SnapshotOptions? options, string? because)
+	public SnapshotResult MatchFile(string actual, SnapshotFormat format, string sourceFile, SnapshotOptions? options, string? because, string? variant = null)
 	{
 		ArgumentNullException.ThrowIfNull(actual);
 		ArgumentNullException.ThrowIfNull(format);
 		ArgumentException.ThrowIfNullOrWhiteSpace(sourceFile);
+		if (variant is not null && !SnapshotPath.IsValidName(variant))
+			throw new ArgumentException($"The variant '{variant}' must be a non-empty name of letters, digits, '.', '-' and '_', without a leading or trailing dot.", nameof(variant));
 
 		var identity = (identityProvider is null ? SnapshotDefaults.TestIdentity : identityProvider())?.Current;
 		var (project, fullPath, relative, name) = ResolveFile(sourceFile, identity?.TestAssembly ?? Assembly.GetEntryAssembly());
 		var slash = relative.LastIndexOf('/');
-		var key = SnapshotPath.Key(project.Name, slash < 0 ? string.Empty : relative[..slash], string.Empty, name, null, null);
+		var key = SnapshotPath.Key(project.Name, slash < 0 ? string.Empty : relative[..slash], string.Empty, name, variant, null);
 
 		ClaimKey(key, identity, new SnapshotCallSite(fullPath, string.Empty, 0));
 		return Compare(actual, format, project, key, identity?.TreeNodeFilter, options, because);
