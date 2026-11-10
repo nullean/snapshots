@@ -79,7 +79,7 @@ public class HeaderDirectiveTests
 	{
 		var m = HttpFile.Parse("# @requires navigation-preview\nGET https://example.test/\n").Metadata;
 
-		m.Unmet(Context())?.ToString().Should().Be("navigation-preview");
+		m.Unmet(Context()).Should().NotBeNull().And.Subject.ToString().Should().Be("navigation-preview");
 		m.Unmet(Context(features: "navigation-preview")).Should().BeNull();
 	}
 
@@ -89,8 +89,8 @@ public class HeaderDirectiveTests
 		var m = HttpFile.Parse("# @requires !env:prod build-type:assembler\nGET https://example.test/\n").Metadata;
 
 		m.Unmet(Context("assembler")).Should().BeNull("an unknown environment is not prod, so the negated condition holds");
-		m.Unmet(Context("assembler", "prod"))?.ToString().Should().Be("!env:prod");
-		m.Unmet(Context(env: "edge"))?.ToString().Should().Be("build-type:assembler", "an unknown build type matches no plain condition");
+		m.Unmet(Context("assembler", "prod")).Should().NotBeNull().And.Subject.ToString().Should().Be("!env:prod");
+		m.Unmet(Context(env: "edge")).Should().NotBeNull().And.Subject.ToString().Should().Be("build-type:assembler", "an unknown build type matches no plain condition");
 	}
 
 	[Test]

@@ -82,6 +82,7 @@ public class HeaderGrammarConformanceTests
 		var journeyUnmet = Journey(header).Unmet(new JourneyContext(flags, buildType, env));
 		var httpUnmet = Http(header).Unmet(new HttpFileContext(flags, buildType, env));
 
+		(httpUnmet is null).Should().Be(journeyUnmet is null);
 		httpUnmet?.ToString().Should().Be(journeyUnmet?.ToString());
 	}
 }
