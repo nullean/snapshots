@@ -647,3 +647,10 @@ image or a transcript is not something to read in a source file.
   transcript is still compared, as in a test, so a received file is written for review, but its diff is left out of the output.
   A transcript that differs after every step passed shows the comparison's own message as written, never reflowed.
 - **The exit code for a journey that cannot be parsed is an option.** `snap` documents 2 for it and docs-builder documents 1.
+
+## `snap journey run` and usage text
+
+- **Words that look like options are one error, not one per word.** `[--variant plain]` copied from usage text reaches the
+  command as the files `[--variant` and `plain]`, and each used to print `no journey matches`. A word that starts with `-`
+  or `[-`, or ends with `]` without a `[`, and matches no file, is reported together with the command it spells without
+  the brackets. A real glob keeps its own error, and a journey whose name starts with `-` still runs when the file exists.
