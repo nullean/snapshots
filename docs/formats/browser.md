@@ -213,6 +213,21 @@ state with its own [variant](#a-live-site-and-variants).
 `ReadOnly` is enforced in the browser, not by the journey: a write to an allowed host fails the step that caused it, and
 `WritableUrls` lists the globs, such as a telemetry endpoint, that may still be written to.
 
+### Select journeys by tag
+
+`# @tags navigation smoke` in a journey's header (and in a `.http` file's) becomes a TUnit category on each case that
+`[JourneyFiles]` or `[HttpFiles]` yields. A filter then runs only the tagged ones:
+
+```sh
+dotnet test --treenode-filter "/*/*/*/*[Category=smoke]"
+dotnet test --treenode-filter "/*/*/NavigationJourneys/*[Category=monitor]"
+```
+
+The tags are read when TUnit discovers the tests, from the comment lines before the first step. Whether a journey
+applies to a run cannot be decided then, because a site's flags are known only once it is up. That is the
+[skip](#journeys-that-apply-to-some-sites) at run time, so a filtered-in journey can still show as skipped.
+`SnapshotFile.Tags(assembly)` returns the same names.
+
 ## Screenshots and HAR files
 
 `screenshot` and `network har stop` write files. In a test they go next to the journey's received transcript,

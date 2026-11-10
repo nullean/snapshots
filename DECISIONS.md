@@ -620,3 +620,14 @@ image or a transcript is not something to read in a source file.
   (`@require`) is not caught. Checking against the five names would reject other tools' files.
 - **The header is the first block.** A directive after the first `###`, or after a request, is an error naming the
   header, so a `@requires` in the middle of a file cannot silently apply to nothing.
+
+## Tags as TUnit categories
+
+- **Tags are categories, a skip is not.** TUnit attaches categories when a data source yields a case (`TestDataRow`), so
+  `@tags` can drive `--treenode-filter`. A case cannot be skipped there: whether `@requires` holds depends on the site's
+  flags, known only after the host is up, so the skip stays a run-time decision (`Unmet`, `SkipReason`).
+- **The header is read without a parser.** The TUnit package depends on neither Nullean.Cdp nor Nullean.HttpFileParser,
+  and a malformed directive must not break test discovery. `SnapshotFile.Tags` reads the `# @tags` lines before the first
+  step or request and leaves out names that are not valid; the parsers report them when the file runs.
+- **Display names are set explicitly.** A `TestDataRow` shows its data expression (`Run(file)`) unless given a display
+  name, so the data source writes `Run(<name>)` itself, as the arguments used to render.

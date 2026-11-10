@@ -1,3 +1,4 @@
+# @tags shop smoke
 # Search, add a lamp, look at the basket. The expect lines are assertions: they record nothing, so they do not change the
 # verified transcript.
 open index.html
