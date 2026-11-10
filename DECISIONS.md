@@ -327,6 +327,18 @@ its verified file by the prefix swap. Half-written `*.tmp` files are ignored.
   and the assertion's own message, with the reads before it in the received transcript. Nothing in this repository is
   assertion-aware; `LiveJourneyTests` pins it (the live `shop.journey` carries `expect` lines and its verified transcript
   is unchanged; a failing assertion through `JourneySnapshot.RunAsync` and through `snap journey run`, exit code 1).
+  The same holds for the assertions about the page rather than an element (Nullean.Cdp 0.7): `expect request` (a finished
+  request matching a URL glob, with filters on method, status, and the request body's size and text) and `expect
+  same-document`. `telemetry-journeys/telemetry.journey` runs both against `TelemetryServer`, a page that posts JSON to a
+  collector after a short delay, as a browser telemetry SDK's batch processor does, and its verified transcript is only the
+  final `errors` read; `cli-journeys/telemetry-fails.journey` pins the failure through both entry points. These journeys sit
+  apart from `journeys/` because they need an HTTP server, where that folder's base URL is the `file://` site; a failure
+  message shows a request body's size and never its text, so a payload with secrets does not reach a log or a received file.
+  **An export started while the page unloads is invisible:** a `fetch` (keepalive or not) or `sendBeacon` in `pagehide` or
+  `visibilitychange` reaches the server, but Chrome's DevTools protocol reports no request for it, to Nullean.Cdp or to
+  Playwright (checked against a local server with both), so no journey can assert on it. The fixture therefore flushes on a
+  timer while the page is alive. `open about:blank` is also refused by the journey runner ("about URLs are not allowed"),
+  so leaving a page means opening another one.
 - **Journeys on Playwright and Synthetics are documented, not owned here.** The npm package `@nullean/journeys` lives in
   nullean/cdp; its Playwright snapshot trees differ from Nullean.Cdp's, so a transcript is only ever compared from the .NET
   run.

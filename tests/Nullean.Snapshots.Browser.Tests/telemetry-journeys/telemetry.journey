@@ -1,0 +1,19 @@
+# A site with a browser telemetry SDK, which is on only for a normal user agent, exports a batch after a short delay, and must not
+# break navigation. The expect lines are assertions on the network and the document: they record nothing, so the verified
+# transcript holds only the read at the end.
+set useragent "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 docs-builder-telemetry-test"
+open /
+wait --load networkidle
+expect request "**/chunk-instrumentation-*.js"
+find role link click --name "Elastic Fundamentals"
+expect url "**/get-started"
+expect same-document
+expect visible find role heading --name "Get started"
+expect --timeout 20000 request "**/_api/v1/o/l" --method POST --status 2xx
+expect --not request "**/_api/v1/o/*" --failed
+expect --not request "**/_api/v1/o/*" --larger-than 32kb
+expect request "**/_api/v1/o/l" --body-contains '"docs-frontend"'
+expect request "**/_api/v1/o/l" --body-contains browser.navigation_timing
+expect request "**/_api/v1/o/l" --body-contains '"session.id"'
+expect --not request "**/_api/v1/o/l" --body-contains browser.resource_timing
+errors
