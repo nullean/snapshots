@@ -10,7 +10,13 @@ public class ProjectJourneys
 
 	[Test]
 	[JourneyFiles("journeys")]
-	public Task Run(SnapshotFile journey) => JourneyTest.RunAsync(journey, new JourneySnapshotOptions { BaseUrl = LiveJourneyTests.Site });
+	public Task Run(SnapshotFile journey)
+	{
+		var options = new JourneySnapshotOptions { BaseUrl = LiveJourneyTests.Site };
+		if (JourneyTest.SkipReason(journey, options) is { } why)
+			Skip.Test(why);
+		return JourneyTest.RunAsync(journey, options);
+	}
 }
 
 /// <summary>

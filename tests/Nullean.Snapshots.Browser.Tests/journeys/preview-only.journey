@@ -1,0 +1,5 @@
+# Applies only to a site with navigation-preview on, which the project's test site never has: the test skips it with the
+# reason. If it ran it would fail, because the page it opens does not exist.
+# @requires navigation-preview
+open does-not-exist.html
+expect title "Never"

@@ -175,6 +175,44 @@ its own. `Variant = "preview"` compares `journeys/shop.journey` with `.snapshots
 and leaves `shop.verified.journey` alone. A variant is letters, digits, `.`, `-` and `_`. `snap orphans` counts a
 variant file as used when a run compared with it.
 
+## Journeys that apply to some sites
+
+A journey can say which sites it is for with `# @requires` in its header (Nullean.Cdp's
+[journey header](https://cdp.nullean.net/journeys/)), and a `feature … end` block holds steps for one flag state. Tell the
+run what the site is, and ask whether a journey applies before running it:
+
+```csharp
+var site = new JourneySnapshotOptions
+{
+    BaseUrl = target.Url,
+    Features = target.Features,      // the enabled flags, kebab-case
+    BuildType = target.BuildType,    // "isolated", "assembler", "codex"
+    Env = target.Env,                // "edge", "prod"; null when unknown
+    ReadOnly = target.IsLive,        // refuse every request that is not GET, HEAD or OPTIONS
+};
+
+[Test]
+[JourneyFiles("journeys")]
+public Task Run(SnapshotFile journey)
+{
+    if (JourneyTest.SkipReason(journey, site) is { } why)
+        Skip.Test(why);              // TUnit; any framework's skip works
+    return JourneyTest.RunAsync(journey, site);
+}
+```
+
+`JourneyTest.Unmet(journey, context)` returns the first `@requires` condition the context does not meet, as written
+(`@requires navigation-preview`), or `null`. `SkipReason` does the same from the run's options and also skips a journey
+marked `@mutates` on a read-only run. A skipped test shows its reason, so a journey that does not run is never a
+silent pass. `JourneySnapshot.Metadata(file)` returns the whole header: tags, requirements, monitor, alerts.
+
+A `feature` block the run does not meet is not an error. The transcript shows it once, as a section headed `feature …`
+with `skipped: <the condition>`, so a verified transcript records which flag state it was taken in. Compare each flag
+state with its own [variant](#a-live-site-and-variants).
+
+`ReadOnly` is enforced in the browser, not by the journey: a write to an allowed host fails the step that caused it, and
+`WritableUrls` lists the globs, such as a telemetry endpoint, that may still be written to.
+
 ## Screenshots and HAR files
 
 `screenshot` and `network har stop` write files. In a test they go next to the journey's received transcript,
@@ -200,6 +238,10 @@ are files, not part of the transcript: pixels differ between machines.
 | `ActionTimeout`, `NavigationTimeout` | | Nullean.Cdp's 5 s and 30 s by default |
 | `Transcript` | `--transcript compare\|off` | `Off` runs the steps and `expect` lines and compares no transcript; see [a live site](#a-live-site-and-variants) |
 | `Variant` | `--variant <name>` | compares with `{journey}.{variant}.verified.journey`; see [a live site](#a-live-site-and-variants) |
+| `Features`, `BuildType`, `Env` | | what `feature` blocks and `@requires` are judged against; see [journeys that apply](#journeys-that-apply-to-some-sites) |
+| `ReadOnly`, `WritableUrls` | | refuse writes, except to these URL globs |
+| `Viewport` | | the size every journey starts with; Chrome's default is a phone layout on a responsive site |
+| `UserAgent`, `Headers` | | what every page of the run sends, such as the identity a site uses to tell a monitor from a visitor |
 
 ## Chrome
 
