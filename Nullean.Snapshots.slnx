@@ -6,6 +6,7 @@
     <Project Path="src/Nullean.Snapshots.Cli/Nullean.Snapshots.Cli.csproj" />
     <Project Path="src/Nullean.Snapshots.Browser/Nullean.Snapshots.Browser.csproj" />
     <Project Path="src/Nullean.Snapshots.Browser.Assertions/Nullean.Snapshots.Browser.Assertions.csproj" />
+    <Project Path="src/Nullean.Snapshots.Browser.Console/Nullean.Snapshots.Browser.Console.csproj" />
     <Project Path="src/Nullean.Snapshots.Html/Nullean.Snapshots.Html.csproj" />
     <Project Path="src/Nullean.Snapshots.Images/Nullean.Snapshots.Images.csproj" />
     <Project Path="src/Nullean.Snapshots.Json/Nullean.Snapshots.Json.csproj" />

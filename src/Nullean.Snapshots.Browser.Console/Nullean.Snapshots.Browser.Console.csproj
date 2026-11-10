@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Nullean.Snapshots.Browser.Console</RootNamespace>
+    <Description>Runs a suite of journeys from the console with streamed results, grouped skips and readable failures, for snap journey run and for any tool that wants the same output.</Description>
+    <PackageTags>snapshot;testing;browser;journey;cdp;console</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Nullean.Snapshots.Browser/Nullean.Snapshots.Browser.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Nullean.Snapshots.Browser.Tests" />
+    <InternalsVisibleTo Include="snap" />
+    <InternalsVisibleTo Include="Nullean.Snapshots.Cli.Tests" />
+  </ItemGroup>
+
+</Project>

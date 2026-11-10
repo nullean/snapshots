@@ -78,6 +78,9 @@ public sealed class JourneySnapshotOptions
 	/// <summary>Request headers every page of the run sends. A journey's own <c>set headers</c> adds to them.</summary>
 	public IReadOnlyDictionary<string, string> Headers { get; init; } = new Dictionary<string, string>();
 
+	/// <summary>Called before each step runs, for a progress display. Steps inside a <c>feature</c> block the run does not meet are not reported.</summary>
+	public Action<JourneyStep>? OnStep { get; init; }
+
 	/// <summary>What <c>feature</c> blocks and <c>@requires</c> lines are judged against.</summary>
 	public JourneyContext Context => new(Features, BuildType, Env);
 }
@@ -174,6 +177,7 @@ public static class JourneySnapshot
 			Viewport = options.Viewport,
 			UserAgent = options.UserAgent,
 			Headers = options.Headers,
+			OnStep = options.OnStep,
 		}, cancellationToken).ConfigureAwait(false);
 		return new JourneyTranscript(full, JourneyTranscript.Render(result, options.BaseUrl), result.Failure)
 		{
@@ -205,6 +209,7 @@ public static class JourneySnapshot
 		Viewport = options.Viewport,
 		UserAgent = options.UserAgent,
 		Headers = options.Headers,
+		OnStep = options.OnStep,
 	};
 
 	/// <summary>

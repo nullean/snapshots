@@ -8,6 +8,8 @@
     <ProjectReference Include="../../src/Nullean.Snapshots.Browser.Assertions/Nullean.Snapshots.Browser.Assertions.csproj" />
     <!-- 'snap journey run' is tested in process, against the same journeys as the tests. -->
     <ProjectReference Include="../../src/Nullean.Snapshots.Cli/Nullean.Snapshots.Cli.csproj" />
+    <!-- The console runner, tested with a fake executor. -->
+    <ProjectReference Include="../../src/Nullean.Snapshots.Browser.Console/Nullean.Snapshots.Browser.Console.csproj" />
     <ProjectReference Include="../../src/Nullean.Snapshots.TUnit/Nullean.Snapshots.TUnit.csproj" />
     <!-- The conformance test parses the same header with both parsers. -->
     <ProjectReference Include="../../src/Nullean.HttpFileParser/Nullean.HttpFileParser.csproj" />

@@ -631,3 +631,18 @@ image or a transcript is not something to read in a source file.
   step or request and leaves out names that are not valid; the parsers report them when the file runs.
 - **Display names are set explicitly.** A `TestDataRow` shows its data expression (`Run(file)`) unless given a display
   name, so the data source writes `Run(<name>)` itself, as the arguments used to render.
+
+## The console runner
+
+- **One runner for every tool that prints a run.** `snap journey run` printed `ok <key>` and raw messages, ran one journey at a
+  time, and ignored `@requires` and `@mutates`; docs-builder's `docs-journeys` had the better output but kept it to itself.
+  `Nullean.Snapshots.Browser.Console` holds the runner and the reporter, so the CLI and other tools print the same thing.
+  It is a library with no `Process` use: a tool that wraps it calls it in process.
+- **The caller finds journeys and decides what compares.** The runner takes the files with the ids they go by, and a `Compare`
+  function. It has no globbing and no knowledge of verified files, so `snap` keeps its engine and its glob rules, and a tool that
+  only checks `expect` lines passes no `Compare`.
+- **The runner does not learn about sites.** Features, build type and env are inputs. Reading them from a page (docs-builder's
+  `docs:*` tags) is the wrapper's job, because the tag names are the site's.
+- **A step failure and a differing transcript are shown differently.** A failing step shows the step and the error, and the
+  partial transcript is not compared. A transcript that differs shows the comparison's own message as written, never reflowed.
+- **The exit code for a journey that cannot be parsed is an option.** `snap` documents 2 for it and docs-builder documents 1.
