@@ -60,8 +60,11 @@ internal sealed class JourneyCli(
 		}
 
 		var (files, missing) = Expand(patterns);
-		foreach (var pattern in missing)
+		var lookalikes = missing.Where(LooksLikeOption).ToList();
+		foreach (var pattern in missing.Except(lookalikes))
 			error.WriteLine($"Error: no journey matches '{pattern}'.");
+		if (lookalikes.Count > 0)
+			error.WriteLine(OptionLookalikes(lookalikes));
 		if (missing.Count > 0)
 			return ExitCode.Usage;
 
@@ -168,6 +171,21 @@ internal sealed class JourneyCli(
 		}
 
 		return project;
+	}
+
+	/// <summary>
+	/// True for a word that is usage text, not a journey: an option, or a piece of one with its brackets (<c>[--variant</c>,
+	/// <c>plain]</c>). A shell passes those through as files, and they match nothing.
+	/// </summary>
+	internal static bool LooksLikeOption(string word) =>
+		word.StartsWith('-') || word.StartsWith("[-", StringComparison.Ordinal) || (word.EndsWith(']') && !word.Contains('['));
+
+	/// <summary>One message for every such word, with the command they spell when the brackets are left off.</summary>
+	internal static string OptionLookalikes(IReadOnlyList<string> words)
+	{
+		var quoted = string.Join(", ", words.Select(w => $"'{w}'"));
+		var typed = string.Join(' ', words.Select(w => w.Trim('[', ']')).Where(w => w.Length > 0));
+		return $"Error: {quoted} look like options from usage text, not journeys. Brackets there mark an optional part and are not typed: write {typed}.";
 	}
 
 	/// <summary>Files as given, or every <c>*.journey</c> below the root a glob matches, sorted.</summary>
