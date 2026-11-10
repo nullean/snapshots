@@ -140,7 +140,7 @@ public class JourneyMatchTests
 
 		(await run.InvokeWith(null, "preview", null, "journeys/shop.journey")).Should().Be(0);
 
-		run.Output.Should().Be("ok   Acme.Tests/journeys/shop.preview\n");
+		run.Output.Should().StartWith("ok      journeys/shop (").And.Contain("1 passed, 0 failed, 0 skipped");
 		run.Ran.Should().ContainSingle();
 	}
 
@@ -154,8 +154,8 @@ public class JourneyMatchTests
 
 		(await run.InvokeWith(null, null, "off", "journeys/**/*.journey")).Should().Be(1);
 
-		run.Output.Should().StartWith("Journey stopped at ");
-		run.Output.Should().Contain("ok   journeys/shop.journey (transcript off)");
+		run.Output.Should().Contain("Journey stopped at ").And.Contain("expect visible #pay");
+		run.Output.Should().Contain("ok      journeys/shop (");
 		run.P.Fs.AllFiles.Should().NotContain(f => f.Contains("received", StringComparison.Ordinal));
 	}
 
@@ -186,7 +186,7 @@ public class JourneyMatchTests
 		public StringWriter Out { get; } = new();
 		public StringWriter Err { get; } = new();
 		public Dictionary<string, string?> Env { get; } = [];
-		public List<(string File, Uri? Base)> Ran { get; } = [];
+		public List<(string File, Uri? Base, JourneySnapshotOptions Options)> Ran { get; } = [];
 		public Func<string, JourneyTranscript>? Transcript { get; set; }
 
 		public Run()
@@ -204,11 +204,14 @@ public class JourneyMatchTests
 		public Task<int> Invoke(string? baseUrl, params string[] patterns) => InvokeWith(baseUrl, null, null, patterns);
 
 		public Task<int> InvokeWith(string? baseUrl, string? variant, string? transcript, params string[] patterns) =>
+			InvokeMore(new JourneyRunArgs { Interactive = false }, baseUrl, variant, transcript, patterns);
+
+		public Task<int> InvokeMore(JourneyRunArgs more, string? baseUrl, string? variant, string? transcript, params string[] patterns) =>
 			new JourneyCli(P.Fs, P.Project.Directory, Out, Err, (file, options, _) =>
 			{
-				Ran.Add((file, options.BaseUrl));
+				Ran.Add((file, options.BaseUrl, options));
 				return Task.FromResult(Transcript!(file));
-			}, k => Env.GetValueOrDefault(k)).RunAsync(patterns, baseUrl, CancellationToken.None, variant: variant, transcript: transcript);
+			}, k => Env.GetValueOrDefault(k)).RunAsync(patterns, baseUrl, CancellationToken.None, variant: variant, transcript: transcript, more: more with { Interactive = false });
 
 		public string Output => Out.ToString().Replace("\r\n", "\n", StringComparison.Ordinal);
 	}
@@ -222,7 +225,7 @@ public class JourneyMatchTests
 
 		(await run.Invoke("http://localhost:5000/", "journeys/**/*.journey")).Should().Be(0);
 
-		run.Output.Should().Be("ok   Acme.Tests/journeys/nested/basket\nok   Acme.Tests/journeys/shop\n");
+		run.Output.Should().Contain("ok      journeys/nested/basket (").And.Contain("ok      journeys/shop (").And.Contain("2 passed, 0 failed, 0 skipped");
 		run.Ran.Should().AllSatisfy(r => r.Base.Should().Be(new Uri("http://localhost:5000/")));
 		run.Ran.Select(r => r.File).Should().NotContain(f => f.Contains("bin", StringComparison.Ordinal) || f.Contains(".snapshots", StringComparison.Ordinal));
 	}
@@ -247,7 +250,7 @@ public class JourneyMatchTests
 
 		(await run.Invoke(null, "journeys/shop.journey")).Should().Be(1);
 
-		run.Output.Should().StartWith("Journey did not match snapshot: tests/Acme.Tests/.snapshots/journeys/shop.verified.journey\n");
+		run.Output.Should().Contain("FAILED  journeys/shop").And.Contain("Journey did not match snapshot: tests/Acme.Tests/.snapshots/journeys/shop.verified.journey\n");
 		run.Output.Should().Contain("Accept:   snap accept Acme.Tests/journeys/shop");
 		run.P.Read(run.P.ReceivedFile("journeys/shop", "journey")).Should().Be(Changed);
 		run.P.Fs.File.Exists(run.P.Fs.Path.Combine(run.P.Project.ReceivedDirectory, RunManifest.FileName)).Should().BeFalse();
@@ -304,8 +307,73 @@ public class JourneyMatchTests
 
 		(await run.Invoke(null, "journeys/**/*.journey")).Should().Be(2);
 
-		run.Err.ToString().Should().Contain("basket.journey:1: 'screenshot' is not supported in journeys.");
-		run.Output.Should().Contain("ok   Acme.Tests/journeys/shop");
+		run.Output.Should().Contain("basket.journey:1: 'screenshot' is not supported in journeys.").And.Contain("FAILED  journeys/nested/basket");
+		run.Output.Should().Contain("ok      journeys/shop (");
+	}
+
+	[Test]
+	public async Task TheRunFlagsReachTheJourneyOptions()
+	{
+		var run = new Run();
+		var more = new JourneyRunArgs
+		{
+			Features = ["preview"],
+			Env = "demo",
+			BuildType = "assembler",
+			ReadOnly = true,
+			Viewport = "1280x800",
+			UserAgent = "Monitor/1",
+			Headers = ["X-Monitor: true"],
+			Writable = ["**/v1/o/l"],
+		};
+
+		(await run.InvokeMore(more, "http://localhost:5000/", null, "off", "journeys/shop.journey")).Should().Be(0);
+
+		var options = run.Ran.Should().ContainSingle().Subject.Options;
+		options.Features.Should().Equal("preview");
+		(options.Env, options.BuildType, options.ReadOnly, options.UserAgent).Should().Be(("demo", "assembler", true, "Monitor/1"));
+		options.Viewport.Should().Be(new JourneyViewport(1280, 800));
+		options.Headers.Should().Contain("X-Monitor", "true");
+		options.WritableUrls.Should().Equal("**/v1/o/l");
+	}
+
+	[Test]
+	public async Task ARequiresLineThatTheSiteDoesNotMeetSkipsTheJourneyWithItsReason()
+	{
+		var run = new Run();
+		run.P.Fs.AddFile(run.P.Fs.Path.Combine(run.P.Project.Directory, "journeys", "preview.journey"), new MockFileData("# @requires preview\nopen index.html\n"));
+
+		var without = await run.InvokeMore(new JourneyRunArgs(), null, null, "off", "journeys/preview.journey", "journeys/shop.journey");
+		var skipped = run.Output;
+		var withFlag = await run.InvokeMore(new JourneyRunArgs { Features = ["preview"] }, null, null, "off", "journeys/preview.journey");
+
+		without.Should().Be(0);
+		skipped.Should().Contain("skipped journeys/preview (requires preview)").And.Contain("ok      journeys/shop (");
+		withFlag.Should().Be(0);
+		run.Ran.Select(r => Path.GetFileName(r.File)).Should().Equal("shop.journey", "preview.journey");
+	}
+
+	[Test]
+	public async Task ABadViewportOrHeaderExitsTwo()
+	{
+		var run = new Run();
+
+		(await run.InvokeMore(new JourneyRunArgs { Viewport = "wide" }, null, null, null, "journeys/shop.journey")).Should().Be(2);
+		(await run.InvokeMore(new JourneyRunArgs { Headers = ["no colon"] }, null, null, null, "journeys/shop.journey")).Should().Be(2);
+
+		run.Err.ToString().Replace("\r\n", "\n", StringComparison.Ordinal).Should().Be(
+			"Error: --viewport 'wide' is not a viewport: use --viewport <width>x<height>, e.g. 1280x800.\n" +
+			"Error: --header 'no colon' is not a header: use --header \"Name: value\".\n");
+		run.Ran.Should().BeEmpty();
+	}
+
+	[Test]
+	public void TheRerunCommandCarriesTheSiteAndFlags()
+	{
+		var args = new JourneyRunArgs { Features = ["preview"], Env = "demo", ReadOnly = true, UserAgent = "Monitor 1", Viewport = "1280x800" };
+
+		JourneyCli.RerunCommand("https://shop.test/", null, "off", args).Should().Be(
+			"snap journey run {id}.journey --base-url https://shop.test/ --transcript off --env demo --feature preview --read-only --user-agent \"Monitor 1\" --viewport 1280x800");
 	}
 
 	[Test]

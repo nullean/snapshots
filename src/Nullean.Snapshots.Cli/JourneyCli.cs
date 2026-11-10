@@ -1,9 +1,9 @@
 using System.IO.Abstractions;
 using System.Text.RegularExpressions;
 using Nullean.Argh;
-using Nullean.Cdp;
 using Nullean.Cdp.Journeys;
 using Nullean.Snapshots.Browser;
+using Nullean.Snapshots.Browser.Console;
 
 namespace Nullean.Snapshots.Cli;
 
@@ -18,13 +18,15 @@ namespace Nullean.Snapshots.Cli;
 /// <param name="error">Where usage and journey errors go.</param>
 /// <param name="run">Runs one journey file with its options; a real browser in the CLI, a fake in tests.</param>
 /// <param name="getVariable">Reads environment variables.</param>
+/// <param name="ensureReady">Starts the browser before the first journey, so a browser that cannot start ends the run once; none in tests.</param>
 internal sealed class JourneyCli(
 	IFileSystem fileSystem,
 	string root,
 	TextWriter output,
 	TextWriter error,
 	Func<string, JourneySnapshotOptions, CancellationToken, Task<JourneyTranscript>> run,
-	Func<string, string?> getVariable
+	Func<string, string?> getVariable,
+	Func<CancellationToken, Task>? ensureReady = null
 )
 {
 	private readonly string _root = fileSystem.Path.TrimEndingDirectorySeparator(fileSystem.Path.GetFullPath(root));
@@ -37,7 +39,8 @@ internal sealed class JourneyCli(
 		string? fileRoot = null,
 		string? artifacts = null,
 		string? variant = null,
-		string? transcript = null
+		string? transcript = null,
+		JourneyRunArgs? more = null
 	)
 	{
 		if (patterns.Count == 0)
@@ -76,54 +79,143 @@ internal sealed class JourneyCli(
 		var projects = new SnapshotProjectResolver(fileSystem);
 		var engine = new SnapshotEngine(fileSystem, k => k == SnapshotEnvironment.AcceptVariable ? null : getVariable(k), () => null,
 			(site, _) => WithArtifactsReceived(fileSystem, projects.FromCallerFile(site.FilePath)));
-		var exit = ExitCode.Ok;
-		foreach (var file in files)
+		var args = more ?? new JourneyRunArgs();
+		if (!TryParseViewport(args.Viewport, out var viewport, out problem) || !TryParseHeaders(args.Headers, out var headers, out problem))
 		{
-			JourneyTranscript recorded;
-			try
-			{
-				recorded = await run(file, new JourneySnapshotOptions
-				{
-					Transcript = mode,
-					Variant = variant,
-					BaseUrl = baseUri,
-					AllowedHosts = allow ?? [],
-					FileRoot = fileRoot is null ? null : fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, fileRoot)),
-					// As in a test: a journey that writes files gets its own folder next to its received transcript.
-					ArtifactsDirectory = artifacts is not null
-						? fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, artifacts))
-						: WritesFiles(file) ? engine.ArtifactsDirectory(file) : null,
-				}, cancellationToken).ConfigureAwait(false);
-			}
-			catch (JourneyParseException e)
-			{
-				error.WriteLine(e.Message);
-				exit = Math.Max(exit, ExitCode.Usage);
-				continue;
-			}
-			catch (BrowserLaunchException e)
-			{
-				error.WriteLine("Error: " + e.Message);
-				return ExitCode.Io;
-			}
-
-			var compared = mode == TranscriptMode.Off
-				? new SnapshotResult(true, null, string.Empty, string.Empty, string.Empty)
-				: engine.MatchFile(recorded.Text, JourneySnapshot.Format, file, null, null, variant);
-			var result = JourneySnapshot.WithFailure(recorded, compared);
-			if (result.Passed)
-				output.WriteLine(mode == TranscriptMode.Off
-					? $"ok   {fileSystem.Path.GetRelativePath(_root, file).Replace('\\', '/')} (transcript off)"
-					: $"ok   {result.Key}");
-			else
-			{
-				output.WriteLine(result.FailureMessage);
-				output.WriteLine();
-				exit = Math.Max(exit, ExitCode.Pending);
-			}
+			error.WriteLine(problem);
+			return ExitCode.Usage;
 		}
 
-		return exit;
+		var options = new JourneyRunOptions
+		{
+			Files = JourneyRunFile.FromPaths(_root, files),
+			BaseUrl = baseUri,
+			AllowedHosts = allow ?? [],
+			FileRoot = fileRoot is null ? null : fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, fileRoot)),
+			// As in a test: a journey that writes files gets its own folder next to its received transcript.
+			ArtifactsFor = f => artifacts is not null
+				? fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, artifacts))
+				: WritesFiles(f.Path) ? engine.ArtifactsDirectory(f.Path) : null,
+			Compare = mode == TranscriptMode.Off
+				? null
+				: (f, recorded) => engine.MatchFile(recorded.Text, JourneySnapshot.Format, f.Path, null, null, variant),
+			Variant = variant,
+			Load = path => Journey.Parse(fileSystem.File.ReadAllText(path), path),
+			Features = new HashSet<string>(args.Features, StringComparer.Ordinal),
+			BuildType = args.BuildType,
+			Env = args.Env,
+			ReadOnly = args.ReadOnly,
+			AllowMutations = args.AllowMutations,
+			WritableUrls = args.Writable,
+			Viewport = viewport,
+			UserAgent = args.UserAgent,
+			Headers = headers,
+			Tags = new HashSet<string>(args.Tags, StringComparer.Ordinal),
+			Parallel = args.Parallel,
+			AllowAllSkipped = args.AllowAllSkipped,
+			Verbose = args.Verbose,
+			JUnitPath = args.JUnit,
+			Rerun = RerunCommand(baseUrl, variant, transcript, args),
+			ParseErrorExitCode = ExitCode.Usage,
+		};
+		var interactive = args.Interactive ?? ConsoleJourneyReporter.UseInteractive;
+		if (interactive && baseUri is not null)
+		{
+			output.WriteLine(ConsoleJourneyReporter.ContextBlock($"snap {Version}".TrimEnd(), ContextRows(baseUri, args)));
+			output.WriteLine();
+		}
+
+		return await JourneyConsoleRunner
+			.RunAsync(options, output, error, new DelegateExecutor(run, ensureReady), new ConsoleJourneyReporter(output, options, interactive), cancellationToken)
+			.ConfigureAwait(false);
+	}
+
+	private static string Version =>
+		typeof(JourneyCli).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), inherit: false)
+			.OfType<System.Reflection.AssemblyInformationalVersionAttribute>().FirstOrDefault()?.InformationalVersion.Split('+')[0] ?? "";
+
+	private static List<ContextRow> ContextRows(Uri site, JourneyRunArgs args)
+	{
+		var rows = new List<ContextRow> { new("Site", site.ToString()) };
+		if (args.Env is not null)
+			rows.Add(new ContextRow("Env", args.Env, "--env"));
+		if (args.BuildType is not null)
+			rows.Add(new ContextRow("Build", args.BuildType, "--build-type"));
+		if (args.Features.Count > 0)
+			rows.Add(new ContextRow("Features", string.Join(' ', args.Features.Order(StringComparer.Ordinal)), "--feature"));
+		if (args.ReadOnly)
+			rows.Add(new ContextRow("Mode", "read-only", "--read-only"));
+		return rows;
+	}
+
+	/// <summary>The command that reruns one journey with the same site and flags; <c>{id}</c> stands for the journey.</summary>
+	internal static string RerunCommand(string? baseUrl, string? variant, string? transcript, JourneyRunArgs args)
+	{
+		var parts = new List<string> { "snap journey run {id}.journey" };
+
+		void Add(string flag, string? value)
+		{
+			if (value is not null)
+				parts.Add($"{flag} {(value.Any(char.IsWhiteSpace) ? $"\"{value}\"" : value)}");
+		}
+
+		Add("--base-url", baseUrl);
+		Add("--variant", variant);
+		Add("--transcript", transcript);
+		Add("--env", args.Env);
+		Add("--build-type", args.BuildType);
+		foreach (var feature in args.Features)
+			Add("--feature", feature);
+		if (args.ReadOnly)
+			parts.Add("--read-only");
+		foreach (var writable in args.Writable)
+			Add("--writable", writable);
+		Add("--user-agent", args.UserAgent);
+		foreach (var header in args.Headers)
+			Add("--header", header);
+		Add("--viewport", args.Viewport);
+		if (args.AllowMutations)
+			parts.Add("--allow-mutations");
+		return string.Join(' ', parts);
+	}
+
+	/// <summary>Reads <c>--viewport</c>: <c>1280x800</c>.</summary>
+	internal static bool TryParseViewport(string? value, out JourneyViewport? viewport, out string problem)
+	{
+		problem = string.Empty;
+		viewport = null;
+		if (value is null)
+			return true;
+		var parts = value.Split('x');
+		if (parts.Length == 2 && int.TryParse(parts[0], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var width)
+			&& int.TryParse(parts[1], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var height) && width > 0 && height > 0)
+		{
+			viewport = new JourneyViewport(width, height);
+			return true;
+		}
+
+		problem = $"Error: --viewport '{value}' is not a viewport: use --viewport <width>x<height>, e.g. 1280x800.";
+		return false;
+	}
+
+	/// <summary>Reads each <c>--header</c>: <c>"Name: value"</c>.</summary>
+	internal static bool TryParseHeaders(IReadOnlyList<string> values, out Dictionary<string, string> headers, out string problem)
+	{
+		problem = string.Empty;
+		headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+		foreach (var value in values)
+		{
+			var colon = value.IndexOf(':', StringComparison.Ordinal);
+			if (colon <= 0)
+			{
+				problem = $"Error: --header '{value}' is not a header: use --header \"Name: value\".";
+				return false;
+			}
+
+			headers[value[..colon].Trim()] = value[(colon + 1)..].Trim();
+		}
+
+		return true;
 	}
 
 	/// <summary>Reads <c>--transcript</c>: <c>compare</c> (the default) or <c>off</c>.</summary>
@@ -225,6 +317,40 @@ internal sealed class JourneyCli(
 		string.Join("(?:.*/)?", pattern.Split("**/").Select(SnapCli.Glob));
 }
 
+/// <summary>The options of <c>snap journey run</c> beyond the files, the base URL and what to compare.</summary>
+internal sealed record JourneyRunArgs
+{
+	public IReadOnlyList<string> Features { get; init; } = [];
+	public string? Env { get; init; }
+	public string? BuildType { get; init; }
+	public bool ReadOnly { get; init; }
+	public bool AllowMutations { get; init; }
+	public IReadOnlyList<string> Writable { get; init; } = [];
+	public string? UserAgent { get; init; }
+	public IReadOnlyList<string> Headers { get; init; } = [];
+	public string? Viewport { get; init; }
+	public int Parallel { get; init; } = 4;
+	public IReadOnlyList<string> Tags { get; init; } = [];
+	public string? JUnit { get; init; }
+	public bool Verbose { get; init; }
+	public bool AllowAllSkipped { get; init; }
+
+	/// <summary>Colour, icons and the status line; decided from the terminal when <c>null</c>.</summary>
+	public bool? Interactive { get; init; }
+}
+
+/// <summary>Runs journeys through the delegate the CLI was given: a real browser in the tool, a fake in tests.</summary>
+internal sealed class DelegateExecutor(
+	Func<string, JourneySnapshotOptions, CancellationToken, Task<JourneyTranscript>> run,
+	Func<CancellationToken, Task>? ensureReady
+) : JourneyConsoleRunner.IJourneyExecutor
+{
+	public Task EnsureReadyAsync(CancellationToken cancellationToken) => ensureReady?.Invoke(cancellationToken) ?? Task.CompletedTask;
+
+	public Task<JourneyTranscript> RunAsync(string file, JourneySnapshotOptions options, CancellationToken cancellationToken) =>
+		run(file, options, cancellationToken);
+}
+
 /// <summary>Run browser journeys and compare their transcripts with the verified snapshots.</summary>
 internal sealed class JourneyCommands
 {
@@ -241,6 +367,20 @@ internal sealed class JourneyCommands
 	/// <param name="artifacts">Where screenshot and network har stop write. Defaults to a folder per journey next to its received transcript.</param>
 	/// <param name="variant">Compare with {journey}.{variant}.verified.journey, for output that differs per flag set or build type.</param>
 	/// <param name="transcript">compare (the default), or off to run the steps and expect lines without comparing the transcript.</param>
+	/// <param name="feature">A feature flag that is on (repeatable), for 'feature' blocks and '# @requires' lines.</param>
+	/// <param name="env">The environment's name, for 'env:' conditions.</param>
+	/// <param name="buildType">The build type, for 'build-type:' conditions.</param>
+	/// <param name="readOnly">Refuse every request that is not GET, HEAD or OPTIONS, and skip journeys marked '# @mutates'.</param>
+	/// <param name="allowMutations">Run journeys marked '# @mutates' on a read-only run.</param>
+	/// <param name="writable">URL glob a read-only run may write to anyway (repeatable): ** anything, * anything but /.</param>
+	/// <param name="userAgent">The user agent of the run.</param>
+	/// <param name="header">A request header every page sends (repeatable): "Name: value".</param>
+	/// <param name="viewport">The viewport every journey starts with: 1280x800. Chrome's default is a phone layout on a responsive site.</param>
+	/// <param name="parallel">-p, How many journeys run at once, in one shared browser. Default: 4.</param>
+	/// <param name="tag">-t, Only journeys with one of these '# @tags' (repeatable).</param>
+	/// <param name="junit">Write a JUnit XML report here.</param>
+	/// <param name="verbose">-v, List every skipped journey instead of collapsing a reason that many share.</param>
+	/// <param name="allowAllSkipped">Exit with 0 when every selected journey was skipped. Otherwise a run that checked nothing exits with 1.</param>
 	public static async Task<int> Run(
 		[Argument] string[] files,
 		string? baseUrl = null,
@@ -249,23 +389,58 @@ internal sealed class JourneyCommands
 		string? fileRoot = null,
 		string? artifacts = null,
 		string? variant = null,
-		string? transcript = null
+		string? transcript = null,
+		string[]? feature = null,
+		string? env = null,
+		string? buildType = null,
+		bool readOnly = false,
+		bool allowMutations = false,
+		string[]? writable = null,
+		string? userAgent = null,
+		string[]? header = null,
+		string? viewport = null,
+		int parallel = 4,
+		string[]? tag = null,
+		string? junit = null,
+		bool verbose = false,
+		bool allowAllSkipped = false
 	)
 	{
-		Cdp.Browser? browser = null;
+		var browser = new Lazy<Task<Cdp.Browser>>(() => Cdp.Browser.LaunchAsync(), LazyThreadSafetyMode.ExecutionAndPublication);
 		try
 		{
-			var cli = new JourneyCli(new FileSystem(), root ?? Directory.GetCurrentDirectory(), Console.Out, Console.Error, async (file, options, ct) =>
+			var cli = new JourneyCli(
+				new FileSystem(),
+				root ?? Directory.GetCurrentDirectory(),
+				Console.Out,
+				Console.Error,
+				async (file, options, ct) => await JourneySnapshot.RunAsync(file, await browser.Value.ConfigureAwait(false), options, ct).ConfigureAwait(false),
+				Environment.GetEnvironmentVariable,
+				_ => browser.Value
+			);
+			var args = new JourneyRunArgs
 			{
-				browser ??= await Cdp.Browser.LaunchAsync(cancellationToken: ct).ConfigureAwait(false);
-				return await JourneySnapshot.RunAsync(file, browser, options, ct).ConfigureAwait(false);
-			}, Environment.GetEnvironmentVariable);
-			return await cli.RunAsync(files, baseUrl, CancellationToken.None, allow, fileRoot, artifacts, variant, transcript).ConfigureAwait(false);
+				Features = feature ?? [],
+				Env = env,
+				BuildType = buildType,
+				ReadOnly = readOnly,
+				AllowMutations = allowMutations,
+				Writable = writable ?? [],
+				UserAgent = userAgent,
+				Headers = header ?? [],
+				Viewport = viewport,
+				Parallel = parallel,
+				Tags = tag ?? [],
+				JUnit = junit,
+				Verbose = verbose,
+				AllowAllSkipped = allowAllSkipped,
+			};
+			return await cli.RunAsync(files, baseUrl, CancellationToken.None, allow, fileRoot, artifacts, variant, transcript, args).ConfigureAwait(false);
 		}
 		finally
 		{
-			if (browser is not null)
-				await browser.DisposeAsync().ConfigureAwait(false);
+			if (browser.IsValueCreated && browser.Value.IsCompletedSuccessfully)
+				await browser.Value.Result.DisposeAsync().ConfigureAwait(false);
 		}
 	}
 }

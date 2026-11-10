@@ -1,4 +1,5 @@
 using System.IO.Abstractions;
+using System.Text.RegularExpressions;
 using AwesomeAssertions;
 using Nullean.Cdp;
 using Nullean.Snapshots.Cli;
@@ -9,7 +10,7 @@ namespace Nullean.Snapshots.Browser.Tests;
 /// Journeys in a real Chrome against the pages in site/. The runner images have Chrome; without one, or when it cannot
 /// be started, these tests fail: they are never skipped.
 /// </summary>
-public class LiveJourneyTests
+public partial class LiveJourneyTests
 {
 	private static string Project => JourneySnapshot.ProjectDirectory(ThisFile());
 
@@ -36,6 +37,12 @@ public class LiveJourneyTests
 	}
 
 	public static IEnumerable<string> Journeys() => JourneySnapshot.Find();
+
+	// A run prints how long it took, which differs per machine and per run.
+	private static string Seconds(string text) => ElapsedSeconds().Replace(text, m => m.Value.StartsWith("in", StringComparison.Ordinal) ? "in <t>s" : "(<t>s)");
+
+	[GeneratedRegex(@"\(\d+\.\ds\)|in \d+\.\ds")]
+	private static partial Regex ElapsedSeconds();
 
 	[Test]
 	public void FindsTheProjectsJourneys() =>
@@ -68,7 +75,7 @@ public class LiveJourneyTests
 		var exit = await cli.RunAsync(["cli-journeys/checks.journey"], Site.AbsoluteUri, CancellationToken.None);
 
 		error.ToString().Should().BeEmpty();
-		output.ToString().Trim().Should().Be("ok   Nullean.Snapshots.Browser.Tests/cli-journeys/checks", "the screenshot step had a folder to write into");
+		Seconds(output.ToString().Trim()).Should().StartWith("ok      cli-journeys/checks (<t>s)\n", "the screenshot step had a folder to write into").And.Contain("1 passed, 0 failed, 0 skipped");
 		exit.Should().Be(0);
 	}
 
@@ -126,7 +133,7 @@ public class LiveJourneyTests
 		var exit = await cli.RunAsync(["journeys/shop.journey"], Site.AbsoluteUri, CancellationToken.None);
 
 		error.ToString().Should().BeEmpty();
-		output.ToString().Trim().Should().Be("ok   Nullean.Snapshots.Browser.Tests/journeys/shop");
+		Seconds(output.ToString().Trim()).Should().StartWith("ok      journeys/shop (<t>s)\n").And.Contain("1 passed, 0 failed, 0 skipped");
 		exit.Should().Be(0);
 	}
 
@@ -213,9 +220,9 @@ public class LiveJourneyTests
 
 		exit.Should().Be(1);
 		// The message names the journey by path, which differs per machine and per checkout.
-		(output.ToString() + error.ToString()).Replace("\r\n", "\n", StringComparison.Ordinal)
+		Seconds((output.ToString() + error.ToString()).Replace("\r\n", "\n", StringComparison.Ordinal)
 			.Replace(Project.Replace('\\', '/').TrimEnd('/') + "/", "{project}/", StringComparison.Ordinal)
-			.Should().MatchSnapshot();
+			).Should().MatchSnapshot();
 	}
 
 	[Test]
@@ -248,10 +255,10 @@ public class LiveJourneyTests
 
 		exit.Should().Be(1);
 		// The message names the journey by path and the request by the server's port, which differ per machine and per run.
-		(output.ToString() + error.ToString()).Replace("\r\n", "\n", StringComparison.Ordinal)
+		Seconds((output.ToString() + error.ToString()).Replace("\r\n", "\n", StringComparison.Ordinal)
 			.Replace(Project.Replace('\\', '/').TrimEnd('/') + "/", "{project}/", StringComparison.Ordinal)
 			.Replace(server.Url.TrimEnd('/'), "{origin}", StringComparison.Ordinal)
-			.Should().MatchSnapshot();
+			).Should().MatchSnapshot();
 	}
 
 	[Test]
