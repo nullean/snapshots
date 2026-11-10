@@ -160,6 +160,53 @@ OPTIONS is not sent, and the run stops at it. A request that only reads over POS
 POST {{host}}/docs/_mcp
 ```
 
+## Files that apply to some services
+
+Comments before the first request can carry the same `@` directives as a [journey's header](browser.md#journeys-that-apply-to-some-sites):
+
+```text
+# @tags mcp smoke
+# @requires !env:prod
+# @monitor schedule=10 locations=germany,us_east
+# @alert pagerduty
+# @mutates
+@host = https://example.test
+
+### health
+GET {{host}}/health
+```
+
+| Directive | |
+|---|---|
+| `@tags <name...>` | names for selecting files: lower case letters, digits, `.`, `_`, `-` |
+| `@requires <condition...>` | all must hold for the file to apply: a feature flag, `build-type:<a,b>` or `env:<a,b>`, each optionally with a leading `!`. Something the run does not know is not matched, so a plain condition fails and a negated one holds |
+| `@monitor [schedule=<minutes>] [locations=<a,b>]` | the file is exported as a monitor |
+| `@alert <channel...>` | where a failing monitor alerts, such as `pagerduty` |
+| `@mutates` | the file changes data on the service, so a read-only run skips it |
+
+They belong in the first block, before the first request; one anywhere else is an error with its line. Any other `@`
+word (`@note`, `@no-log`) stays a plain comment, as in the other dialects. `HttpFile.Metadata` holds what the header said.
+
+Tell the run what the service is with `Features`, `BuildType` and `Env` on the options, and ask whether a file applies
+before running it:
+
+```csharp
+var service = new HttpFileSnapshotOptions { Client = client, Env = "edge", ReadOnly = true };
+
+[Test]
+[HttpFiles("http")]
+public Task Run(SnapshotFile file)
+{
+    if (HttpFileTest.SkipReason(file, service) is { } why)
+        Skip.Test(why);              // TUnit; any framework's skip works
+    return HttpFileTest.RunAsync(file, service);
+}
+```
+
+`HttpFileTest.Unmet(file, context)` returns the first `@requires` condition the context does not meet, as written
+(`@requires !env:prod`), or `null`. `SkipReason` does the same from the options and also skips a `@mutates` file on a
+read-only run.
+
 ## Secrets and redaction
 
 Values reach a request from `http-client.env.json` (with `$shared`, a selected environment, and the private
@@ -222,6 +269,7 @@ this is not detected. `WebApplicationFactory.CreateClient()` follows redirects b
 | `Transcript` | `--transcript compare\|off` | `Off` sends the requests and compares no transcript; see [a live service](#a-live-service-and-variants) |
 | `Variant` | `--variant <name>` | compares with `{file}.{variant}.verified.responses`; see [a live service](#a-live-service-and-variants) |
 | `ReadOnly` | `--read-only` | refuses any request that is not GET, HEAD or OPTIONS unless it carries `# @readonly`; see [read-only runs](#read-only-runs) |
+| `Features`, `BuildType`, `Env` | | what `# @requires` is judged against; see [files that apply](#files-that-apply-to-some-services) |
 
 `HttpSnapshotOptions.Headers` chooses headers for `MatchHttpSnapshot` and `RenderAsync`.
 
