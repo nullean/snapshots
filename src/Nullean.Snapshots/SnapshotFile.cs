@@ -30,6 +30,52 @@ public sealed record SnapshotFile(string Path, string Name)
 		return Find(new FileSystem(), project.Directory, folder, pattern);
 	}
 
+	/// <summary>
+	/// The names in the file's <c># @tags</c> header lines (a journey's or a <c>.http</c> file's), for selecting files: the
+	/// comment lines before the first step or request. A tag that is not a valid name is left out; the journey and
+	/// <c>.http</c> parsers report it when the file is parsed.
+	/// </summary>
+	/// <param name="testAssembly">The test assembly; <see cref="Path"/> is relative to its project.</param>
+	public IReadOnlyList<string> Tags(Assembly testAssembly)
+	{
+		ArgumentNullException.ThrowIfNull(testAssembly);
+		var project = Resolver.FromAssembly(testAssembly)
+			?? throw new InvalidOperationException(
+				$"{testAssembly.GetName().Name} has no Nullean.Snapshots project metadata; reference Nullean.Snapshots from the test project.");
+		return ReadTags(new FileSystem(), System.IO.Path.Combine(project.Directory, Path));
+	}
+
+	internal static IReadOnlyList<string> ReadTags(IFileSystem fs, string file)
+	{
+		if (!fs.File.Exists(file))
+			return [];
+		var tags = new List<string>();
+		foreach (var line in fs.File.ReadLines(file))
+		{
+			var t = line.Trim();
+			if (t.Length == 0)
+				continue;
+			if (t.StartsWith("###", StringComparison.Ordinal))
+				break;
+			var comment = t.StartsWith('#') ? t.TrimStart('#') : t.StartsWith("//", StringComparison.Ordinal) ? t[2..].TrimStart('/') : null;
+			if (comment is null)
+			{
+				// A .http file may define variables before its first request; anything else is the first step or request.
+				if (t.StartsWith('@'))
+					continue;
+				break;
+			}
+			var words = comment.Trim().Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
+			if (words is ["@tags", ..])
+				tags.AddRange(words.Skip(1).Where(IsTagName));
+		}
+		return [.. tags.Distinct(StringComparer.Ordinal)];
+	}
+
+	private static bool IsTagName(string tag) =>
+		tag.Length > 0 && (char.IsAsciiLetterLower(tag[0]) || char.IsAsciiDigit(tag[0])) &&
+		tag.All(c => char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c is '.' or '_' or '-');
+
 	internal static IReadOnlyList<SnapshotFile> Find(IFileSystem fs, string projectDirectory, string folder, string pattern)
 	{
 		ArgumentNullException.ThrowIfNull(folder);
