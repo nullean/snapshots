@@ -203,6 +203,9 @@ public Task Run(SnapshotFile file)
 }
 ```
 
+`[HttpFiles]` also gives each case its `@tags` as TUnit categories, so `--treenode-filter "/*/*/*/*[Category=mcp]"`
+selects by tag; see [select journeys by tag](browser.md#select-journeys-by-tag).
+
 `HttpFileTest.Unmet(file, context)` returns the first `@requires` condition the context does not meet, as written
 (`@requires !env:prod`), or `null`. `SkipReason` does the same from the options and also skips a `@mutates` file on a
 read-only run.
