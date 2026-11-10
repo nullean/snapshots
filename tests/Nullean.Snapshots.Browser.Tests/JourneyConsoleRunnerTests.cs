@@ -145,6 +145,8 @@ public partial class JourneyConsoleRunnerTests
 
 		strict.Exit.Should().Be(JourneyExitCode.Failed);
 		lenient.Exit.Should().Be(JourneyExitCode.Ok);
+		strict.Output.Should().EndWith("Every selected journey was skipped, so nothing was checked.\n");
+		lenient.Output.Should().EndWith("Every selected journey was skipped; none applies to this site.\n");
 	}
 
 	[Test]

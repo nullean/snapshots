@@ -151,6 +151,10 @@ public sealed class ConsoleJourneyReporter : IJourneyReporter
 			var failed = outcomes.Count(o => o.Failed);
 			var skipped = outcomes.Count(o => o.Skipped);
 			_output.WriteLine(_interactive ? PrettyTotals(passed, failed, skipped, elapsed) : PlainTotals(passed, failed, skipped, elapsed));
+			if (passed + failed == 0)
+				_output.WriteLine(_options.AllowAllSkipped
+					? "Every selected journey was skipped; none applies to this site."
+					: "Every selected journey was skipped, so nothing was checked.");
 		}
 	}
 
