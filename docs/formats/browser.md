@@ -283,30 +283,6 @@ return await JourneyConsoleRunner.RunAsync(options, Console.Out, Console.Error);
 pass a function that compares the transcript with the verified one (`snap` does). The exit code is a `JourneyExitCode`.
 `ConsoleJourneyReporter.ContextBlock` prints the facts a run starts from, one per line, for a tool that wants a header.
 
-## Run a suite from the console
-
-`Nullean.Snapshots.Browser.Console` runs a set of journey files in one shared Chrome and shows the run the way
-`snap journey run` does. A journey that does not apply (`@requires`, `@tags`, `@mutates` on a read-only run) is skipped with its
-reason, and a reason that many journeys share is shown once with a count. Each result is printed as it finishes, and the
-failures are repeated at the end with the totals. On a terminal a status line shows what is running, a failure shows the journey's
-lines around the failing one, and icons and colour are on; in CI, in a pipe, or with `NO_COLOR` the output is plain lines.
-
-```csharp
-var options = new JourneyRunOptions
-{
-    Files = JourneyRunFile.FromPaths(root, Directory.EnumerateFiles(root, "*.journey", SearchOption.AllDirectories)),
-    BaseUrl = new Uri("https://shop.test/"),
-    Features = new HashSet<string> { "preview" },
-    ReadOnly = true,
-    Rerun = "my-tool run --only {id}",
-};
-return await JourneyConsoleRunner.RunAsync(options, Console.Out, Console.Error);
-```
-
-`Compare` decides whether transcripts are compared: leave it out to check only that every step and `expect` line passes, or
-pass a function that compares the transcript with the verified one (`snap` does). The exit code is a `JourneyExitCode`.
-`ConsoleJourneyReporter.ContextBlock` prints the facts a run starts from, one per line, for a tool that wants a header.
-
 ## Chrome
 
 Chrome is found from `CDP_CHROME`, `CHROME_PATH`, the usual install folders, then the `PATH`; GitHub's runner images
