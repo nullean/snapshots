@@ -31,6 +31,10 @@ public class SnapshotFileTagsTests
 		Tags("GET https://example.test/\n\n###\n# @tags late\nGET https://example.test/two\n").Should().BeEmpty();
 
 	[Test]
+	public void Http_TagsAfterTheFirstSeparator_AreNotRead() =>
+		Tags("# @tags first\n\n### health\n# @tags late\nGET https://example.test/\n").Should().Equal("first");
+
+	[Test]
 	public void InvalidAndDuplicateNames_AreLeftOut() =>
 		Tags("# @tags Bad ok ok good.one a_b -x\nopen /\n").Should().Equal("ok", "good.one", "a_b");
 
