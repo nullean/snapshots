@@ -1,0 +1,7 @@
+# For the failing-assertion tests: the collector got the export, but not the text this line expects in its body.
+set useragent "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 docs-builder-telemetry-test"
+open /
+get title
+expect --timeout 20000 request "**/_api/v1/o/l" --status 2xx
+expect --timeout 300 request "**/_api/v1/o/l" --body-contains no-such-text
+get url

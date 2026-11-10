@@ -202,6 +202,42 @@ public class LiveJourneyTests
 	}
 
 	[Test]
+	public async Task AFailingNetworkAssertionFailsTheStepAndKeepsTheReadsBeforeIt()
+	{
+		RequireChrome();
+		await using var server = new TelemetryServer();
+
+		var transcript = await JourneySnapshot.RunAsync("cli-journeys/telemetry-fails.journey", new JourneySnapshotOptions { BaseUrl = new Uri(server.Url) });
+
+		transcript.Text.Should().Be("## get title\nurl: {origin}/\n> Docs\n", "the read before the assertion stays, and the one after it never runs");
+		transcript.Failure!.Line.Should().Be(6);
+		transcript.Failure.Command.Should().Be("expect --timeout 300 request **/_api/v1/o/l --body-contains no-such-text");
+		transcript.Failure.Message.Should().StartWith("Timed out after 0.3s waiting for the requests to include a request matching \"**/_api/v1/o/l\" --body-contains \"no-such-text\": received 1 with that URL, none matching the other filters: POST ");
+		transcript.Failure.Message.Should().NotContain("docs-frontend", "a failure shows what was asked for and what matched the URL, never the body");
+	}
+
+	[Test]
+	public async Task SnapJourneyRunReportsAFailingNetworkAssertionAndExitsOne()
+	{
+		RequireChrome();
+		await using var server = new TelemetryServer();
+		var output = new StringWriter();
+		var error = new StringWriter();
+		var cli = new JourneyCli(new FileSystem(), Project, output, error,
+			(file, options, ct) => JourneySnapshot.RunAsync(file, options, ct),
+			_ => null);
+
+		var exit = await cli.RunAsync(["cli-journeys/telemetry-fails.journey"], server.Url, CancellationToken.None);
+
+		exit.Should().Be(1);
+		// The message names the journey by path and the request by the server's port, which differ per machine and per run.
+		(output.ToString() + error.ToString()).Replace("\r\n", "\n", StringComparison.Ordinal)
+			.Replace(Project.Replace('\\', '/').TrimEnd('/') + "/", "{project}/", StringComparison.Ordinal)
+			.Replace(server.Url.TrimEnd('/'), "{origin}", StringComparison.Ordinal)
+			.Should().MatchSnapshot();
+	}
+
+	[Test]
 	public async Task AnAccessibilityTreeMatchesItsSnapshot()
 	{
 		RequireChrome();
