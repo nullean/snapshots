@@ -608,3 +608,15 @@ image or a transcript is not something to read in a source file.
   the tests, so discovery cannot skip a journey. It can name them (tags), not decide.
 - **`SkipReason` also reads `@mutates`.** A read-only run is the one place the header and the options meet. The guard in
   the browser still refuses the write if the header was forgotten.
+
+## Header directives in .http files
+
+- **Same grammar, separate parser.** `Nullean.HttpFileParser` stands alone (no dependencies, AOT and trim clean), so it
+  carries its own copy of the header grammar of Nullean.Cdp's journeys instead of referencing it. A conformance test in
+  the browser tests parses the same text with both and compares metadata and error messages, so the copies cannot drift.
+- **Unknown `@` words stay comments in `.http` files.** A journey rejects `@requries`, because a typo there turns a
+  condition off. In a `.http` file `@note`, `@no-log` and `@connection-timeout` are other dialects' directives and
+  have always been plain comments here, so only the five header names are recognised, and a typo of one of them
+  (`@require`) is not caught. Checking against the five names would reject other tools' files.
+- **The header is the first block.** A directive after the first `###`, or after a request, is an error naming the
+  header, so a `@requires` in the middle of a file cannot silently apply to nothing.
