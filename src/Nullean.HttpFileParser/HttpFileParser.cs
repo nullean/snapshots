@@ -10,6 +10,7 @@ internal sealed class HttpFileParser
 	private readonly string _directory;
 	private readonly string[] _lines;
 	private readonly List<HttpFileError> _errors = [];
+	private readonly HttpFileMetadataBuilder _metadata = new();
 	private readonly List<HttpFileRequest> _requests = [];
 	private readonly List<HttpFileVariable> _variables = [];
 
@@ -28,7 +29,7 @@ internal sealed class HttpFileParser
 		parser.Run();
 		if (parser._errors.Count > 0)
 			throw new HttpFileParseException([.. parser._errors.OrderBy(e => e.Line)]);
-		return new HttpFile(path, parser._requests, parser._variables);
+		return new HttpFile(path, parser._requests, parser._variables) { Metadata = parser._metadata.Build() };
 	}
 
 	/// <summary>A line of three or more <c>#</c>: the request separator, optionally followed by the next request's name.</summary>
@@ -100,6 +101,14 @@ internal sealed class HttpFileParser
 					continue;
 				var word = new string([.. c.Skip(1).TakeWhile(ch => !char.IsWhiteSpace(ch) && ch != '=')]);
 				var argument = c[(1 + word.Length)..].Trim();
+				if (HttpFileMetadataBuilder.IsDirective(word))
+				{
+					if (start > 0)
+						Error(k, $"@{word} belongs in the header: put the directive in the first block, before the first request");
+					else if (_metadata.Add(word, argument.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries)) is { } directiveProblem)
+						Error(k, directiveProblem);
+					continue;
+				}
 				switch (word)
 				{
 					case "name":

@@ -63,6 +63,18 @@ public sealed class HttpFileSnapshotOptions
 	/// that legitimately differs per environment or flag set. Letters, digits, <c>.</c>, <c>-</c> and <c>_</c>.
 	/// </summary>
 	public string? Variant { get; init; }
+
+	/// <summary>The enabled feature flags of the service under test, which <c># @requires</c> is judged against.</summary>
+	public IReadOnlySet<string> Features { get; init; } = new HashSet<string>(StringComparer.Ordinal);
+
+	/// <summary>The build type of the service under test, such as <c>assembler</c>; unknown when <see langword="null"/>.</summary>
+	public string? BuildType { get; init; }
+
+	/// <summary>The environment of the service under test, such as <c>prod</c> or <c>edge</c>; unknown when <see langword="null"/>.</summary>
+	public string? Env { get; init; }
+
+	/// <summary>What <c># @requires</c> lines are judged against.</summary>
+	public HttpFileContext Context => new(Features, BuildType, Env);
 }
 
 /// <summary>The request a <c>.http</c> run stopped at.</summary>
@@ -180,6 +192,45 @@ public static class HttpFileSnapshot
 		var file = Path.IsPathRooted(httpFile) ? httpFile : Path.Combine(ProjectDirectory(callerFilePath), httpFile);
 		return RunFileAsync(file, options, cancellationToken);
 	}
+
+	/// <summary>
+	/// Why a <c>.http</c> file should not run in <paramref name="context"/>: the first <c># @requires</c> condition it does not
+	/// meet, as written (<c>@requires !env:prod</c>). <see langword="null"/> when it applies. A file without directives always applies.
+	/// </summary>
+	/// <param name="httpFile">A <c>.http</c> file; a relative path is relative to the test project, as for <c>RunAsync</c>.</param>
+	/// <param name="context">What the run knows about the service.</param>
+	/// <param name="callerFilePath">Filled in by the compiler.</param>
+	/// <exception cref="HttpFileParseException">The file has syntax errors.</exception>
+	public static string? Unmet(string httpFile, HttpFileContext context, [CallerFilePath] string callerFilePath = "")
+	{
+		ArgumentException.ThrowIfNullOrEmpty(httpFile);
+		ArgumentNullException.ThrowIfNull(context);
+		return LoadMetadata(httpFile, callerFilePath).Unmet(context) is { } unmet ? $"@requires {unmet}" : null;
+	}
+
+	/// <summary>
+	/// Why a <c>.http</c> file should be skipped in a run with <paramref name="options"/>, or <see langword="null"/> when it
+	/// should run: an unmet <c># @requires</c> condition, or <c># @mutates</c> on a <see cref="HttpFileSnapshotOptions.ReadOnly"/> run.
+	/// </summary>
+	public static string? SkipReason(string httpFile, HttpFileSnapshotOptions options, [CallerFilePath] string callerFilePath = "")
+	{
+		ArgumentException.ThrowIfNullOrEmpty(httpFile);
+		ArgumentNullException.ThrowIfNull(options);
+		var metadata = LoadMetadata(httpFile, callerFilePath);
+		if (metadata.Unmet(options.Context) is { } unmet)
+			return $"@requires {unmet}";
+		return metadata.Mutates && options.ReadOnly ? "@mutates, and the run is read-only" : null;
+	}
+
+	/// <summary>The file's header directives: tags, requirements, monitor, alerts, <c># @mutates</c>.</summary>
+	public static HttpFileMetadata Metadata(string httpFile, [CallerFilePath] string callerFilePath = "")
+	{
+		ArgumentException.ThrowIfNullOrEmpty(httpFile);
+		return LoadMetadata(httpFile, callerFilePath);
+	}
+
+	private static HttpFileMetadata LoadMetadata(string httpFile, string callerFilePath) =>
+		HttpFile.Load(Path.IsPathRooted(httpFile) ? httpFile : Path.Combine(ProjectDirectory(callerFilePath), httpFile)).Metadata;
 
 	/// <summary>Runs a <c>.http</c> file at a full path, or relative to the working folder.</summary>
 	internal static async Task<HttpTranscript> RunFileAsync(string httpFile, HttpFileSnapshotOptions? options, CancellationToken cancellationToken)

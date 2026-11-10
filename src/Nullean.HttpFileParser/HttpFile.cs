@@ -13,6 +13,9 @@ public sealed class HttpFile
 		Variables = variables;
 	}
 
+	/// <summary>What the header's <c>@</c> directives say; <see cref="HttpFileMetadata.None"/> without any.</summary>
+	public HttpFileMetadata Metadata { get; internal init; } = HttpFileMetadata.None;
+
 	/// <summary>The path the file was parsed or loaded with. Errors use it, and relative body files and environment files are found from its folder.</summary>
 	public string Path { get; }
 
