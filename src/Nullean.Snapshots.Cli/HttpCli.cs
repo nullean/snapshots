@@ -35,7 +35,8 @@ internal sealed class HttpCli(
 		CancellationToken cancellationToken,
 		IReadOnlyList<string>? headers = null,
 		string? variant = null,
-		string? transcript = null
+		string? transcript = null,
+		bool readOnly = false
 	)
 	{
 		if (patterns.Count == 0)
@@ -77,7 +78,7 @@ internal sealed class HttpCli(
 		var projects = new SnapshotProjectResolver(fileSystem);
 		var engine = new SnapshotEngine(fileSystem, k => k == SnapshotEnvironment.AcceptVariable ? null : getVariable(k), () => null,
 			(site, _) => JourneyCli.WithArtifactsReceived(fileSystem, projects.FromCallerFile(site.FilePath)));
-		var options = new HttpFileSnapshotOptions { Environment = environment, Variables = values, Headers = headers ?? [], Transcript = mode, Variant = variant };
+		var options = new HttpFileSnapshotOptions { Environment = environment, Variables = values, Headers = headers ?? [], Transcript = mode, Variant = variant, ReadOnly = readOnly };
 		var exit = ExitCode.Ok;
 		foreach (var file in files)
 		{
@@ -166,6 +167,7 @@ internal sealed class HttpCommands
 	/// <param name="root">The folder files and globs are relative to. Defaults to the current folder.</param>
 	/// <param name="variant">Compare with {file}.{variant}.verified.responses, for output that differs per environment or flag set.</param>
 	/// <param name="transcript">compare (the default), or off to send the requests without comparing the transcript.</param>
+	/// <param name="readOnly">Refuse any request that is not GET, HEAD or OPTIONS unless it carries '# @readonly', for a live service.</param>
 	public static async Task<int> Run(
 		[Argument] string[] files,
 		string? env = null,
@@ -173,11 +175,12 @@ internal sealed class HttpCommands
 		string[]? header = null,
 		string? root = null,
 		string? variant = null,
-		string? transcript = null
+		string? transcript = null,
+		bool readOnly = false
 	)
 	{
 		var cli = new HttpCli(new FileSystem(), root ?? Directory.GetCurrentDirectory(), Console.Out, Console.Error,
 			HttpFileSnapshot.RunFileAsync, Environment.GetEnvironmentVariable);
-		return await cli.RunAsync(files, env, var, CancellationToken.None, header, variant, transcript).ConfigureAwait(false);
+		return await cli.RunAsync(files, env, var, CancellationToken.None, header, variant, transcript, readOnly).ConfigureAwait(false);
 	}
 }

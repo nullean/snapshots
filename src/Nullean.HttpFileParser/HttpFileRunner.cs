@@ -50,11 +50,17 @@ public static class HttpFileRunner
 		{
 			foreach (var request in file.Requests)
 			{
+				if (options.ReadOnly && RefusedAsWrite(request) is { } refusal)
+				{
+					failure = Fail(file, request, request.Line, refusal, null, resolver);
+					break;
+				}
 				try
 				{
 					var exchange = await SendAsync(request, client, cookies, resolver, options, cancellationToken).ConfigureAwait(false);
 					exchanges.Add(exchange);
 					resolver.Completed(exchange);
+					failure = Unmet(file, request, exchange, resolver);
 				}
 				catch (ResolveException e)
 				{
@@ -87,6 +93,23 @@ public static class HttpFileRunner
 				client.Dispose();
 		}
 		return new HttpFileRunResult(file, exchanges, failure, [.. resolver.Sensitive]);
+	}
+
+	/// <summary>Why a read-only run does not send <paramref name="request"/>; <see langword="null"/> when it may be sent.</summary>
+	private static string? RefusedAsWrite(HttpFileRequest request) =>
+		request.Directives.ReadOnly || request.Method.ToUpperInvariant() is "GET" or "HEAD" or "OPTIONS"
+			? null
+			: $"not sent: a read-only run sends only GET, HEAD and OPTIONS requests, and this is {request.Method}. Put '# @readonly' before the request if it only reads";
+
+	/// <summary>The first <c>@expect</c> of <paramref name="request"/> that the response does not meet, as a failure.</summary>
+	private static HttpFileRunFailure? Unmet(HttpFile file, HttpFileRequest request, HttpFileExchange exchange, Resolver resolver)
+	{
+		foreach (var expectation in request.Directives.Expectations)
+		{
+			if (expectation.Check(exchange.Response) is { } problem)
+				return Fail(file, request, expectation.Line, problem, null, resolver);
+		}
+		return null;
 	}
 
 	private static HttpFileRunFailure Fail(HttpFile file, HttpFileRequest request, int line, string message, Exception? exception, Resolver resolver) =>

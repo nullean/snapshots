@@ -33,6 +33,12 @@ public sealed class HttpFileRunOptions
 	/// <summary>The randomness for <c>$guid</c> and <c>$randomInt</c>; pass a seeded instance for repeatable runs. Defaults to a new unseeded one per run.</summary>
 	public Random? Random { get; init; }
 
+	/// <summary>
+	/// A read-only run, for a live service: a request whose method is not GET, HEAD or OPTIONS is not sent, and fails the
+	/// run, unless it carries <c># @readonly</c>.
+	/// </summary>
+	public bool ReadOnly { get; init; }
+
 	/// <summary>How many redirects a request may follow before the run fails. Defaults to 10.</summary>
 	public int MaxRedirects { get; init; } = 10;
 }

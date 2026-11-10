@@ -117,6 +117,49 @@ Request stopped at http/orders.http:9: GET {{host}}/api/orders
 Connection refused (localhost:5000)
 ```
 
+## Expectations
+
+A comment before a request can state what its response must be. The runner checks each one after the response and
+stops the run at the first that does not hold, in either [transcript mode](#a-live-service-and-variants):
+
+```text
+# @expect status 200
+# @expect header content-type ~ json
+# @expect json $.result.tools[*].name contains "search_docs"
+POST {{host}}/docs/_mcp
+Content-Type: application/json
+
+{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}
+```
+
+| Directive | Holds when |
+|---|---|
+| `@expect status 200` | the status code is 200; `2xx` accepts any code of that class |
+| `@expect header content-type ~ json` | one value of the header contains the text, ignoring case |
+| `@expect json $.user.name equals ada` | the JSONPath selects values and every one equals the text |
+| `@expect json $.user.roles[*] contains admin` | one selected value contains the text; an array contains an element equal to it |
+
+A value is the rest of the line, or a JSON string (`"two words"`) when it has leading spaces or quotes. A JSONPath may
+use `[*]` and `.*` to select every element or property value. A failure names the request, the directive's line and what
+the response had; the response itself stays in the transcript:
+
+```text
+Request stopped at http/tools.http:2: POST {{host}}/docs/_mcp
+@expect json $.result.tools[*].name contains "search_docs" failed: $.result.tools[*].name selected "ask_docs", "find_docs"
+```
+
+## Read-only runs
+
+`ReadOnly = true` (`--read-only` on `snap http run`) is for a live service: a request whose method is not GET, HEAD or
+OPTIONS is not sent, and the run stops at it. A request that only reads over POST, such as a JSON-RPC call, says so with
+`# @readonly` and is sent:
+
+```text
+# @readonly
+# @expect json $.result.tools[*].name contains search_docs
+POST {{host}}/docs/_mcp
+```
+
 ## Secrets and redaction
 
 Values reach a request from `http-client.env.json` (with `$shared`, a selected environment, and the private
@@ -178,6 +221,7 @@ this is not detected. `WebApplicationFactory.CreateClient()` follows redirects b
 | `TimeProvider`, `Random` | | the clock and randomness for `$datetime`, `$guid` and the like |
 | `Transcript` | `--transcript compare\|off` | `Off` sends the requests and compares no transcript; see [a live service](#a-live-service-and-variants) |
 | `Variant` | `--variant <name>` | compares with `{file}.{variant}.verified.responses`; see [a live service](#a-live-service-and-variants) |
+| `ReadOnly` | `--read-only` | refuses any request that is not GET, HEAD or OPTIONS unless it carries `# @readonly`; see [read-only runs](#read-only-runs) |
 
 `HttpSnapshotOptions.Headers` chooses headers for `MatchHttpSnapshot` and `RenderAsync`.
 

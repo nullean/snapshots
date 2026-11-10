@@ -583,3 +583,18 @@ image or a transcript is not something to read in a source file.
   Variants use the same name check as `name` (letters, digits, `.`, `-`, `_`, no leading or trailing dot).
 - **A variant never falls back to the plain file.** A variant with no verified file of its own is a new snapshot, as
   any other missing verified file is. A fallback would let a flag-on run pass against flag-off output.
+
+## HTTP expectations and read-only runs
+
+- **An unmet `@expect` is a failed request, not a snapshot difference.** The runner checks it after the response and
+  stops the run with the same failure a refused connection gives, so it fails the test in both transcript modes, names
+  the request first, and the response is already in the transcript. Putting it in the snapshot would make `Off` mode,
+  which exists for live services, unable to assert anything.
+- **Three kinds, no scripting:** `status`, `header ~` and `json`. They cover a live check without a script language
+  (JetBrains response handlers are refused for that reason). `equals` over several selected values means every one,
+  `contains` means one, so a wildcard path reads as "all of them are" and "one of them has".
+- **JSONPath wildcards only for expectations.** `{{login.response.body.$...}}` still takes a single value; `[*]` and
+  `.*` select several, which a variable cannot hold.
+- **Read-only is decided by the method, with `# @readonly` as the way out.** A run against production must not depend on
+  each author remembering to mark writes, so everything that is not GET, HEAD or OPTIONS is refused before anything is
+  sent. A JSON-RPC call over POST that only reads (MCP `tools/list`) says so on the request, where a reader sees it.

@@ -78,8 +78,9 @@ snap http run 'tests/Shop.Tests/http/**/*.http' --env dev --var host=http://loca
 
 `--env` selects the environment from `http-client.env.json`, `--var name=value` (repeatable) beats file variables and
 the environment, and `--header` (repeatable) writes another response header, as a test's `Headers` option does.
-`--variant <name>` compares with `{file}.{variant}.verified.responses`, and `--transcript off` sends the requests
-without comparing the transcript. It
+`--variant <name>` compares with `{file}.{variant}.verified.responses`, `--transcript off` sends the requests
+without comparing the transcript, and `--read-only` refuses any request that is not GET, HEAD or OPTIONS unless it carries
+`# @readonly`. It
 sends with the runner's own client, which follows redirects itself and decompresses bodies; secrets come from the
 environment files, `.env` files, the process environment and user secrets, and are redacted as in a test.
 

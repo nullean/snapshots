@@ -53,6 +53,12 @@ public sealed class HttpFileSnapshotOptions
 	public TranscriptMode Transcript { get; init; } = TranscriptMode.Compare;
 
 	/// <summary>
+	/// A read-only run, for a live service: a request that is not GET, HEAD or OPTIONS is not sent, and fails the run,
+	/// unless the request carries <c># @readonly</c> (a JSON-RPC call over POST that only reads, say).
+	/// </summary>
+	public bool ReadOnly { get; init; }
+
+	/// <summary>
 	/// Compares with <c>{file}.{variant}.verified.responses</c> instead of <c>{file}.verified.responses</c>, for output
 	/// that legitimately differs per environment or flag set. Letters, digits, <c>.</c>, <c>-</c> and <c>_</c>.
 	/// </summary>
@@ -191,6 +197,7 @@ public static class HttpFileSnapshot
 			UserSecretsRoot = options.UserSecretsRoot,
 			TimeProvider = options.TimeProvider,
 			Random = options.Random,
+			ReadOnly = options.ReadOnly,
 		}, cancellationToken).ConfigureAwait(false);
 		var failure = result.Failure is { } f
 			? new HttpFileFailure(f.Line, HttpTranscript.Heading(f.Request), result.Redact(f.Message))

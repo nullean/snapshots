@@ -80,17 +80,33 @@ public sealed class HttpFileVariable
 	public override string ToString() => $"@{Name} = {Value}";
 }
 
-/// <summary>Per-request settings from comment lines before the request: <c>@no-redirect</c>, <c>@no-cookie-jar</c>, <c>@timeout</c>.</summary>
+/// <summary>Per-request settings from comment lines before the request: <c>@no-redirect</c>, <c>@no-cookie-jar</c>, <c>@timeout</c>, <c>@readonly</c> and <c>@expect</c>.</summary>
 public sealed class HttpFileDirectives
 {
-	internal static HttpFileDirectives None { get; } = new(false, false, null);
+	internal static HttpFileDirectives None { get; } = new(false, false, null, false, []);
 
-	internal HttpFileDirectives(bool noRedirect, bool noCookieJar, TimeSpan? timeout)
+	internal HttpFileDirectives(bool noRedirect, bool noCookieJar, TimeSpan? timeout, bool readOnly, IReadOnlyList<HttpExpectation> expectations)
 	{
 		NoRedirect = noRedirect;
 		NoCookieJar = noCookieJar;
 		Timeout = timeout;
+		ReadOnly = readOnly;
+		Expectations = expectations;
 	}
+
+	/// <summary>
+	/// <c>@readonly</c>: the request only reads, though its method is not GET, HEAD or OPTIONS (a JSON-RPC call over POST,
+	/// say). A read-only run (<see cref="HttpFileRunOptions.ReadOnly"/>) sends such a request and refuses any other POST,
+	/// PUT, PATCH or DELETE.
+	/// </summary>
+	public bool ReadOnly { get; }
+
+	/// <summary>
+	/// <c>@expect</c> lines, in file order: <c>@expect status 200</c> (or <c>2xx</c>), <c>@expect header content-type ~ json</c>
+	/// and <c>@expect json $.items[*].name contains "lamp"</c>. The runner checks them after the response and stops at the
+	/// first that does not hold.
+	/// </summary>
+	public IReadOnlyList<HttpExpectation> Expectations { get; }
 
 	/// <summary><c>@no-redirect</c>: a 3xx response is the result; the runner does not follow it.</summary>
 	public bool NoRedirect { get; }

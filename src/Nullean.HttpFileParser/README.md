@@ -70,6 +70,7 @@ if (result.Failure is { } failure)
 - `{{login.response.body.$.token}}`, `{{login.response.body.*}}`, `{{login.response.headers.Location}}` and the same
   with `request`. JSONPath supports `$`, `.name`, `["name"]` and `[n]`.
 - `# @no-redirect`, `# @no-cookie-jar`, `# @timeout 30`.
+- `# @readonly` (a request that only reads, though it is not a GET; sent by a run with `HttpFileRunOptions.ReadOnly`, which refuses every other write) and `# @expect` checks after the response: `status 200` or `2xx`, `header content-type ~ json`, `json $.a[*].b equals|contains value`. The run stops at the first that does not hold.
 
 Refused with a reason: JetBrains scripts (`> {% %}`, `< {% %}`, `> handler.js`), response redirection (`>> file`),
 `@prompt`, `$aadToken`, GraphQL requests, cURL commands and XPath.
