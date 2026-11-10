@@ -38,8 +38,10 @@ public partial class LiveJourneyTests
 
 	public static IEnumerable<string> Journeys() => JourneySnapshot.Find();
 
-	// A run prints how long it took, which differs per machine and per run.
-	private static string Seconds(string text) => ElapsedSeconds().Replace(text, m => m.Value.StartsWith("in", StringComparison.Ordinal) ? "in <t>s" : "(<t>s)");
+	// A run prints how long it took, which differs per machine and per run. On Windows a file URL has a drive letter after
+	// three slashes where Linux has the root's first folder, which moves the {project} placeholder, and lines end with CRLF.
+	private static string Normalise(string text) => ElapsedSeconds()
+		.Replace(text.ReplaceLineEndings("\n").Replace("file:///{project}", "file://{project}", StringComparison.Ordinal), m => m.Value.StartsWith("in", StringComparison.Ordinal) ? "in <t>s" : "(<t>s)");
 
 	[GeneratedRegex(@"\(\d+\.\ds\)|in \d+\.\ds")]
 	private static partial Regex ElapsedSeconds();
@@ -75,7 +77,7 @@ public partial class LiveJourneyTests
 		var exit = await cli.RunAsync(["cli-journeys/checks.journey"], Site.AbsoluteUri, CancellationToken.None);
 
 		error.ToString().Should().BeEmpty();
-		Seconds(output.ToString().Trim()).Should().StartWith("ok      cli-journeys/checks (<t>s)\n", "the screenshot step had a folder to write into").And.Contain("1 passed, 0 failed, 0 skipped");
+		Normalise(output.ToString().Trim()).Should().StartWith("ok      cli-journeys/checks (<t>s)\n", "the screenshot step had a folder to write into").And.Contain("1 passed, 0 failed, 0 skipped");
 		exit.Should().Be(0);
 	}
 
@@ -133,7 +135,7 @@ public partial class LiveJourneyTests
 		var exit = await cli.RunAsync(["journeys/shop.journey"], Site.AbsoluteUri, CancellationToken.None);
 
 		error.ToString().Should().BeEmpty();
-		Seconds(output.ToString().Trim()).Should().StartWith("ok      journeys/shop (<t>s)\n").And.Contain("1 passed, 0 failed, 0 skipped");
+		Normalise(output.ToString().Trim()).Should().StartWith("ok      journeys/shop (<t>s)\n").And.Contain("1 passed, 0 failed, 0 skipped");
 		exit.Should().Be(0);
 	}
 
@@ -220,7 +222,7 @@ public partial class LiveJourneyTests
 
 		exit.Should().Be(1);
 		// The message names the journey by path, which differs per machine and per checkout.
-		Seconds((output.ToString() + error.ToString()).Replace("\r\n", "\n", StringComparison.Ordinal)
+		Normalise((output.ToString() + error.ToString()).Replace("\r\n", "\n", StringComparison.Ordinal)
 			.Replace(Project.Replace('\\', '/').TrimEnd('/') + "/", "{project}/", StringComparison.Ordinal)
 			).Should().MatchSnapshot();
 	}
@@ -255,7 +257,7 @@ public partial class LiveJourneyTests
 
 		exit.Should().Be(1);
 		// The message names the journey by path and the request by the server's port, which differ per machine and per run.
-		Seconds((output.ToString() + error.ToString()).Replace("\r\n", "\n", StringComparison.Ordinal)
+		Normalise((output.ToString() + error.ToString()).Replace("\r\n", "\n", StringComparison.Ordinal)
 			.Replace(Project.Replace('\\', '/').TrimEnd('/') + "/", "{project}/", StringComparison.Ordinal)
 			.Replace(server.Url.TrimEnd('/'), "{origin}", StringComparison.Ordinal)
 			).Should().MatchSnapshot();
