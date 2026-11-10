@@ -42,6 +42,51 @@ public class HttpFileRunTests
 		""";
 
 	[Test]
+	[Arguments(TranscriptMode.Compare)]
+	[Arguments(TranscriptMode.Off)]
+	public async Task AnUnmetExpectationStopsTheRunInBothTranscriptModes(TranscriptMode mode)
+	{
+		var file = Files(("shop.http", "# @expect status 200\nGET {{host}}/api/missing\n\n###\nGET {{host}}/api/text"));
+
+		var transcript = await HttpFileSnapshot.RunAsync(file, new HttpFileSnapshotOptions { Variables = Host(), Transcript = mode });
+		// Even a transcript that matches its verified file fails when a request stopped the run.
+		var result = HttpFileSnapshot.WithFailure(transcript, new SnapshotResult(true, null, string.Empty, string.Empty, string.Empty));
+
+		transcript.Failure!.Line.Should().Be(1);
+		transcript.Failure.Message.Should().Be("@expect status 200 failed: the response was 404 Not Found");
+		transcript.Text.Should().StartWith("## GET {{host}}/api/missing\nstatus: 404 Not Found", "the response that missed the expectation is in the transcript");
+		result.Passed.Should().BeFalse();
+		result.FailureMessage.Should().StartWith("Request stopped at ").And.Contain("GET {{host}}/api/missing\n@expect status 200 failed: the response was 404 Not Found");
+	}
+
+	[Test]
+	public async Task MetExpectationsLeaveTheTranscriptUnchanged()
+	{
+		var plain = Files(("a.http", "GET {{host}}/api/text"));
+		var expecting = Files(("b.http", "# @expect status 200\n# @expect header content-type ~ text\nGET {{host}}/api/text"));
+
+		var withoutExpectations = await HttpFileSnapshot.RunAsync(plain, new HttpFileSnapshotOptions { Variables = Host() });
+		var withExpectations = await HttpFileSnapshot.RunAsync(expecting, new HttpFileSnapshotOptions { Variables = Host() });
+
+		withExpectations.Failure.Should().BeNull();
+		withExpectations.Text.Should().Be(withoutExpectations.Text);
+	}
+
+	[Test]
+	public async Task AReadOnlyRunRefusesAPostUnlessItIsMarkedReadonly()
+	{
+		var refused = Files(("w.http", "GET {{host}}/api/text\n\n###\nPOST {{host}}/api/echo\n\nhi"));
+		var allowed = Files(("r.http", "# @readonly\nPOST {{host}}/api/echo\n\nhi"));
+
+		var blocked = await HttpFileSnapshot.RunAsync(refused, new HttpFileSnapshotOptions { Variables = Host(), ReadOnly = true });
+		var passed = await HttpFileSnapshot.RunAsync(allowed, new HttpFileSnapshotOptions { Variables = Host(), ReadOnly = true });
+
+		blocked.Failure!.Message.Should().StartWith("not sent: a read-only run sends only GET, HEAD and OPTIONS requests, and this is POST.");
+		blocked.Text.Should().Contain("GET {{host}}/api/text").And.NotContain("POST");
+		passed.Failure.Should().BeNull();
+	}
+
+	[Test]
 	public async Task AChainedLoginPassesItsTokenOn()
 	{
 		var transcript = await HttpFileSnapshot.RunAsync(Files(("shop.http", Chained)), new HttpFileSnapshotOptions { Variables = Host() });

@@ -33,16 +33,26 @@ public class HttpCliTests
 			P.Fs.AddDirectory(P.Project.ReceivedDirectory);
 		}
 
-		public Task<int> Invoke(string[] patterns, string? environment = null, string[]? variables = null, string[]? headers = null, string? variant = null, string? transcript = null) =>
+		public Task<int> Invoke(string[] patterns, string? environment = null, string[]? variables = null, string[]? headers = null, string? variant = null, string? transcript = null, bool readOnly = false) =>
 			new HttpCli(P.Fs, P.Project.Directory, Out, Err, (file, options, _) =>
 			{
 				Ran.Add((file, options));
 				return Task.FromResult(Transcript!(file));
-			}, k => Env.GetValueOrDefault(k)).RunAsync(patterns, environment, variables, CancellationToken.None, headers, variant, transcript);
+			}, k => Env.GetValueOrDefault(k)).RunAsync(patterns, environment, variables, CancellationToken.None, headers, variant, transcript, readOnly);
 
 		public string Output => Out.ToString().Replace("\r\n", "\n", StringComparison.Ordinal);
 
 		public string Error => Err.ToString().Replace("\r\n", "\n", StringComparison.Ordinal);
+	}
+
+	[Test]
+	public async Task TheReadOnlyFlagReachesTheRunner()
+	{
+		var run = new Run();
+
+		(await run.Invoke(["http/shop.http"], readOnly: true)).Should().Be(1, "no verified file exists, but the runner did receive the option");
+
+		run.Ran.Should().ContainSingle().Which.Options.ReadOnly.Should().BeTrue();
 	}
 
 	[Test]

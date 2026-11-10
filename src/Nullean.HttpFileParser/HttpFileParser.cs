@@ -73,6 +73,8 @@ internal sealed class HttpFileParser
 		var noRedirect = false;
 		var noCookieJar = false;
 		TimeSpan? timeout = null;
+		var readOnly = false;
+		List<HttpExpectation> expectations = [];
 		var hasDirective = false;
 		var k = start;
 		for (; k < end; k++)
@@ -132,6 +134,17 @@ internal sealed class HttpFileParser
 						else
 							Error(k, $"'@timeout {argument}' needs a positive number of seconds, optionally with a unit: '@timeout 30', '@timeout 500 ms', '@timeout 2 m'");
 						break;
+					case "readonly":
+						readOnly = true;
+						hasDirective = true;
+						break;
+					case "expect":
+						hasDirective = true;
+						if (HttpExpectation.TryParse(argument, k + 1, out var expectation, out var problem))
+							expectations.Add(expectation!);
+						else
+							Error(k, problem);
+						break;
 					case "prompt":
 						Error(k, "prompt variables ('@prompt') are not supported: a run cannot ask questions. Pass the value with HttpFileRunOptions.Variables");
 						break;
@@ -163,7 +176,7 @@ internal sealed class HttpFileParser
 			return;
 		}
 
-		ParseRequest(k, end, name ?? separatorName, new HttpFileDirectives(noRedirect, noCookieJar, timeout));
+		ParseRequest(k, end, name ?? separatorName, new HttpFileDirectives(noRedirect, noCookieJar, timeout, readOnly, expectations));
 	}
 
 	private int SkipScript(int k, int end)
