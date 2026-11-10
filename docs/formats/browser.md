@@ -158,6 +158,23 @@ The matchers (visible, enabled, text, value, attribute, class, count, title, URL
 [command reference](https://cdp.nullean.net/journeys/commands/#expect). `snap journey run`, `[JourneyFiles]` test cases
 and `JourneyTest.RunAsync` need nothing extra: they run the same lines.
 
+## A live site and variants
+
+The text a page returns drifts on a live site, so a transcript compared with a verified file fails for reasons that are
+not bugs. Turn the comparison off and keep the assertions:
+
+```csharp
+JourneyTest.RunAsync(journey, new() { BaseUrl = site, Transcript = TranscriptMode.Off });
+```
+
+With `TranscriptMode.Off` the journey still runs every step, so a step that fails, an `expect` line included, fails the
+test with the usual message naming the step. Nothing is compared and no verified file is needed or written.
+
+Output that differs for a reason you want to keep, such as the navigation a feature flag adds, gets a verified file of
+its own. `Variant = "preview"` compares `journeys/shop.journey` with `.snapshots/journeys/shop.preview.verified.journey`
+and leaves `shop.verified.journey` alone. A variant is letters, digits, `.`, `-` and `_`. `snap orphans` counts a
+variant file as used when a run compared with it.
+
 ## Screenshots and HAR files
 
 `screenshot` and `network har stop` write files. In a test they go next to the journey's received transcript,
@@ -181,6 +198,8 @@ are files, not part of the transcript: pixels differ between machines.
 | `ArtifactsDirectory` | `--artifacts` | where screenshots and HAR files go |
 | `Secrets` | | resolves `$env:NAME` references; the environment by default |
 | `ActionTimeout`, `NavigationTimeout` | | Nullean.Cdp's 5 s and 30 s by default |
+| `Transcript` | `--transcript compare\|off` | `Off` runs the steps and `expect` lines and compares no transcript; see [a live site](#a-live-site-and-variants) |
+| `Variant` | `--variant <name>` | compares with `{journey}.{variant}.verified.journey`; see [a live site](#a-live-site-and-variants) |
 
 ## Chrome
 

@@ -35,12 +35,20 @@ internal sealed class JourneyCli(
 		CancellationToken cancellationToken,
 		IReadOnlyList<string>? allow = null,
 		string? fileRoot = null,
-		string? artifacts = null
+		string? artifacts = null,
+		string? variant = null,
+		string? transcript = null
 	)
 	{
 		if (patterns.Count == 0)
 		{
 			error.WriteLine("Error: name the journeys to run: files or globs such as 'journeys/**/*.journey'.");
+			return ExitCode.Usage;
+		}
+
+		if (!TryParseTranscript(transcript, out var mode, out var problem) || !TryCheckVariant(variant, out problem))
+		{
+			error.WriteLine(problem);
 			return ExitCode.Usage;
 		}
 
@@ -68,11 +76,13 @@ internal sealed class JourneyCli(
 		var exit = ExitCode.Ok;
 		foreach (var file in files)
 		{
-			JourneyTranscript transcript;
+			JourneyTranscript recorded;
 			try
 			{
-				transcript = await run(file, new JourneySnapshotOptions
+				recorded = await run(file, new JourneySnapshotOptions
 				{
+					Transcript = mode,
+					Variant = variant,
 					BaseUrl = baseUri,
 					AllowedHosts = allow ?? [],
 					FileRoot = fileRoot is null ? null : fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, fileRoot)),
@@ -94,9 +104,14 @@ internal sealed class JourneyCli(
 				return ExitCode.Io;
 			}
 
-			var result = JourneySnapshot.WithFailure(transcript, engine.MatchFile(transcript.Text, JourneySnapshot.Format, file, null, null));
+			var compared = mode == TranscriptMode.Off
+				? new SnapshotResult(true, null, string.Empty, string.Empty, string.Empty)
+				: engine.MatchFile(recorded.Text, JourneySnapshot.Format, file, null, null, variant);
+			var result = JourneySnapshot.WithFailure(recorded, compared);
 			if (result.Passed)
-				output.WriteLine($"ok   {result.Key}");
+				output.WriteLine(mode == TranscriptMode.Off
+					? $"ok   {fileSystem.Path.GetRelativePath(_root, file).Replace('\\', '/')} (transcript off)"
+					: $"ok   {result.Key}");
 			else
 			{
 				output.WriteLine(result.FailureMessage);
@@ -106,6 +121,33 @@ internal sealed class JourneyCli(
 		}
 
 		return exit;
+	}
+
+	/// <summary>Reads <c>--transcript</c>: <c>compare</c> (the default) or <c>off</c>.</summary>
+	internal static bool TryParseTranscript(string? value, out TranscriptMode mode, out string problem)
+	{
+		problem = string.Empty;
+		mode = TranscriptMode.Compare;
+		if (value is null || value.Equals("compare", StringComparison.OrdinalIgnoreCase))
+			return true;
+		if (value.Equals("off", StringComparison.OrdinalIgnoreCase))
+		{
+			mode = TranscriptMode.Off;
+			return true;
+		}
+
+		problem = $"Error: --transcript '{value}' is not 'compare' or 'off'.";
+		return false;
+	}
+
+	/// <summary>Checks <c>--variant</c> the way a snapshot name is checked.</summary>
+	internal static bool TryCheckVariant(string? variant, out string problem)
+	{
+		problem = string.Empty;
+		if (variant is null || SnapshotPath.IsValidName(variant))
+			return true;
+		problem = $"Error: --variant '{variant}' must be a name of letters, digits, '.', '-' and '_', without a leading or trailing dot.";
+		return false;
 	}
 
 	private bool WritesFiles(string file) =>
@@ -179,13 +221,17 @@ internal sealed class JourneyCommands
 	/// <param name="allow">-a, --allow, Another host pattern journeys may reach (repeatable): host, *.domain or *.</param>
 	/// <param name="fileRoot">The folder file:// URLs may point into, when the base URL is not a folder.</param>
 	/// <param name="artifacts">Where screenshot and network har stop write. Defaults to a folder per journey next to its received transcript.</param>
+	/// <param name="variant">Compare with {journey}.{variant}.verified.journey, for output that differs per flag set or build type.</param>
+	/// <param name="transcript">compare (the default), or off to run the steps and expect lines without comparing the transcript.</param>
 	public static async Task<int> Run(
 		[Argument] string[] files,
 		string? baseUrl = null,
 		string? root = null,
 		string[]? allow = null,
 		string? fileRoot = null,
-		string? artifacts = null
+		string? artifacts = null,
+		string? variant = null,
+		string? transcript = null
 	)
 	{
 		Cdp.Browser? browser = null;
@@ -196,7 +242,7 @@ internal sealed class JourneyCommands
 				browser ??= await Cdp.Browser.LaunchAsync(cancellationToken: ct).ConfigureAwait(false);
 				return await JourneySnapshot.RunAsync(file, browser, options, ct).ConfigureAwait(false);
 			}, Environment.GetEnvironmentVariable);
-			return await cli.RunAsync(files, baseUrl, CancellationToken.None, allow, fileRoot, artifacts).ConfigureAwait(false);
+			return await cli.RunAsync(files, baseUrl, CancellationToken.None, allow, fileRoot, artifacts, variant, transcript).ConfigureAwait(false);
 		}
 		finally
 		{

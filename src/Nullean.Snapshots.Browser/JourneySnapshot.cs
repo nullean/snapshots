@@ -35,6 +35,18 @@ public sealed class JourneySnapshotOptions
 
 	/// <summary>Resolves <c>$env:NAME</c> references; the process environment when unset.</summary>
 	public Func<string, string?>? Secrets { get; init; }
+
+	/// <summary>
+	/// <see cref="TranscriptMode.Off"/> runs the journey and fails on a step that fails, an <c>expect</c> line included,
+	/// without comparing the transcript or needing a verified file. For a live site whose content drifts.
+	/// </summary>
+	public TranscriptMode Transcript { get; init; } = TranscriptMode.Compare;
+
+	/// <summary>
+	/// Compares with <c>{journey}.{variant}.verified.journey</c> instead of <c>{journey}.verified.journey</c>, for output
+	/// that legitimately differs per flag set or build type. Letters, digits, <c>.</c>, <c>-</c> and <c>_</c>.
+	/// </summary>
+	public string? Variant { get; init; }
 }
 
 /// <summary>
@@ -122,7 +134,11 @@ public static class JourneySnapshot
 			ArtifactsDirectory = options.ArtifactsDirectory,
 			Secrets = options.Secrets ?? Environment.GetEnvironmentVariable,
 		}, cancellationToken).ConfigureAwait(false);
-		return new JourneyTranscript(full, JourneyTranscript.Render(result, options.BaseUrl), result.Failure);
+		return new JourneyTranscript(full, JourneyTranscript.Render(result, options.BaseUrl), result.Failure)
+		{
+			Mode = options.Transcript,
+			Variant = options.Variant,
+		};
 	}
 
 	/// <summary>Whether a journey file has a step that writes a file (<c>screenshot</c>, <c>network har stop</c>).</summary>
@@ -138,6 +154,8 @@ public static class JourneySnapshot
 		FileRoot = options.FileRoot,
 		ArtifactsDirectory = artifactsDirectory,
 		Secrets = options.Secrets,
+		Transcript = options.Transcript,
+		Variant = options.Variant,
 	};
 
 	/// <summary>
@@ -147,7 +165,9 @@ public static class JourneySnapshot
 	public static SnapshotResult Match(JourneyTranscript transcript, SnapshotOptions? options = null, string? because = null)
 	{
 		ArgumentNullException.ThrowIfNull(transcript);
-		return WithFailure(transcript, Snapshot.MatchFile(transcript.Text, Format, transcript.File, options, because));
+		if (transcript.Mode == TranscriptMode.Off)
+			return WithFailure(transcript, new SnapshotResult(true, null, string.Empty, string.Empty, string.Empty));
+		return WithFailure(transcript, Snapshot.MatchFile(transcript.Text, Format, transcript.File, options, because, transcript.Variant));
 	}
 
 	internal static SnapshotResult WithFailure(JourneyTranscript transcript, SnapshotResult result)

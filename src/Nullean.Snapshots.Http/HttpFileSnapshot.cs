@@ -45,6 +45,18 @@ public sealed class HttpFileSnapshotOptions
 
 	/// <summary>The randomness for <c>$guid</c> and <c>$randomInt</c>; pass a seeded instance for repeatable requests.</summary>
 	public Random? Random { get; init; }
+
+	/// <summary>
+	/// <see cref="TranscriptMode.Off"/> sends the requests and fails on a request that fails, without comparing the
+	/// transcript or needing a verified file. For a live service whose responses drift.
+	/// </summary>
+	public TranscriptMode Transcript { get; init; } = TranscriptMode.Compare;
+
+	/// <summary>
+	/// Compares with <c>{file}.{variant}.verified.responses</c> instead of <c>{file}.verified.responses</c>, for output
+	/// that legitimately differs per environment or flag set. Letters, digits, <c>.</c>, <c>-</c> and <c>_</c>.
+	/// </summary>
+	public string? Variant { get; init; }
 }
 
 /// <summary>The request a <c>.http</c> run stopped at.</summary>
@@ -82,6 +94,12 @@ public sealed record HttpFileFailure(int Line, string Request, string Message)
 /// <param name="Failure">The request the run stopped at, if it did not finish.</param>
 public sealed record HttpTranscript(string File, string Text, HttpFileFailure? Failure)
 {
+	/// <summary>Whether the transcript is compared; <see cref="TranscriptMode.Off"/> checks only that no request failed.</summary>
+	public TranscriptMode Mode { get; init; } = TranscriptMode.Compare;
+
+	/// <summary>The variant of the verified file the transcript is compared with, or <see langword="null"/> for the plain one.</summary>
+	public string? Variant { get; init; }
+
 	/// <summary>Renders the exchanges of <paramref name="result"/>, redacted, writing <paramref name="headers"/> on top of the defaults.</summary>
 	public static string Render(HttpFileRunResult result, IEnumerable<string>? headers = null)
 	{
@@ -177,7 +195,11 @@ public static class HttpFileSnapshot
 		var failure = result.Failure is { } f
 			? new HttpFileFailure(f.Line, HttpTranscript.Heading(f.Request), result.Redact(f.Message))
 			: null;
-		return new HttpTranscript(full, HttpTranscript.Render(result, options.Headers), failure);
+		return new HttpTranscript(full, HttpTranscript.Render(result, options.Headers), failure)
+		{
+			Mode = options.Transcript,
+			Variant = options.Variant,
+		};
 	}
 
 	/// <summary>
@@ -187,7 +209,9 @@ public static class HttpFileSnapshot
 	public static SnapshotResult Match(HttpTranscript transcript, SnapshotOptions? options = null, string? because = null)
 	{
 		ArgumentNullException.ThrowIfNull(transcript);
-		return WithFailure(transcript, Snapshot.MatchFile(transcript.Text, Format, transcript.File, options, because));
+		if (transcript.Mode == TranscriptMode.Off)
+			return WithFailure(transcript, new SnapshotResult(true, null, string.Empty, string.Empty, string.Empty));
+		return WithFailure(transcript, Snapshot.MatchFile(transcript.Text, Format, transcript.File, options, because, transcript.Variant));
 	}
 
 	internal static SnapshotResult WithFailure(HttpTranscript transcript, SnapshotResult result)

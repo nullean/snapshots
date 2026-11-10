@@ -33,16 +33,102 @@ public class HttpCliTests
 			P.Fs.AddDirectory(P.Project.ReceivedDirectory);
 		}
 
-		public Task<int> Invoke(string[] patterns, string? environment = null, string[]? variables = null, string[]? headers = null) =>
+		public Task<int> Invoke(string[] patterns, string? environment = null, string[]? variables = null, string[]? headers = null, string? variant = null, string? transcript = null) =>
 			new HttpCli(P.Fs, P.Project.Directory, Out, Err, (file, options, _) =>
 			{
 				Ran.Add((file, options));
 				return Task.FromResult(Transcript!(file));
-			}, k => Env.GetValueOrDefault(k)).RunAsync(patterns, environment, variables, CancellationToken.None, headers);
+			}, k => Env.GetValueOrDefault(k)).RunAsync(patterns, environment, variables, CancellationToken.None, headers, variant, transcript);
 
 		public string Output => Out.ToString().Replace("\r\n", "\n", StringComparison.Ordinal);
 
 		public string Error => Err.ToString().Replace("\r\n", "\n", StringComparison.Ordinal);
+	}
+
+	[Test]
+	public void WithTheTranscriptOffNoVerifiedFileIsNeeded()
+	{
+		var run = new Run();
+		var transcript = new HttpTranscript(run.P.Fs.Path.Combine(run.P.Project.Directory, "http", "shop.http"), Changed, null) { Mode = TranscriptMode.Off };
+
+		HttpFileSnapshot.Match(transcript).Passed.Should().BeTrue();
+		run.P.Fs.AllFiles.Should().NotContain(f => f.Contains("received", StringComparison.Ordinal));
+	}
+
+	[Test]
+	public void WithTheTranscriptOffAFailedRequestStillFails()
+	{
+		var run = new Run();
+		var failure = new HttpFileFailure(1, "GET {{host}}/a", "The connection was refused.");
+		var transcript = new HttpTranscript(run.P.Fs.Path.Combine(run.P.Project.Directory, "http", "shop.http"), Good, failure) { Mode = TranscriptMode.Off };
+
+		var result = HttpFileSnapshot.Match(transcript);
+
+		result.Passed.Should().BeFalse();
+		result.FailureMessage.Should().StartWith("Request stopped at ").And.EndWith("GET {{host}}/a\nThe connection was refused.");
+	}
+
+	[Test]
+	public void MatchUsesTheTranscriptsVariant()
+	{
+		var run = new Run();
+		var file = run.P.Fs.Path.Combine(run.P.Project.Directory, "http", "shop.http");
+		run.P.Fs.AddFile(run.P.VerifiedFile("http/shop.edge", "responses"), new MockFileData(Good));
+		Snapshot.EngineOverride.Value = run.P.Engine;
+		try
+		{
+			var edge = HttpFileSnapshot.Match(new HttpTranscript(file, Good, null) { Variant = "edge" });
+			var plain = HttpFileSnapshot.Match(new HttpTranscript(file, Good, null));
+
+			edge.Passed.Should().BeTrue();
+			plain.Passed.Should().BeFalse("the plain file has no verified snapshot");
+		}
+		finally
+		{
+			Snapshot.EngineOverride.Value = null;
+		}
+	}
+
+	[Test]
+	public async Task TheVariantFlagComparesWithTheVariantFile()
+	{
+		var run = new Run();
+		run.P.Fs.AddFile(run.P.VerifiedFile("http/shop.edge", "responses"), new MockFileData(Good));
+
+		(await run.Invoke(["http/shop.http"], variant: "edge")).Should().Be(0);
+
+		run.Output.Should().Be("ok   Acme.Tests/http/shop.edge\n");
+		run.Ran.Should().ContainSingle().Which.Options.Variant.Should().Be("edge");
+	}
+
+	[Test]
+	public async Task TheTranscriptFlagOffNeedsNoVerifiedFileAndStillReportsAFailedRequest()
+	{
+		var run = new Run();
+		run.Transcript = file => file.EndsWith("basket.http", StringComparison.Ordinal)
+			? new HttpTranscript(file, Good, new HttpFileFailure(1, "GET {{host}}/b", "The connection was refused."))
+			: new HttpTranscript(file, Changed, null);
+
+		(await run.Invoke(["http/**/*.http"], transcript: "off")).Should().Be(1);
+
+		run.Output.Should().StartWith("Request stopped at ");
+		run.Output.Should().Contain("ok   http/shop.http (transcript off)");
+		run.Ran.Should().AllSatisfy(r => r.Options.Transcript.Should().Be(TranscriptMode.Off));
+		run.P.Fs.AllFiles.Should().NotContain(f => f.Contains("received", StringComparison.Ordinal));
+	}
+
+	[Test]
+	public async Task ABadTranscriptOrVariantFlagExitsTwo()
+	{
+		var run = new Run();
+
+		(await run.Invoke(["http/shop.http"], transcript: "maybe")).Should().Be(2);
+		(await run.Invoke(["http/shop.http"], variant: "no/slash")).Should().Be(2);
+
+		run.Error.Should().Be(
+			"Error: --transcript 'maybe' is not 'compare' or 'off'.\n" +
+			"Error: --variant 'no/slash' must be a name of letters, digits, '.', '-' and '_', without a leading or trailing dot.\n");
+		run.Ran.Should().BeEmpty();
 	}
 
 	[Test]
