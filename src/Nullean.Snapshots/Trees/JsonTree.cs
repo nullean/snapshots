@@ -63,6 +63,56 @@ internal static class JsonTree
 		return SnapshotText.Normalize(Encoding.UTF8.GetString(buffer.ToArray()));
 	}
 
+	/// <summary>
+	/// A tree in the same form as <see cref="Pretty"/>: two-space indent, properties in the tree's order, numbers as
+	/// their text, ending in one newline.
+	/// </summary>
+	public static string Write(Node node)
+	{
+		ArgumentNullException.ThrowIfNull(node);
+		using var buffer = new MemoryStream();
+		using (var writer = new Utf8JsonWriter(buffer, WriterOptions))
+			WriteValue(writer, node);
+		return SnapshotText.Normalize(Encoding.UTF8.GetString(buffer.ToArray()));
+	}
+
+	private static void WriteValue(Utf8JsonWriter writer, Node node)
+	{
+		switch (node)
+		{
+			case MapNode map:
+				writer.WriteStartObject();
+				foreach (var entry in map.Entries)
+				{
+					writer.WritePropertyName(entry.Key.Canonical);
+					WriteValue(writer, entry.Value);
+				}
+
+				writer.WriteEndObject();
+				break;
+			case SeqNode seq:
+				writer.WriteStartArray();
+				foreach (var item in seq.Items)
+					WriteValue(writer, item);
+				writer.WriteEndArray();
+				break;
+			case ScalarNode { Kind: ScalarKind.String } s:
+				writer.WriteStringValue(s.Canonical);
+				break;
+			case ScalarNode { Kind: ScalarKind.Bool } s:
+				writer.WriteBooleanValue(s.Canonical == "true");
+				break;
+			case ScalarNode { Kind: ScalarKind.Null }:
+				writer.WriteNullValue();
+				break;
+			case ScalarNode s:
+				writer.WriteRawValue(s.Canonical);
+				break;
+			default:
+				throw new ArgumentException($"Unknown node type {node.GetType().Name}.", nameof(node));
+		}
+	}
+
 	private static Node ReadValue(ref Utf8JsonReader reader, Positions positions)
 	{
 		var span = positions.At(reader.TokenStartIndex);

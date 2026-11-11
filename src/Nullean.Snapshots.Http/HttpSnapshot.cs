@@ -11,6 +11,12 @@ public sealed class HttpSnapshotOptions
 	/// <c>cookie</c>, <c>set-cookie</c> and <c>proxy-authorization</c> are never written, even when named here.
 	/// </summary>
 	public IReadOnlyCollection<string> Headers { get; init; } = [];
+
+	/// <summary>
+	/// Writes the body as its shape: every JSON value replaced by its kind, arrays collapsed, a text body as its media
+	/// type. For a live service whose data drifts but whose properties should not.
+	/// </summary>
+	public bool Shape { get; init; }
 }
 
 /// <summary>
@@ -66,7 +72,7 @@ public static class HttpSnapshot
 			mediaType,
 			mediaType is null ? null : response.Content.Headers.ContentType?.CharSet);
 		var text = new StringBuilder();
-		HttpResponseText.Append(text, section, HttpResponseText.Chosen(options?.Headers));
+		HttpResponseText.Append(text, section, HttpResponseText.Chosen(options?.Headers), options?.Shape ?? false);
 		return text.ToString();
 	}
 
@@ -97,8 +103,9 @@ public sealed class HttpSnapshotFormat(TreeDiffOptions? options = null) : TreeSn
 	public override string Extension => "responses";
 
 	/// <summary>
-	/// Parses responses text into a sequence of sections, <c>{request, status, headers, body | text | binary}</c>:
-	/// <c>body</c> is a JSON body's tree, <c>text</c> any other text, and parts that are empty are left out.
+	/// Parses responses text into a sequence of sections, <c>{request, status, headers, body | text | text-type | binary}</c>:
+	/// <c>body</c> is a JSON body's tree, <c>text</c> any other text, <c>text-type</c> a text body's media type in a shape,
+	/// and parts that are empty are left out.
 	/// </summary>
 	/// <exception cref="FormatException">The text is not in this format; the message starts with the line.</exception>
 	public override Node Parse(string text) => HttpResponseText.Parse(text);
