@@ -68,8 +68,24 @@ An accept is also refused, changing nothing, when:
 
 - **the test file changed since the test ran.** The received record holds a hash of the file, because a literal that
   grows moves the lines below it. Run the tests again.
-- **test cases disagree.** A data-driven test runs its one literal once per case; if two cases produce different
-  values there is nothing to write. Use `MatchSnapshot`, whose files are per case.
+- **test cases disagree.** A data-driven test runs its one literal once per case, and a test in an abstract base class
+  marked `[InheritsTests]` runs it once per derived class; if two of them produce different values there is nothing
+  to write, because the literal is in the base. Use `MatchSnapshot`, whose files are per case and per runtime class.
+  When every case agrees, accept writes the literal as usual.
+
+```csharp
+public abstract class DirectiveTests
+{
+    [Test]
+    public void Renders() => Render(Name).Should().MatchInlineSnapshot("..."); // one literal, shared by the derived classes
+}
+
+[InheritsTests]
+public sealed class NoteTests : DirectiveTests;
+```
+
+Each derived class records its own received value, so a test that fails in one of them names that class; only the accept is refused
+when the values differ.
 - **the file is outside the test project** (a linked file). The library edits no source file outside the project, and
   `snap` none outside `--root`.
 

@@ -804,6 +804,12 @@ two sites. This change is the rules and what reads them; running the two sites i
   and draws the zoom, **enlarged smoothly in the terminal only**: a 1:1 crop of a few dozen pixels draws tiny on a screen with small pixels,
   so the terminal drawing fills a 60 by 12 cell box (bilinear, `AllowUpscale`), while the file on disk stays a plain crop.
 
+## Inline snapshots in inherited tests (#40)
+
+- **Nothing to build: inherited tests already work**, and the issue's own suggestion ("accept could write the literal only when every derived case agrees") is what accept does. Each
+  `[InheritsTests]` class has its own runtime-class folder, so each writes its own received record for the base's one literal, and `Rewrite` writes it when the records agree. What was missing was the
+  explanation: the docs covered data rows only, and the refusal said "test cases" without naming derived classes. Both now say it, and a test runs an inherited inline snapshot in two classes.
+
 ## Path scrubbers (#39)
 
 - **`Scrubbers.Path(root, replacement)` and `Scrubbers.TempDirectory()`**, returning `Func<string, string>` like `Scrubbers.Regex`; they do not number what they replace, since the replacement is a name the
