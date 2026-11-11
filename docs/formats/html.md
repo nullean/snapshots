@@ -10,7 +10,7 @@ page.Should().NotContainHtml("<script>");
 ```
 
 HTML is parsed with AngleSharp, pretty-printed (one element per line, tab indented) and compared structurally with
-AngleSharp.Diffing: attribute order and whitespace do not matter. A failure names each difference and shows a line
+AngleSharp.Diffing: attribute order and whitespace do not matter (except inside `<pre>` and `<textarea>`, see below). A failure names each difference and shows a line
 diff of the pretty-printed HTML:
 
 ```text
