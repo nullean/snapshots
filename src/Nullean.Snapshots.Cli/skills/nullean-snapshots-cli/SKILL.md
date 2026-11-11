@@ -25,6 +25,8 @@ snap http run 'tests/Shop.Tests/http/**/*.http' --env dev --var host=http://loca
 ## Gotchas
 
 - Never accept automatically, never `accept --all` without reading every diff, and never in CI.
+- A `(stale)` received file is older than the latest test run of its project: left over from an earlier run (after a mutation run and a
+  revert it holds the mutated output). `accept --all` skips it; run the tests again, or `accept <key>` it, or `--include-stale`.
 - `snap` with no command is `snap review`, which waits for key presses.
 - `journey run` and `http run` write received files but never accept, even with `SNAPSHOT_ACCEPT=1`.
 - `journey run` exits 0 all match, 1 a diff, a failed step or all skipped, 2 usage, 3 no Chrome.

@@ -24,9 +24,11 @@ internal sealed class SnapCommands
 	/// string literal of its test instead, which edits the test's .cs file.
 	/// </summary>
 	/// <param name="keys">Keys from 'snap status', unique suffixes of them, or globs.</param>
-	/// <param name="all">Accept every pending snapshot.</param>
+	/// <param name="all">Accept every pending snapshot except stale ones.</param>
+	/// <param name="includeStale">With --all, accept stale received files too: ones older than the latest test run of their project, left over from an earlier run.</param>
 	/// <param name="root">The folder to search from. Defaults to the current folder.</param>
-	public static int Accept([Argument] string[] keys, bool all = false, string? root = null) => Cli(root).Accept(keys, all);
+	public static int Accept([Argument] string[] keys, bool all = false, bool includeStale = false, string? root = null) =>
+		Cli(root).Accept(keys, all, includeStale);
 
 	/// <summary>Reject received snapshots: delete the received files and keep the verified ones.</summary>
 	/// <param name="keys">Keys from 'snap status', unique suffixes of them, or globs.</param>

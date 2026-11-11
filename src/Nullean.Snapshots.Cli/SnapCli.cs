@@ -44,8 +44,10 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 			output.WriteLine($"{pending.Count} pending snapshot(s):");
 			var width = pending.Max(p => p.Key.Length);
 			foreach (var p in pending)
-				output.WriteLine($"  {(p.IsNew ? "new    " : "changed")}  {p.Key.PadRight(width)}  .{p.Extension}");
+				output.WriteLine($"  {(p.IsNew ? "new    " : "changed")}  {p.Key.PadRight(width)}  .{p.Extension}{(p.Stale ? "  (stale)" : string.Empty)}");
 			output.WriteLine("Review with 'snap diff <key>', then 'snap accept <key>' or 'snap reject <key>' (or --all).");
+			if (pending.Any(p => p.Stale))
+				output.WriteLine(StaleNote(pending.Count(p => p.Stale)));
 			return ExitCode.Pending;
 		});
 
@@ -62,20 +64,43 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 				return ExitCode.Usage;
 			}
 
+			if (selected[0].Stale)
+				output.WriteLine(StaleNote(1));
 			WriteDiff(fs, selected[0], color: false);
 			return ExitCode.Ok;
 		});
 
-	public int Accept(IReadOnlyList<string> patterns, bool all) =>
+	public int Accept(IReadOnlyList<string> patterns, bool all, bool includeStale = false) =>
 		Run((pending, fs) =>
 		{
 			if (Select(pending, patterns, all) is not { } selected)
 				return ExitCode.Usage;
+			// --all does not take a received file that an earlier run left behind: after a mutation run and a revert it holds the
+			// mutated output, and accepting it would overwrite a good verified file. By key the person named it, so it is accepted.
+			var left = all && !includeStale ? selected.Where(s => s.Stale).ToList() : [];
+			if (left.Count > 0)
+				selected = [.. selected.Where(s => !s.Stale)];
+			else if (selected.Any(s => s.Stale))
+				output.WriteLine(StaleNote(selected.Count(s => s.Stale)));
 			foreach (var snapshot in selected.Where(s => s.Inline is null))
 				AcceptOne(fs, snapshot);
 			// An edit that cannot be made leaves its snapshot pending, so the command exits 1 as 'snap status' would.
-			return AcceptInline(fs, [.. selected.Where(s => s.Inline is not null)]) == 0 ? ExitCode.Ok : ExitCode.Pending;
+			var failed = AcceptInline(fs, [.. selected.Where(s => s.Inline is not null)]);
+			if (left.Count > 0)
+			{
+				output.WriteLine($"Left {left.Count} stale received file(s) alone, so --all does not accept output from an earlier run:");
+				foreach (var snapshot in left)
+					output.WriteLine("  " + snapshot.Key);
+				output.WriteLine("Run the tests again, or accept them by key ('snap accept <key>'), or pass --include-stale.");
+			}
+
+			return failed == 0 && left.Count == 0 ? ExitCode.Ok : ExitCode.Pending;
 		});
+
+	/// <summary>Says what a stale received file is and what to do about it.</summary>
+	private static string StaleNote(int count) =>
+		$"{count} received file(s) are older than the latest test run of their project, which did not fail them again: they are left over from an earlier run " +
+			"(changed code, a filtered run) and may hold output you do not want. Run the tests again before accepting them.";
 
 	public int Reject(IReadOnlyList<string> patterns, bool all) =>
 		Run((pending, fs) =>
@@ -108,7 +133,9 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 			{
 				var snapshot = pending[i];
 				output.WriteLine();
-				output.WriteLine($"[{i + 1}/{pending.Count}] {(snapshot.IsNew ? "new" : "changed")}  {snapshot.Key}  .{snapshot.Extension}");
+				output.WriteLine(
+					$"[{i + 1}/{pending.Count}] {(snapshot.IsNew ? "new" : "changed")}  {snapshot.Key}  .{snapshot.Extension}{(snapshot.Stale ? "  (stale: older than the latest test run)" : string.Empty)}"
+				);
 				WriteDiff(fs, snapshot, color, draw);
 				var answer = Ask(prompt);
 				if (answer == 'q')
@@ -566,6 +593,8 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 				else
 					json.WriteString("verified", Relative(p.VerifiedPath));
 				json.WriteString("received", Relative(p.ReceivedPath));
+				if (p.Stale)
+					json.WriteBoolean("stale", true);
 				if (p.Inline is not null)
 					json.WriteString("source", InlineLocation(p));
 				json.WriteEndObject();
