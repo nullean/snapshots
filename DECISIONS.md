@@ -804,6 +804,17 @@ two sites. This change is the rules and what reads them; running the two sites i
   and draws the zoom, **enlarged smoothly in the terminal only**: a 1:1 crop of a few dozen pixels draws tiny on a screen with small pixels,
   so the terminal drawing fills a 60 by 12 cell box (bilinear, `AllowUpscale`), while the file on disk stays a plain crop.
 
+## Stale received files (#38)
+
+- **A received file older than its project's latest run is stale.** A passing assertion deletes its own received file and a failing one writes it again, so a received file
+  the latest run did not write was left by an earlier run (a mutation run and a revert, a filtered run). The run manifest, which is written once per test process into the
+  project's received folder with the run's start time (second resolution, and a file written during the run is never older than it), is the clock: discovery marks a
+  file whose last write is before it. No manifest, no staleness. It cannot tell a leftover from a legitimate pending file from a filtered earlier run, so it is a mark and a
+  guard, not a ban.
+- **`accept --all` does not take stale files; `--include-stale` does, and a key always does.** Accepting overwrites a verified file with output nobody has just seen,
+  and `--all` is the call an agent makes without reading. It lists what it left and exits 1, as any pending snapshot does. By key the person named it (the note says
+  it was stale), and `status`, `diff` and `review` mark it. This changes `--all` for anyone who ran it after a filtered run.
+
 ## The arguments hash and line endings (#41)
 
 - **`\r\n` and a lone `\r` are `\n` in the text that is hashed.** A multi-line string argument from a C# raw string literal has its source file's line endings, and a Windows
