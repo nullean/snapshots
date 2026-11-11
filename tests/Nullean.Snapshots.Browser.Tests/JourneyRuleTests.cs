@@ -159,6 +159,30 @@ public class JourneyRuleTests
 	}
 
 	[Test]
+	public void AnAddedLineOfAReadsTextIsExcusedByNamingTheLine()
+	{
+		var baseline = "## network requests --failed\nurl: {origin}/\n> GET {origin}/a 200\n";
+		var actual = "## network requests --failed\nurl: {origin}/\n> GET {origin}/a 200\n> GET {origin}/static-res/fonts/MierB-Demi.woff2 (Font) 404\n";
+
+		Apply(baseline, actual, "## network requests*\nadded text /static-res\\/fonts\\//\n").IsClean.Should().BeTrue();
+		Apply(baseline, actual, "## network requests*\nadded text \"GET {origin}/other\"\n").Unexplained.Should().ContainSingle();
+		var app = Apply(baseline, actual, string.Empty);
+		ExpectedDifferences
+			.Suggest(app.UnexplainedFacts.Single(), JourneyRuleTargets.Instance)
+			.Should()
+			.Equal("added text \"GET {origin}/static-res/fonts/MierB-Demi.woff2 (Font) 404\"");
+	}
+
+	[Test]
+	public void TextWithANameIsStillAnAccessibilityNode()
+	{
+		var baseline = "## snapshot -c\nurl: {origin}/\n- main\n";
+		var actual = "## snapshot -c\nurl: {origin}/\n- main\n  - text \"hello\"\n";
+
+		Apply(baseline, actual, "## snapshot*\nadded text \"hello\"\n").IsClean.Should().BeTrue();
+	}
+
+	[Test]
 	public void ABareRuleExplainsAWholeSection()
 	{
 		var actual = Baseline.Split("\n## get text")[0] + "\n";
