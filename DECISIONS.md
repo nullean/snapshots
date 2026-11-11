@@ -804,6 +804,14 @@ two sites. This change is the rules and what reads them; running the two sites i
   and draws the zoom, **enlarged smoothly in the terminal only**: a 1:1 crop of a few dozen pixels draws tiny on a screen with small pixels,
   so the terminal drawing fills a 60 by 12 cell box (bilinear, `AllowUpscale`), while the file on disk stays a plain crop.
 
+## The arguments hash and line endings (#41)
+
+- **`\r\n` and a lone `\r` are `\n` in the text that is hashed.** A multi-line string argument from a C# raw string literal has its source file's line endings, and a Windows
+  checkout (`core.autocrlf`) turns them into CRLF, so the same test was named for a different hash on each OS and a verified file committed from one was "new" on
+  the other. Normalising the whole text before hashing covers strings, collections and an object's `ToString()`, and only those two endings change: not
+  `ReplaceLineEndings`, which would also rewrite U+2028 and the like and move more hashes. An argument without a `\r` hashes as before. Verified files that were named for a
+  CRLF hash (written on Windows from a CRLF checkout) are named differently now and need renaming (`snap orphans` lists them, the new name is in the failure).
+
 ## File data sources and TUnit's analyzer (#71)
 
 - **`[SnapshotFiles]`, `[HttpFiles]` and `[JourneyFiles]` are untyped data sources.** They were `DataSourceGeneratorAttribute<TestDataRow<SnapshotFile>>`, and TUnit's analyzer

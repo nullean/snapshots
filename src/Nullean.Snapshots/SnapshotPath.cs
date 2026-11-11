@@ -160,8 +160,10 @@ internal static class SnapshotPath
 			text.Append('\u001F');
 		}
 
+		// A multi-line string argument taken from a source file has that file's line endings, and a Windows checkout turns .cs files into CRLF:
+		// the same test would be named for a different hash on each operating system. Only \r\n and a lone \r are normalised (as snapshot content is).
 		var hash = 2166136261u;
-		foreach (var b in Encoding.UTF8.GetBytes(text.ToString()))
+		foreach (var b in Encoding.UTF8.GetBytes(text.ToString().Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n')))
 			hash = (hash ^ b) * 16777619u;
 		return hash.ToString("x8", CultureInfo.InvariantCulture);
 	}
