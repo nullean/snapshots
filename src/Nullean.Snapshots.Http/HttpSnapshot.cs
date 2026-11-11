@@ -38,6 +38,9 @@ public static class HttpSnapshot
 	/// <summary>The <c>.responses</c> format.</summary>
 	public static HttpSnapshotFormat Format { get; } = new();
 
+	/// <summary>The <c>.responses</c> format comparing trees with <paramref name="diff"/> (ignored paths, strict numbers); <see cref="Format"/> when it is <see langword="null"/>.</summary>
+	public static HttpSnapshotFormat FormatWith(TreeDiffOptions? diff) => diff is null ? Format : new HttpSnapshotFormat(diff);
+
 	/// <summary>
 	/// Renders one response: headed by its request's method, path and query (<c>## response</c> when it has none),
 	/// then the status, the chosen headers and the body. A body still carrying <c>Content-Encoding</c> gzip, deflate or

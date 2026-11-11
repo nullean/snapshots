@@ -105,6 +105,22 @@ transcript.Should().MatchHttpFileSnapshot();
 case per file, `http` by default. A folder that needs other setup gets its own class with a more specific folder, as
 with [journeys](browser.md#setup-per-folder).
 
+## Volatile values
+
+`HttpFileTest.RunAsync`, `MatchHttpFileSnapshot` and `MatchHttpSnapshot` take the same `SnapshotOptions` as every other assertion (scrubbers are text and
+run on the whole transcript) and a `TreeDiffOptions` for the trees. The paths are rooted at the sections of the file, so a score in every hit of every
+response is `$[*].body.hits[*].score`:
+
+```csharp
+await HttpFileTest.RunAsync(
+	file,
+	new() { Client = client },
+	diff: new TreeDiffOptions { IgnorePaths = ["$[*].body.hits[*].score"] }
+);
+```
+
+A value that is ignored must still be present and of the same kind; use [shape mode](#shapes-properties-without-values) to compare only the structure.
+
 A URL starting with `/` resolves against the client's `BaseAddress`, so one file runs in memory against a
 `WebApplicationFactory` client and against a real host through `{{host}}`. Give `host` an empty value in the
 environment the test uses and both give the same verified file.
