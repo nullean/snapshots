@@ -91,7 +91,7 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 	/// Walks through every pending snapshot: its diff, then accept, reject, skip or quit. Exits 1 when snapshots are
 	/// left pending, 0 otherwise.
 	/// </summary>
-	public int Review(ISnapPrompt prompt, bool color) =>
+	public int Review(ISnapPrompt prompt, bool color, Func<byte[], bool, bool>? draw = null) =>
 		Run((pending, fs) =>
 		{
 			if (pending.Count == 0)
@@ -109,7 +109,7 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 				var snapshot = pending[i];
 				output.WriteLine();
 				output.WriteLine($"[{i + 1}/{pending.Count}] {(snapshot.IsNew ? "new" : "changed")}  {snapshot.Key}  .{snapshot.Extension}");
-				WriteDiff(fs, snapshot, color);
+				WriteDiff(fs, snapshot, color, draw);
 				var answer = Ask(prompt);
 				if (answer == 'q')
 					break;
@@ -235,7 +235,7 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 		}
 	}
 
-	private void WriteDiff(IFileSystem fs, PendingSnapshot snapshot, bool color)
+	private void WriteDiff(IFileSystem fs, PendingSnapshot snapshot, bool color, Func<byte[], bool, bool>? draw = null)
 	{
 		if (snapshot.Inline is { } inline)
 		{
@@ -247,6 +247,8 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 		if (SnapshotPath.IsBinary(bytes))
 		{
 			WriteBinary(fs, snapshot, bytes.Length);
+			if (draw is not null)
+				DrawBinary(fs, snapshot, bytes, draw);
 			return;
 		}
 
@@ -339,6 +341,26 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 		foreach (var attachment in Attachments(fs, snapshot))
 			output.WriteLine("    " + Relative(attachment));
 	}
+
+	/// <summary>
+	/// Shows a PNG snapshot's picture where the terminal can: the zoom of its diff if the test wrote one, else the diff image, else
+	/// (a new snapshot, or images of different sizes) the received image itself. Never anything else, and never a failure: drawing is
+	/// a help to the reader.
+	/// </summary>
+	private void DrawBinary(IFileSystem fs, PendingSnapshot snapshot, byte[] received, Func<byte[], bool, bool> draw)
+	{
+		var attachments = Attachments(fs, snapshot);
+		var zoom = attachments.FirstOrDefault(a => a.EndsWith("-zoom.png", StringComparison.Ordinal));
+		var diff = attachments.FirstOrDefault(a => a.EndsWith("-diff.png", StringComparison.Ordinal));
+		var picture = zoom ?? diff;
+		var png = picture is null ? received : fs.File.ReadAllBytes(picture);
+		if (!png.AsSpan().StartsWith(PngSignature))
+			return;
+		if (draw(png, zoom is not null && picture == zoom))
+			output.WriteLine();
+	}
+
+	private static ReadOnlySpan<byte> PngSignature => [0x89, (byte)'P', (byte)'N', (byte)'G', 0x0D, 0x0A, 0x1A, 0x0A];
 
 	private static string Bytes(long length) => length.ToString("N0", System.Globalization.CultureInfo.InvariantCulture) + " bytes";
 

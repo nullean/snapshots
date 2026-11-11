@@ -14,6 +14,18 @@ public static class TerminalPicture
 	/// </summary>
 	public static bool TryDraw(TextWriter output, byte[] png) => TryDraw(output, png, enlarge: false, maxColumns: 100, maxRows: 30);
 
+	/// <summary>The box, in terminal cells, a zoom is enlarged to fill: big enough to read a few words, small enough to leave the text on screen.</summary>
+	public const int ZoomColumns = 60;
+
+	/// <inheritdoc cref="ZoomColumns" />
+	public const int ZoomRows = 12;
+
+	/// <summary>
+	/// Draws a zoomed diff, a small crop of a screenshot, enlarged smoothly to fill <see cref="ZoomColumns"/> by <see cref="ZoomRows"/>
+	/// cells so a few words in it are readable. False when the terminal cannot show images or drawing failed.
+	/// </summary>
+	public static bool TryDrawZoom(TextWriter output, byte[] png) => TryDraw(output, png, enlarge: true, maxColumns: ZoomColumns, maxRows: ZoomRows);
+
 	/// <summary>
 	/// Draws <paramref name="png"/> within <paramref name="maxColumns"/> by <paramref name="maxRows"/> cells. With
 	/// <paramref name="enlarge"/> a small picture is made bigger to fill them, smoothly, so a crop of a few dozen pixels is readable
