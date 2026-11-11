@@ -269,12 +269,13 @@ this is not detected. `WebApplicationFactory.CreateClient()` follows redirects b
 | `Secrets` | | answers `{{$secret Name}}` and secret providers by name |
 | `UserSecretsId`, `SecretsAssembly`, `UserSecretsRoot` | | where user secrets are read |
 | `TimeProvider`, `Random` | | the clock and randomness for `$datetime`, `$guid` and the like |
-| `Transcript` | `--transcript compare\|off` | `Off` sends the requests and compares no transcript; see [a live service](#a-live-service-and-variants) |
+| `Transcript` | `--transcript compare\|off\|shape` | `Off` sends the requests and compares no transcript; `Shape` compares only the properties of JSON bodies; see [a live service](#a-live-service-and-variants) and [shapes](#shapes-properties-without-values) |
 | `Variant` | `--variant <name>` | compares with `{file}.{variant}.verified.responses`; see [a live service](#a-live-service-and-variants) |
 | `ReadOnly` | `--read-only` | refuses any request that is not GET, HEAD or OPTIONS unless it carries `# @readonly`; see [read-only runs](#read-only-runs) |
 | `Features`, `BuildType`, `Env` | | what `# @requires` is judged against; see [files that apply](#files-that-apply-to-some-services) |
 
-`HttpSnapshotOptions.Headers` chooses headers for `MatchHttpSnapshot` and `RenderAsync`.
+`HttpSnapshotOptions.Headers` chooses headers for `MatchHttpSnapshot` and `RenderAsync`; `HttpSnapshotOptions.Shape` writes the
+body as its [shape](#shapes-properties-without-values).
 
 ## A live service and variants
 
@@ -286,6 +287,44 @@ a timeout, an unresolved variable), without comparing the transcript or needing 
 `Variant = "edge"` compares `http/orders.http` with `.snapshots/http/orders.edge.verified.responses` and leaves
 `orders.verified.responses` alone, for responses that legitimately differ per environment or flag set. A variant is
 letters, digits, `.`, `-` and `_`.
+
+## Shapes: properties without values
+
+`Transcript = TranscriptMode.Shape` (or `--transcript shape`) writes every JSON body as its shape, so the verified file
+says which properties a response has and of what kind, and a changed value never fails it. A property added or dropped,
+or one that changed kind, is one difference each.
+
+```
+## GET {{host}}/api/orders
+status: 200 OK
+content-type: application/json; charset=utf-8
+
+{
+  "customer": {
+    "name": "string",
+    "vip": null
+  },
+  "lines": [
+    {
+      "note": "string",
+      "qty": 1,
+      "sku": "string"
+    }
+  ],
+  "open": false,
+  "price": 1.0,
+  "total": 1
+}
+```
+
+- Strings become `"string"`, booleans `false`, integers `1`, floats `1.0`; `null` stays `null`. Keys are sorted.
+- An array collapses to its distinct shapes: all its objects merge into one with the union of their keys, so the number
+  of items never shows. A key that is `null` in one item and something else in another takes the something else.
+  Items that disagree about a key's kind (a string in one, an integer in the other) stay separate entries. An empty
+  array stays `[]`, so a list that was emptied is a difference.
+- A text body is written as `text: {media type}` and a binary body as before. Status and the chosen headers are written as
+  usual.
+- Only `.http` runs and `HttpSnapshotOptions.Shape` have a shape; a journey rejects `TranscriptMode.Shape`.
 
 ## CLI
 

@@ -118,8 +118,11 @@ public sealed record HttpTranscript(string File, string Text, HttpFileFailure? F
 	/// <summary>The variant of the verified file the transcript is compared with, or <see langword="null"/> for the plain one.</summary>
 	public string? Variant { get; init; }
 
-	/// <summary>Renders the exchanges of <paramref name="result"/>, redacted, writing <paramref name="headers"/> on top of the defaults.</summary>
-	public static string Render(HttpFileRunResult result, IEnumerable<string>? headers = null)
+	/// <summary>
+	/// Renders the exchanges of <paramref name="result"/>, redacted, writing <paramref name="headers"/> on top of the defaults.
+	/// With <paramref name="shape"/> the bodies are written as their shape (see <see cref="TranscriptMode.Shape"/>).
+	/// </summary>
+	public static string Render(HttpFileRunResult result, IEnumerable<string>? headers = null, bool shape = false)
 	{
 		ArgumentNullException.ThrowIfNull(result);
 		var chosen = HttpResponseText.Chosen(headers);
@@ -135,7 +138,7 @@ public sealed record HttpTranscript(string File, string Text, HttpFileFailure? F
 				[.. response.Headers.Concat(response.ContentHeaders).Select(h => new KeyValuePair<string, string>(h.Name, h.Value))],
 				response.Body,
 				response.MediaType,
-				response.CharSet), chosen);
+				response.CharSet), chosen, shape);
 		}
 
 		// Again over the whole text: pretty-printing unescapes JSON strings, so a value a server echoed as "+..."
@@ -253,9 +256,10 @@ public static class HttpFileSnapshot
 		var failure = result.Failure is { } f
 			? new HttpFileFailure(f.Line, HttpTranscript.Heading(f.Request), result.Redact(f.Message))
 			: null;
-		return new HttpTranscript(full, HttpTranscript.Render(result, options.Headers), failure)
+		return new HttpTranscript(full, HttpTranscript.Render(result, options.Headers, options.Transcript == TranscriptMode.Shape), failure)
 		{
-			Mode = options.Transcript,
+			// The text is already the shape, so it is compared like any other.
+			Mode = options.Transcript == TranscriptMode.Shape ? TranscriptMode.Compare : options.Transcript,
 			Variant = options.Variant,
 		};
 	}

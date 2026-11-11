@@ -15,6 +15,14 @@ public class JourneyMatchTests
 	private static string Journey(TestProject p) => p.Fs.Path.Combine(p.Project.Directory, "journeys", "shop.journey");
 
 	[Test]
+	public async Task AJourneyRejectsTheShapeMode()
+	{
+		var run = () => JourneySnapshot.RunAsync("shop.journey", null!, new JourneySnapshotOptions { Transcript = TranscriptMode.Shape });
+
+		(await run.Should().ThrowAsync<ArgumentException>()).Which.Message.Should().Contain("applies to .http runs");
+	}
+
+	[Test]
 	public void AFailedStepFailsEvenWhenThePartialTranscriptMatches()
 	{
 		var p = new TestProject();

@@ -136,9 +136,20 @@ public class HttpCliTests
 		(await run.Invoke(["http/shop.http"], variant: "no/slash")).Should().Be(2);
 
 		run.Error.Should().Be(
-			"Error: --transcript 'maybe' is not 'compare' or 'off'.\n" +
+			"Error: --transcript 'maybe' is not 'compare', 'off' or 'shape'.\n" +
 			"Error: --variant 'no/slash' must be a name of letters, digits, '.', '-' and '_', without a leading or trailing dot.\n");
 		run.Ran.Should().BeEmpty();
+	}
+
+	[Test]
+	public async Task TranscriptShapeReachesTheRunAsTheShapeMode()
+	{
+		var run = new Run();
+
+		(await run.Invoke(["http/shop.http"], transcript: "SHAPE")).Should().Be(1, "no verified file exists, but the runner did receive the option");
+
+		run.Error.Should().BeEmpty();
+		run.Ran.Should().ContainSingle().Which.Options.Transcript.Should().Be(TranscriptMode.Shape);
 	}
 
 	[Test]
