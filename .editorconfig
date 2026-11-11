@@ -173,6 +173,3 @@ insert_final_newline = false
 [tests/**/*.cs]
 # A test keeps what a helper returns as one named value (`run.Output`); taking it apart at every call site adds nothing.
 dotnet_diagnostic.IDE0042.severity = none
-# The snapshot file data sources yield TestDataRow<SnapshotFile> (to set display names and categories) and TUnit unwraps it for the
-# parameter; the analyzer compares the row's type with the parameter's and does not know that.
-dotnet_diagnostic.TUnit0001.severity = none
