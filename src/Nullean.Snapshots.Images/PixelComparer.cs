@@ -33,6 +33,60 @@ internal static class PixelComparer
 	/// <summary>Regions group differences that lie within cells of this size of each other.</summary>
 	private const int Cell = 8;
 
+	/// <summary>How far outside a region its outline is drawn.</summary>
+	internal const int OutlineMargin = 3;
+
+	/// <summary>How thick an outline is.</summary>
+	internal const int OutlineThickness = 2;
+
+	/// <summary>The most regions <see cref="Outline"/> draws around.</summary>
+	internal const int MaxOutlines = 100;
+
+	/// <summary>The outline colour: blue, which neither the red of a difference nor the yellow of anti-aliasing is.</summary>
+	internal static readonly (byte R, byte G, byte B) OutlineColour = (0, 102, 255);
+
+	/// <summary>
+	/// A copy of <paramref name="diff"/> with a rectangle around each of the first <see cref="MaxOutlines"/> of
+	/// <paramref name="regions"/>, <see cref="OutlineMargin"/> pixels outside it, clamped to the image.
+	/// </summary>
+	public static RgbaImage Outline(RgbaImage diff, IReadOnlyList<DiffRegion> regions)
+	{
+		var pixels = (byte[])diff.Pixels.Clone();
+		void Set(int x, int y)
+		{
+			var at = ((y * diff.Width) + x) * 4;
+			pixels[at] = OutlineColour.R;
+			pixels[at + 1] = OutlineColour.G;
+			pixels[at + 2] = OutlineColour.B;
+			pixels[at + 3] = 255;
+		}
+
+		foreach (var region in regions.Take(MaxOutlines))
+		{
+			int left = Math.Max(0, region.Left - OutlineMargin), top = Math.Max(0, region.Top - OutlineMargin);
+			int right = Math.Min(diff.Width - 1, region.Right + OutlineMargin), bottom = Math.Min(diff.Height - 1, region.Bottom + OutlineMargin);
+			for (var t = 0; t < OutlineThickness; t++)
+			{
+				int l = left + t, r = right - t, u = top + t, d = bottom - t;
+				if (l > r || u > d)
+					break;
+				for (var x = l; x <= r; x++)
+				{
+					Set(x, u);
+					Set(x, d);
+				}
+
+				for (var y = u; y <= d; y++)
+				{
+					Set(l, y);
+					Set(r, y);
+				}
+			}
+		}
+
+		return diff with { Pixels = pixels };
+	}
+
 	public static PixelComparison Compare(RgbaImage verified, RgbaImage actual, double threshold, bool includeAntiAliasing, bool drawDiff)
 	{
 		if (verified.Width != actual.Width || verified.Height != actual.Height)

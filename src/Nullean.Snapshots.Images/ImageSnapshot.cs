@@ -62,7 +62,7 @@ public sealed class ImageSnapshotFormat : BinarySnapshotFormat
 			.ToList();
 		return new BinarySnapshotComparison(
 			new SnapshotComparison(false, differences, Summary: summary),
-			[new SnapshotAttachment("Diff", DiffSuffix, Png.Encode(result.Diff!))]);
+			[new SnapshotAttachment("Diff", DiffSuffix, Png.Encode(_options.OutlineRegions ? PixelComparer.Outline(result.Diff!, result.Regions) : result.Diff!))]);
 	}
 
 	private static BinarySnapshotComparison Failed(string? summary, IReadOnlyList<string> difference) =>

@@ -789,3 +789,8 @@ two sites. This change is the rules and what reads them; running the two sites i
   `MatchImageSnapshot` moved to `Nullean.Snapshots.Images.Assertions` (same namespace, so only the package reference changes). The format,
   the PNG codec and the comparison stay in `Images`, which no longer carries AwesomeAssertions, so `Nullean.Snapshots.Browser` and the
   native `snap` tool can reference it. Both are pre-1.0.
+- **Each changed place is boxed in blue, opt in.** `ImageSnapshotOptions.OutlineRegions` draws a two-pixel rectangle three pixels outside each of the
+  regions the comparison already finds (touching 8x8 cells, so a changed word is one box), at most 100. It is off by default so existing image
+  snapshots' diff images do not change, and on for a site comparison, whose pages differ in a few places among many that do not. Blue, because the
+  diff image already uses red for a difference and yellow for anti-aliasing. The boxes change nothing but the picture: the summary, regions and
+  match are those of the plain comparison.

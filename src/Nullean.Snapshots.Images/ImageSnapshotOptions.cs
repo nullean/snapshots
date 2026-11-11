@@ -28,6 +28,13 @@ public sealed record ImageSnapshotOptions
 	/// </summary>
 	public double MaxDifferentRatio { get; init; }
 
+	/// <summary>
+	/// Draws a blue rectangle, two pixels thick and a few pixels clear of the pixels it surrounds, around each region of the diff
+	/// image where the images differ, so a change on a busy page is easy to find. Off by default, so a diff image is only the faded
+	/// image with the differences in red. At most 100 regions are outlined.
+	/// </summary>
+	public bool OutlineRegions { get; init; }
+
 	internal void Validate()
 	{
 		if (double.IsNaN(Threshold) || Threshold is < 0 or > 1)

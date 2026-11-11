@@ -13,7 +13,7 @@ public sealed record ImageDifference(string Name, string Summary, IReadOnlyList<
 /// <summary>
 /// Compares the screenshots a journey wrote against two sites. A journey's <c>screenshot</c> steps write PNGs into its
 /// artifacts folder; for a site comparison each site gets a folder of its own, and the pictures with the same name are
-/// compared pixel by pixel, as image snapshots are, with a diff image for each pair that differs.
+/// compared pixel by pixel, as image snapshots are, with a diff image for each pair that differs, a blue box around each place.
 /// </summary>
 public static class SiteImages
 {
@@ -30,7 +30,8 @@ public static class SiteImages
 		ArgumentNullException.ThrowIfNull(fileSystem);
 		if (!fileSystem.Directory.Exists(baselineDirectory) || !fileSystem.Directory.Exists(targetDirectory))
 			return [];
-		var format = new ImageSnapshotFormat(options);
+		// Two whole pages differ in a few places among many that do not: box the places.
+		var format = new ImageSnapshotFormat(options ?? new ImageSnapshotOptions { OutlineRegions = true });
 		var baseline = Pictures(fileSystem, baselineDirectory);
 		var target = Pictures(fileSystem, targetDirectory);
 		var differences = new List<ImageDifference>();
