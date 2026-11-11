@@ -87,6 +87,31 @@ internal static class PixelComparer
 		return diff with { Pixels = pixels };
 	}
 
+	/// <summary>How much of the image around the changed places a zoom keeps.</summary>
+	internal const int ZoomPadding = 32;
+
+	/// <summary>
+	/// The diff cropped to all of <paramref name="regions"/> and <see cref="ZoomPadding"/> pixels around them, at its own size: not
+	/// enlarged, so every pixel is a pixel of the screenshot. <see langword="null"/> when there is no region, or the crop covers more
+	/// than half the image, where the diff image already shows it.
+	/// </summary>
+	public static RgbaImage? Zoom(RgbaImage diff, IReadOnlyList<DiffRegion> regions)
+	{
+		if (regions.Count == 0)
+			return null;
+		var left = Math.Max(0, regions.Min(r => r.Left) - ZoomPadding);
+		var top = Math.Max(0, regions.Min(r => r.Top) - ZoomPadding);
+		var right = Math.Min(diff.Width - 1, regions.Max(r => r.Right) + ZoomPadding);
+		var bottom = Math.Min(diff.Height - 1, regions.Max(r => r.Bottom) + ZoomPadding);
+		int width = right - left + 1, height = bottom - top + 1;
+		if ((long)width * height * 2 > (long)diff.Width * diff.Height)
+			return null;
+		var pixels = new byte[width * height * 4];
+		for (var y = 0; y < height; y++)
+			Buffer.BlockCopy(diff.Pixels, (((top + y) * diff.Width) + left) * 4, pixels, y * width * 4, width * 4);
+		return new RgbaImage(width, height, pixels);
+	}
+
 	public static PixelComparison Compare(RgbaImage verified, RgbaImage actual, double threshold, bool includeAntiAliasing, bool drawDiff)
 	{
 		if (verified.Width != actual.Width || verified.Height != actual.Height)

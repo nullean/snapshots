@@ -134,7 +134,10 @@ codes are those of `run`, with a rules file that does not parse as 2.
 **Screenshots.** A journey's `screenshot nav.png` steps write PNGs, and a comparison gives each site a folder of its own
 (`{journey}.baseline.artifacts` and `{journey}.target.artifacts` in the received tree), so the second run does not empty the
 first's. Pictures with the same name are compared pixel by pixel, as [image snapshots](../formats/images.md) are, and each
-pair that differs gets a diff image next to the target's: the page faded, the changed pixels in red, a blue box around each place. They are listed after the
+pair that differs gets a diff image next to the target's: the page faded, the changed pixels in red, a blue box around each place. When
+the changes are a small part of the picture, a zoom (`{name}.zoom.png`) crops the diff to them with 32 pixels around, at its own size and not
+enlarged, so what is in view is the change and what surrounds it; that is what is drawn in the terminal, enlarged smoothly to fill about 60 by 12 cells so a few words are readable
+(the file itself is not enlarged). They are listed after the
 run with where the pixels differ, and drawn there on a terminal that can show images.
 
 ```
@@ -142,6 +145,7 @@ run with where the pixels differ, and drawn there on a terminal that can show im
   journeys/shop  nav.png: 296 of 360,000 pixels differ (0.08%), 0 allowed; 159 anti-aliased pixel(s) left out
       x 99-171, y 11-23 (73x13): 296 pixel(s)
       diff: .artifacts/.snapshots/received/Shop.Tests/journeys/shop.target.artifacts/nav.diff.png
+      zoom: .artifacts/.snapshots/received/Shop.Tests/journeys/shop.target.artifacts/nav.zoom.png
 ```
 
 `--image-diff report` (the default) lists them, `fail` makes a differing screenshot a failure, and `off` compares none. A page

@@ -35,6 +35,13 @@ public sealed record ImageSnapshotOptions
 	/// </summary>
 	public bool OutlineRegions { get; init; }
 
+	/// <summary>
+	/// Also writes a zoomed view of the diff image (<see cref="ImageSnapshotFormat.ZoomSuffix"/>): the diff cropped to the changed
+	/// places with some padding, at its own size, so what is in view is the change and what surrounds it. Not written when the
+	/// changes already cover most of the image. Off by default.
+	/// </summary>
+	public bool ZoomOnChanges { get; init; }
+
 	internal void Validate()
 	{
 		if (double.IsNaN(Threshold) || Threshold is < 0 or > 1)

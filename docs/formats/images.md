@@ -90,3 +90,9 @@ show their paths, sizes and the diff image instead of a line diff.
 diff image where the images differ, so a change on a busy page is easy to find. It is off by default, so a diff image stays the
 faded image with the differences in red and anti-aliasing in yellow. At most 100 regions are boxed. [Comparing two
 sites](../workflow/snap.md#comparing-two-sites) turns it on for its screenshots.
+
+## Zooming on the changes
+
+`ImageSnapshotOptions.ZoomOnChanges` also writes a zoomed diff, `{name}.zoom.png`: the diff image cropped to all the changed places
+with 32 pixels around them, at its own size, so every pixel is a pixel of the screenshot and none is enlarged. Nothing is written when that
+crop would cover more than half the image, where the diff image already shows it. Off by default; a site comparison turns it on.
