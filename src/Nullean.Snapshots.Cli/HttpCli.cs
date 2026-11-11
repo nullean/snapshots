@@ -45,7 +45,7 @@ internal sealed class HttpCli(
 			return ExitCode.Usage;
 		}
 
-		if (!JourneyCli.TryParseTranscript(transcript, out var mode, out var problem) || !JourneyCli.TryCheckVariant(variant, out problem))
+		if (!JourneyCli.TryParseTranscript(transcript, out var mode, out var problem, allowShape: true) || !JourneyCli.TryCheckVariant(variant, out problem))
 		{
 			error.WriteLine(problem);
 			return ExitCode.Usage;
@@ -166,7 +166,7 @@ internal sealed class HttpCommands
 	/// <param name="header">Another response header to write besides content-type and location (repeatable), as the tests' Headers option does.</param>
 	/// <param name="root">The folder files and globs are relative to. Defaults to the current folder.</param>
 	/// <param name="variant">Compare with {file}.{variant}.verified.responses, for output that differs per environment or flag set.</param>
-	/// <param name="transcript">compare (the default), or off to send the requests without comparing the transcript.</param>
+	/// <param name="transcript">compare (the default); off to send the requests without comparing the transcript; or shape to compare only the properties of JSON bodies, not their values.</param>
 	/// <param name="readOnly">Refuse any request that is not GET, HEAD or OPTIONS unless it carries '# @readonly', for a live service.</param>
 	public static async Task<int> Run(
 		[Argument] string[] files,

@@ -130,13 +130,18 @@ public sealed class ConsoleJourneyReporter : IJourneyReporter
 		lock (_gate)
 		{
 			ClearStatus();
+			var foldFailures = _options.GitHubActions && !_interactive && outcomes.Count(o => o.Failed) > GitHubActions.ExpandedFailures;
 			foreach (var outcome in outcomes.Where(o => o.Failed))
 			{
 				_output.WriteLine();
 				var rerun = _options.Rerun?.Replace("{id}", outcome.File.Id, StringComparison.Ordinal);
 				if (!_interactive)
 				{
+					if (foldFailures)
+						_output.WriteLine(GitHubActions.Group($"FAILED  {outcome.File.Id}"));
 					_output.Write(FailureBlock(outcome, rerun));
+					if (foldFailures)
+						_output.WriteLine(GitHubActions.EndGroup);
 					continue;
 				}
 
@@ -146,6 +151,9 @@ public sealed class ConsoleJourneyReporter : IJourneyReporter
 					_output.WriteLine();
 				_output.Write(foot);
 			}
+			if (_options.GitHubActions && !_interactive)
+				foreach (var annotation in GitHubActions.Annotations(outcomes))
+					_output.WriteLine(annotation);
 			_output.WriteLine();
 			var passed = outcomes.Count(o => o.Passed);
 			var failed = outcomes.Count(o => o.Failed);

@@ -60,6 +60,21 @@ public class HttpFileRunTests
 	}
 
 	[Test]
+	public async Task AShapeRunWritesBodiesAsTheirShapeAndIsComparedLikeAnyTranscript()
+	{
+		var file = Files(("shape.http", Chained));
+
+		var plain = await HttpFileSnapshot.RunAsync(file, new HttpFileSnapshotOptions { Variables = Host() });
+		var shape = await HttpFileSnapshot.RunAsync(file, new HttpFileSnapshotOptions { Variables = Host(), Transcript = TranscriptMode.Shape });
+
+		shape.Failure.Should().BeNull();
+		shape.Mode.Should().Be(TranscriptMode.Compare, "the text is already the shape, so it is compared against the verified shape");
+		shape.Text.Should().NotBe(plain.Text);
+		shape.Text.Should().Contain("\"token\": \"string\"").And.NotContain(Server.Host);
+		HttpSnapshot.Format.Compare(shape.Text, shape.Text).IsMatch.Should().BeTrue();
+	}
+
+	[Test]
 	public async Task MetExpectationsLeaveTheTranscriptUnchanged()
 	{
 		var plain = Files(("a.http", "GET {{host}}/api/text"));

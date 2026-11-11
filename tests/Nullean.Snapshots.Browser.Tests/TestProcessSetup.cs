@@ -9,6 +9,10 @@ internal static class TestProcessSetup
 	[ModuleInitializer]
 	internal static void ClearStepSummary() => Environment.SetEnvironmentVariable("GITHUB_STEP_SUMMARY", null);
 
+	// CI sets GITHUB_ACTIONS, which makes a run print workflow commands. Runs in these tests do so only when a test asks.
+	[ModuleInitializer]
+	internal static void ClearGitHubActions() => Environment.SetEnvironmentVariable("GITHUB_ACTIONS", null);
+
 	// A failure screenshot is drawn with half blocks, which need no terminal: detection is forced, so no run in these tests
 	// probes the terminal or writes graphics escape sequences to it.
 	[ModuleInitializer]
