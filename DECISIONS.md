@@ -904,3 +904,9 @@ two sites. This change is the rules and what reads them; running the two sites i
   several `data:` lines that are not JSON when joined (the event stream's own rule joins them with newlines) leave the whole body quoted text as before, so no stream is ever read wrongly.
   Field order in the file is fixed (`event`, `id`, `retry`, `data`); the stream's own order carries no meaning.
 - Shape mode leaves a stream as `text: text/event-stream`, like any text: the shape of the events is not a request anyone made.
+
+## Chrome GPU flags did not stop the macOS freeze (#64)
+
+- `--disable-gpu --disable-dev-shm-usage --disable-background-networking` were tried on the macOS browser job (#90). The job passed on the pull request and froze on `main` straight after (run 43092595500, 15 minutes,
+  cancelled, no log), as before, so the flags were taken out again along with `NULLEAN_SNAPSHOTS_CHROME_ARGS`. The freeze takes the whole runner: no timeout, log or artifact inside the job survives it,
+  and nothing observed ties it to Chrome rather than to the macOS runner image. #64 stays open; the job stays non-gating.
