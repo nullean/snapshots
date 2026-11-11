@@ -803,3 +803,12 @@ two sites. This change is the rules and what reads them; running the two sites i
   the crop most of the page, and then there is no zoom (more than half the image's area: the diff already shows it). The report names both files
   and draws the zoom, **enlarged smoothly in the terminal only**: a 1:1 crop of a few dozen pixels draws tiny on a screen with small pixels,
   so the terminal drawing fills a 60 by 12 cell box (bilinear, `AllowUpscale`), while the file on disk stays a plain crop.
+
+## HTTP assertions take `TreeDiffOptions` (#35)
+
+- `HttpFileTest.RunAsync`, `MatchHttpFileSnapshot`, `MatchHttpSnapshot` (response and string) and `HttpFileSnapshot.Match` take a `TreeDiffOptions? diff`, as the JSON and YAML assertions do,
+  and `HttpSnapshot.FormatWith(diff)` builds the format. Scrubbers (`SnapshotOptions`) were reachable already except through `HttpFileTest.RunAsync`, which now has them too.
+- **Paths are rooted at the sections**, because the format's tree is a sequence of `{request, status, headers, body}`: `$[*].body.hits[*].score`. Rewriting them to be relative to the body would
+  hide that a header or the status can be ignored the same way (`$[*].headers.x-request-id`).
+- `diff` comes after `because` on the assertions so positional callers keep working. On `HttpFileTest.RunAsync` the two new parameters sit before `cancellationToken` (CA1068 wants it last),
+  so a caller that passed the token positionally as the third argument must name it.

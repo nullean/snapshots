@@ -2,6 +2,8 @@ using System.Runtime.CompilerServices;
 using AwesomeAssertions;
 using AwesomeAssertions.Primitives;
 
+using Nullean.Snapshots.Trees;
+
 namespace Nullean.Snapshots.Http;
 
 /// <summary>AwesomeAssertions extensions for HTTP responses and <c>.http</c> file runs.</summary>
@@ -16,6 +18,7 @@ public static class HttpAssertions
 	/// <param name="name">Tells apart several snapshots in one test.</param>
 	/// <param name="options">Per-call snapshot options such as scrubbers.</param>
 	/// <param name="because">An optional reason, shown in the failure message.</param>
+	/// <param name="diff">How trees are compared: ignored paths such as <c>$[*].body.items[*].score</c>, strict numbers.</param>
 	/// <param name="callerFilePath">Filled in by the compiler.</param>
 	/// <param name="callerMemberName">Filled in by the compiler.</param>
 	/// <param name="callerLineNumber">Filled in by the compiler.</param>
@@ -25,6 +28,7 @@ public static class HttpAssertions
 		string? name = null,
 		SnapshotOptions? options = null,
 		string because = "",
+		TreeDiffOptions? diff = null,
 		[CallerFilePath] string callerFilePath = "",
 		[CallerMemberName] string callerMemberName = "",
 		[CallerLineNumber] int callerLineNumber = 0
@@ -45,7 +49,7 @@ public static class HttpAssertions
 		var text = await HttpSnapshot.RenderAsync(response, http).ConfigureAwait(false);
 		var result = Snapshot.Match(
 			text,
-			HttpSnapshot.Format,
+			HttpSnapshot.FormatWith(diff),
 			new SnapshotCallSite(callerFilePath, callerMemberName, callerLineNumber),
 			name,
 			options,
@@ -63,6 +67,7 @@ public static class HttpAssertions
 	/// <param name="name">Tells apart several snapshots in one test.</param>
 	/// <param name="options">Per-call snapshot options such as scrubbers.</param>
 	/// <param name="because">An optional reason, shown in the failure message.</param>
+	/// <param name="diff">How trees are compared: ignored paths such as <c>$[*].body.items[*].score</c>, strict numbers.</param>
 	/// <param name="callerFilePath">Filled in by the compiler.</param>
 	/// <param name="callerMemberName">Filled in by the compiler.</param>
 	/// <param name="callerLineNumber">Filled in by the compiler.</param>
@@ -71,6 +76,7 @@ public static class HttpAssertions
 		string? name = null,
 		SnapshotOptions? options = null,
 		string because = "",
+		TreeDiffOptions? diff = null,
 		[CallerFilePath] string callerFilePath = "",
 		[CallerMemberName] string callerMemberName = "",
 		[CallerLineNumber] int callerLineNumber = 0
@@ -90,7 +96,7 @@ public static class HttpAssertions
 			}
 		}
 
-		return assertions.MatchSnapshot(HttpSnapshot.Format, name, options, because, callerFilePath, callerMemberName, callerLineNumber);
+		return assertions.MatchSnapshot(HttpSnapshot.FormatWith(diff), name, options, because, callerFilePath, callerMemberName, callerLineNumber);
 	}
 
 	/// <summary>
@@ -101,7 +107,13 @@ public static class HttpAssertions
 	/// <param name="assertions">Assertions on an <see cref="HttpTranscript"/>.</param>
 	/// <param name="options">Per-call snapshot options such as scrubbers.</param>
 	/// <param name="because">An optional reason, shown in the failure message.</param>
-	public static AndConstraint<ObjectAssertions> MatchHttpFileSnapshot(this ObjectAssertions assertions, SnapshotOptions? options = null, string because = "")
+	/// <param name="diff">How trees are compared: ignored paths such as <c>$[*].body.items[*].score</c>, strict numbers.</param>
+	public static AndConstraint<ObjectAssertions> MatchHttpFileSnapshot(
+		this ObjectAssertions assertions,
+		SnapshotOptions? options = null,
+		string because = "",
+		TreeDiffOptions? diff = null
+	)
 	{
 		ArgumentNullException.ThrowIfNull(assertions);
 		if (assertions.Subject is not HttpTranscript transcript)
@@ -114,7 +126,7 @@ public static class HttpAssertions
 			return new AndConstraint<ObjectAssertions>(assertions);
 		}
 
-		var result = HttpFileSnapshot.Match(transcript, options, because);
+		var result = HttpFileSnapshot.Match(transcript, options, because, diff);
 		SnapshotAssertions.FailUnless(assertions.CurrentAssertionChain, result.Passed, result.FailureMessage ?? string.Empty);
 		return new AndConstraint<ObjectAssertions>(assertions);
 	}

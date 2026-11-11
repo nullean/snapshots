@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Nullean.HttpFileParser;
+using Nullean.Snapshots.Trees;
 
 namespace Nullean.Snapshots.Http;
 
@@ -292,12 +293,19 @@ public static partial class HttpFileSnapshot
 	/// Compares the transcript with the file's verified snapshot. A run that stopped at a failing request fails even
 	/// when its partial transcript matches, and the message names the request first.
 	/// </summary>
-	public static SnapshotResult Match(HttpTranscript transcript, SnapshotOptions? options = null, string? because = null)
+	/// <param name="transcript">The run to compare.</param>
+	/// <param name="options">Per-call snapshot options such as scrubbers.</param>
+	/// <param name="because">An optional reason, shown in the failure message.</param>
+	/// <param name="diff">How trees are compared: ignored paths such as <c>$[*].body.items[*].score</c>, strict numbers.</param>
+	public static SnapshotResult Match(HttpTranscript transcript, SnapshotOptions? options = null, string? because = null, TreeDiffOptions? diff = null)
 	{
 		ArgumentNullException.ThrowIfNull(transcript);
 		if (transcript.Mode == TranscriptMode.Off)
 			return WithFailure(transcript, new SnapshotResult(true, null, string.Empty, string.Empty, string.Empty));
-		return WithFailure(transcript, Snapshot.MatchFile(transcript.Text, Format, transcript.File, options, because, transcript.Variant));
+		return WithFailure(
+			transcript,
+			Snapshot.MatchFile(transcript.Text, HttpSnapshot.FormatWith(diff), transcript.File, options, because, transcript.Variant)
+		);
 	}
 
 	internal static SnapshotResult WithFailure(HttpTranscript transcript, SnapshotResult result)

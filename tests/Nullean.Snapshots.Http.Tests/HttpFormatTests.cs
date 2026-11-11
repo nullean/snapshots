@@ -47,6 +47,26 @@ public class HttpFormatTests
 
 	private static readonly HttpResponseSection Orders = Section("GET {{host}}/api/orders", 404, "Not Found", mediaType: null, charSet: null);
 
+	private const string Search =
+		"## GET /search\nstatus: 200 OK\ncontent-type: application/json; charset=utf-8\n\n{{\n  \"hits\": [\n    {{ \"id\": 1, \"score\": {0} }},\n    {{ \"id\": 2, \"score\": {1} }}\n  ]\n}}\n";
+
+	// #35: a score in a JSON body is volatile; it is ignored by path, rooted at the sections: $[*].body...
+	[Test]
+	public void IgnoredPathsApplyToJsonBodies()
+	{
+		var verified = string.Format(Search, "1.5", "2.5");
+		var actual = string.Format(Search, "9.5", "8.5");
+
+		HttpSnapshot.FormatWith(null).Compare(verified, actual).IsMatch.Should().BeFalse();
+		HttpSnapshot.FormatWith(new TreeDiffOptions { IgnorePaths = ["$[*].body.hits[*].score"] }).Compare(verified, actual).IsMatch.Should().BeTrue();
+		HttpSnapshot
+			.FormatWith(new TreeDiffOptions { IgnorePaths = ["$[*].body.hits[*].score"] })
+			.Compare(verified, string.Format(Search, "1.5", "2.5").Replace("\"id\": 2", "\"id\": 3", StringComparison.Ordinal))
+			.IsMatch
+			.Should()
+			.BeFalse("only the ignored path is ignored");
+	}
+
 	[Test]
 	public void RendersTheDocumentedShape() =>
 		Render(Login, Orders)
