@@ -2,6 +2,8 @@ using System.Runtime.CompilerServices;
 using AwesomeAssertions;
 using Nullean.HttpFileParser;
 
+using Nullean.Snapshots.Trees;
+
 namespace Nullean.Snapshots.Http;
 
 /// <summary>Runs a <c>.http</c> file and asserts its snapshot in one call, for a data-driven test over <c>.http</c> files.</summary>
@@ -13,17 +15,21 @@ public static class HttpFileTest
 	/// </summary>
 	/// <param name="file">A file from a data source such as Nullean.Snapshots.TUnit's <c>[HttpFiles]</c>.</param>
 	/// <param name="options">How to run it: the client, environment, variables and secrets.</param>
+	/// <param name="snapshot">Per-call snapshot options such as scrubbers.</param>
+	/// <param name="diff">How trees are compared: ignored paths such as <c>$[*].body.items[*].score</c>, strict numbers.</param>
 	/// <param name="cancellationToken">Stops the run.</param>
 	/// <param name="callerFilePath">Filled in by the compiler.</param>
 	public static Task RunAsync(
 		SnapshotFile file,
 		HttpFileSnapshotOptions? options = null,
+		SnapshotOptions? snapshot = null,
+		TreeDiffOptions? diff = null,
 		CancellationToken cancellationToken = default,
 		[CallerFilePath] string callerFilePath = ""
 	)
 	{
 		ArgumentNullException.ThrowIfNull(file);
-		return RunAsync(file.Path, options, cancellationToken, callerFilePath);
+		return RunAsync(file.Path, options, snapshot, diff, cancellationToken, callerFilePath);
 	}
 
 	/// <summary>
@@ -50,15 +56,17 @@ public static class HttpFileTest
 		return HttpFileSnapshot.SkipReason(file.Path, options, callerFilePath);
 	}
 
-	/// <summary>As <see cref="RunAsync(SnapshotFile, HttpFileSnapshotOptions?, CancellationToken, string)"/>, for a path relative to the test project.</summary>
+	/// <summary>As <see cref="RunAsync(SnapshotFile, HttpFileSnapshotOptions?, SnapshotOptions?, TreeDiffOptions?, CancellationToken, string)"/>, for a path relative to the test project.</summary>
 	public static async Task RunAsync(
 		string file,
 		HttpFileSnapshotOptions? options = null,
+		SnapshotOptions? snapshot = null,
+		TreeDiffOptions? diff = null,
 		CancellationToken cancellationToken = default,
 		[CallerFilePath] string callerFilePath = ""
 	)
 	{
 		var transcript = await HttpFileSnapshot.RunAsync(file, options, cancellationToken, callerFilePath).ConfigureAwait(false);
-		transcript.Should().MatchHttpFileSnapshot();
+		transcript.Should().MatchHttpFileSnapshot(snapshot, diff: diff);
 	}
 }

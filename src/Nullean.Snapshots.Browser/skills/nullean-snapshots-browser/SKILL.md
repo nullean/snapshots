@@ -43,6 +43,12 @@ if (JourneySnapshot.SkipReason("journeys/shop.journey", live) is null)
 
 List journeys for a data source: `JourneySnapshot.Find("journeys")`.
 
+Two sites: `JourneySnapshot.CompareAsync(file, new JourneyCompareOptions { Baseline = prod, Target = preview })` runs a journey
+against both and compares under the rules in `{journey}.differences` (the `snap journey compare` command does the same and can
+`--record` rules). A rule is `added link "x"`, `removed text "a line"`, `changed heading "a" -> "b"` or `ignore url` under a
+`## step` heading; `include?` pulls in a file of one preview's differences. `screenshot` steps are compared too, with a diff
+image. Rule reference: https://snapshots.nullean.net/workflow/expected-differences
+
 ## Gotchas
 
 - The snapshot belongs to the journey file, not the test: `journeys/shop.journey` compares with

@@ -104,6 +104,13 @@ public static class ExpectedDifferences
 				first ??= rule;
 			}
 
+			// A multi-line text that gained or lost lines is excused line by line: `added text "GET /x 404"`.
+			if (
+				first is null && facts.Kind == DifferenceKind.Changed && targets.IsText(facts) && facts.OldText is { } oldText &&
+				facts.NewText is { } newText && (oldText.Contains('\n', StringComparison.Ordinal) || newText.Contains('\n', StringComparison.Ordinal))
+			)
+				first = ExplainByLines(facts, oldText, newText, rules, used);
+
 			if (first is null)
 			{
 				unexplained.Add(difference);
@@ -113,8 +120,71 @@ public static class ExpectedDifferences
 				explained.Add(new ExplainedDifference(difference, first));
 		}
 
-		var stale = rules.Rules.Select(r => r.Rule).Where(r => !r.Maybe && r.Origin != RuleOrigin.Shared && !used.Contains(r)).ToList();
+		// A rule of a file several journeys share (an include?, such as the one --record fills) names the sections of all of them. One that
+		// names no section of this run could not have applied, so it says nothing about this run; only the file's own rules must always apply.
+		var headings = SectionHeadings(baseline, actual, targets.HeadingKey);
+		var stale = rules
+			.Rules
+			.Select(r => r.Rule)
+			.Where(r => !r.Maybe && r.Origin != RuleOrigin.Shared && !used.Contains(r) && (r.Origin == RuleOrigin.Sidecar || Reaches(r, headings)))
+			.ToList();
 		return new RuleApplication(unexplained, unexplainedFacts, explained, stale);
+	}
+
+	private static bool Reaches(DifferenceRule rule, IReadOnlyList<string> headings) =>
+		rule.Section is null || headings.Any(h => Glob.IsMatch(rule.Section, h));
+
+	private static List<string> SectionHeadings(Node baseline, Node actual, string headingKey)
+	{
+		var headings = new List<string>();
+		foreach (var tree in new[] { baseline, actual })
+		{
+			if (tree is not SeqNode sections)
+				continue;
+			foreach (var section in sections.Items.OfType<MapNode>())
+			{
+				if (section.Entries.FirstOrDefault(e => e.Key.Canonical == headingKey).Value is ScalarNode heading)
+					headings.Add(heading.Canonical);
+			}
+		}
+
+		return headings;
+	}
+
+	/// <summary>
+	/// The first rule that excuses a changed text when every line that was removed is named by a removed rule and every line that was added
+	/// by an added one; <see langword="null"/> when any line is not. Marks the rules it used only then.
+	/// </summary>
+	private static DifferenceRule? ExplainByLines(DifferenceFacts facts, string oldText, string newText, BoundRules rules, HashSet<DifferenceRule> used)
+	{
+		var (removed, added) = LineDiff.ChangedLines(oldText, newText);
+		if (removed.Count + added.Count == 0)
+			return null;
+		var usedHere = new List<DifferenceRule>();
+
+		bool Covered(string line, RuleVerb wanted)
+		{
+			foreach (var (rule, target) in rules.Rules)
+			{
+				if (target is null || (rule.Verb != wanted && rule.Verb != RuleVerb.Ignore))
+					continue;
+				if (rule.Section is not null && (facts.Heading is null || !Glob.IsMatch(rule.Section, facts.Heading)))
+					continue;
+				if (target.MatchesLine(facts, wanted, line))
+				{
+					usedHere.Add(rule);
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		if (!removed.All(l => Covered(l, RuleVerb.Removed)) || !added.All(l => Covered(l, RuleVerb.Added)))
+			return null;
+		foreach (var rule in usedHere)
+			used.Add(rule);
+		return usedHere[0];
 	}
 
 	private static bool Explains(DifferenceRule rule, IRuleTarget? target, DifferenceFacts facts)
@@ -159,6 +229,23 @@ public static class ExpectedDifferences
 	{
 		ArgumentNullException.ThrowIfNull(facts);
 		ArgumentNullException.ThrowIfNull(targets);
+		if (
+			facts.Kind == DifferenceKind.Changed && facts.Path.Count > 0 && targets.IsText(facts) && facts.OldText is { } oldText &&
+			facts.NewText is { } newText && (oldText.Contains('\n', StringComparison.Ordinal) || newText.Contains('\n', StringComparison.Ordinal))
+		)
+		{
+			// A text that gained or lost lines: say which lines, not a truncated "changed text".
+			var (removed, added) = LineDiff.ChangedLines(oldText, newText);
+			var target = targets.Suggest(facts) is [var first, ..] ? first : "text";
+			var lines = removed
+				.Select(l => $"removed {target} {RuleFileParser.Quote(l)}")
+				.Concat(added.Select(l => $"added {target} {RuleFileParser.Quote(l)}"))
+				.Distinct(StringComparer.Ordinal)
+				.ToList();
+			if (lines.Count > 0)
+				return lines;
+		}
+
 		var verb = facts.Kind switch
 		{
 			DifferenceKind.Unexpected => "added",

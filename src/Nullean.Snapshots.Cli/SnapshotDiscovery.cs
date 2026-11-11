@@ -12,7 +12,19 @@ internal sealed record ReceivedRoot(string Directory, string Project, string Ver
 /// <param name="ReceivedPath">The received file.</param>
 /// <param name="IsNew">True when there is no verified file yet, or for an inline snapshot no expected value.</param>
 /// <param name="Inline">The record of an inline snapshot (<c>.received.inline</c>); null for every other kind.</param>
-internal sealed record PendingSnapshot(string Key, string Extension, string VerifiedPath, string ReceivedPath, bool IsNew, InlineRecord? Inline = null);
+/// <param name="Stale">
+/// True when the received file is older than the start of its project's latest test run: that run did not write it again, and a
+/// run that passed the test would have deleted it, so it is left over from an earlier run (changed code, a filtered run).
+/// </param>
+internal sealed record PendingSnapshot(
+	string Key,
+	string Extension,
+	string VerifiedPath,
+	string ReceivedPath,
+	bool IsNew,
+	InlineRecord? Inline = null,
+	bool Stale = false
+);
 
 /// <summary>
 /// Finds received files without globbing the whole tree: it probes the artifacts folders, then <c>obj/</c> next to
@@ -64,6 +76,7 @@ internal sealed class SnapshotDiscovery(IFileSystem fs)
 		var pending = new List<PendingSnapshot>();
 		foreach (var root in roots)
 		{
+			var started = RunStarted(root);
 			foreach (var file in fs.Directory.EnumerateFiles(root.Directory, "*", SearchOption.AllDirectories))
 			{
 				var name = fs.Path.GetFileName(file);
@@ -79,7 +92,17 @@ internal sealed class SnapshotDiscovery(IFileSystem fs)
 					{
 						var record = InlineRecord.Parse(fs.File.ReadAllText(file, SnapshotText.Encoding));
 						var source = fs.Path.GetFullPath(fs.Path.Combine(root.Directory, record.Source.Replace('/', fs.Path.DirectorySeparatorChar)));
-						pending.Add(new PendingSnapshot(root.Project + "/" + withinProject, extension, source, file, record.Edit.Expected is null, record));
+						pending.Add(
+							new PendingSnapshot(
+								root.Project + "/" + withinProject,
+								extension,
+								source,
+								file,
+								record.Edit.Expected is null,
+								record,
+								IsStale(file, started)
+							)
+						);
 					}
 					catch (FormatException e)
 					{
@@ -90,12 +113,30 @@ internal sealed class SnapshotDiscovery(IFileSystem fs)
 				}
 
 				var verified = SnapshotPath.File(fs, root.VerifiedDirectory, withinProject, SnapshotPath.VerifiedInfix, extension);
-				pending.Add(new PendingSnapshot(root.Project + "/" + withinProject, extension, verified, file, !fs.File.Exists(verified)));
+				pending.Add(
+					new PendingSnapshot(root.Project + "/" + withinProject, extension, verified, file, !fs.File.Exists(verified), Stale: IsStale(file, started))
+				);
 			}
 		}
 
 		return [.. pending.OrderBy(p => p.Key, StringComparer.Ordinal).ThenBy(p => p.Extension, StringComparer.Ordinal)];
 	}
+
+	/// <summary>When the latest test run of the project started, from the run manifest its test process wrote; <see langword="null"/> without one.</summary>
+	private DateTime? RunStarted(ReceivedRoot root)
+	{
+		var path = fs.Path.Combine(root.Directory, RunManifest.FileName);
+		if (!fs.File.Exists(path))
+			return null;
+		return RunManifest.Read(fs.File.ReadAllText(path, SnapshotText.Encoding)).Started is { } started && DateTime.TryParse(
+			started,
+			System.Globalization.CultureInfo.InvariantCulture,
+			System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal,
+			out var when
+		) ? when : null;
+	}
+
+	private bool IsStale(string receivedFile, DateTime? runStarted) => runStarted is { } started && fs.File.GetLastWriteTimeUtc(receivedFile) < started;
 
 	/// <summary>Folders holding a <c>*.csproj</c>, skipping <c>bin</c>, <c>obj</c>, <c>node_modules</c> and dot folders.</summary>
 	private IEnumerable<string> ProjectDirectories(string root)
