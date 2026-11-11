@@ -91,7 +91,7 @@ public class SiteImagesTests
 
 		difference.ZoomPath.Should().Be(Path.Combine(Target, "nav.zoom.png"));
 		var zoom = Png.Decode(fs.File.ReadAllBytes(difference.ZoomPath!));
-		(zoom.Width, zoom.Height).Should().Be((264, 264));
+		(zoom.Width, zoom.Height).Should().Be((65, 65), "a crop at its own size, not enlarged");
 		SiteImages.Compare(fs, Baseline, Target).Select(d => d.Name).Should().Equal(new[] { "nav.png" }, "neither the diff nor the zoom of an earlier run is a screenshot");
 	}
 

@@ -94,6 +94,5 @@ sites](../workflow/snap.md#comparing-two-sites) turns it on for its screenshots.
 ## Zooming on the changes
 
 `ImageSnapshotOptions.ZoomOnChanges` also writes a zoomed diff, `{name}.zoom.png`: the diff image cropped to all the changed places
-with 16 pixels of padding and enlarged by a whole number (nearest neighbour, so pixels stay pixels) towards 800 pixels wide, at most
-8 times and never past 4096 pixels on a side. Nothing is written when that crop would cover more than half the image, where the diff
-image already shows it. Off by default; a site comparison turns it on.
+with 32 pixels around them, at its own size, so every pixel is a pixel of the screenshot and none is enlarged. Nothing is written when that
+crop would cover more than half the image, where the diff image already shows it. Off by default; a site comparison turns it on.

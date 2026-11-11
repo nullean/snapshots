@@ -88,21 +88,12 @@ internal static class PixelComparer
 	}
 
 	/// <summary>How much of the image around the changed places a zoom keeps.</summary>
-	internal const int ZoomPadding = 16;
-
-	/// <summary>The width a zoom is scaled up towards.</summary>
-	internal const int ZoomTargetWidth = 800;
-
-	/// <summary>The most a zoom enlarges the image.</summary>
-	internal const int MaxZoomFactor = 8;
-
-	/// <summary>The largest side of a zoom, in pixels.</summary>
-	internal const int MaxZoomSide = 4096;
+	internal const int ZoomPadding = 32;
 
 	/// <summary>
-	/// The diff cropped to all of <paramref name="regions"/> and <see cref="ZoomPadding"/> pixels around them, enlarged by a whole
-	/// number (nearest neighbour, so pixels stay pixels) towards <see cref="ZoomTargetWidth"/> wide. <see langword="null"/> when there
-	/// is no region, or the crop covers more than half the image, where the diff image already shows it.
+	/// The diff cropped to all of <paramref name="regions"/> and <see cref="ZoomPadding"/> pixels around them, at its own size: not
+	/// enlarged, so every pixel is a pixel of the screenshot. <see langword="null"/> when there is no region, or the crop covers more
+	/// than half the image, where the diff image already shows it.
 	/// </summary>
 	public static RgbaImage? Zoom(RgbaImage diff, IReadOnlyList<DiffRegion> regions)
 	{
@@ -115,22 +106,10 @@ internal static class PixelComparer
 		int width = right - left + 1, height = bottom - top + 1;
 		if ((long)width * height * 2 > (long)diff.Width * diff.Height)
 			return null;
-		var factor = Math.Clamp(ZoomTargetWidth / width, 1, MaxZoomFactor);
-		factor = Math.Min(factor, Math.Max(1, Math.Min(MaxZoomSide / width, MaxZoomSide / height)));
-		int outWidth = width * factor, outHeight = height * factor;
-		var pixels = new byte[outWidth * outHeight * 4];
-		for (var y = 0; y < outHeight; y++)
-		{
-			for (var x = 0; x < outWidth; x++)
-			{
-				var row = top + (y / factor);
-				var column = left + (x / factor);
-				var from = ((row * diff.Width) + column) * 4;
-				Buffer.BlockCopy(diff.Pixels, from, pixels, ((y * outWidth) + x) * 4, 4);
-			}
-		}
-
-		return new RgbaImage(outWidth, outHeight, pixels);
+		var pixels = new byte[width * height * 4];
+		for (var y = 0; y < height; y++)
+			Buffer.BlockCopy(diff.Pixels, (((top + y) * diff.Width) + left) * 4, pixels, y * width * 4, width * 4);
+		return new RgbaImage(width, height, pixels);
 	}
 
 	public static PixelComparison Compare(RgbaImage verified, RgbaImage actual, double threshold, bool includeAntiAliasing, bool drawDiff)

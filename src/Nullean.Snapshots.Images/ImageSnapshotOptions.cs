@@ -37,8 +37,8 @@ public sealed record ImageSnapshotOptions
 
 	/// <summary>
 	/// Also writes a zoomed view of the diff image (<see cref="ImageSnapshotFormat.ZoomSuffix"/>): the diff cropped to the changed
-	/// places with some padding and scaled up by a whole number, so a small change fills the picture. Not written when the changes
-	/// already cover most of the image. Off by default.
+	/// places with some padding, at its own size, so what is in view is the change and what surrounds it. Not written when the
+	/// changes already cover most of the image. Off by default.
 	/// </summary>
 	public bool ZoomOnChanges { get; init; }
 
