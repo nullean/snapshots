@@ -165,6 +165,16 @@ public class HttpRuleTests
 	}
 
 	[Test]
+	public void AFolderFileExplainsEveryFileBelowItAndNeverGoesStale()
+	{
+		var rules = Load(Repo((".differences", "ignore header x-legacy\nremoved header x-never\n"), ("shop.differences", "")));
+
+		var app = Apply(Baseline, Edit(Baseline, "x-legacy: 1\n", string.Empty), rules);
+
+		app.IsClean.Should().BeTrue("the folder file's rule explains the dropped header, and the one nothing needed is shared, not stale");
+	}
+
+	[Test]
 	public void ATargetTheFormatDoesNotKnowIsAnErrorWithItsLine()
 	{
 		var rules = Load(Repo(("shop.differences", "## search*\nadded body $.a\nadded frobnicate\nignore header\nadded body $a\n")));

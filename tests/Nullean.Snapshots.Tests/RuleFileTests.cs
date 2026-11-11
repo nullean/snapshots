@@ -224,6 +224,39 @@ public class RuleFileTests
 	}
 
 	[Test]
+	public void FolderFilesApplyFromTheRepositoryRootDownAndTheSidecarComesLast()
+	{
+		var fs = Repo(
+			(".differences", "ignore url\n"),
+			("a/.differences", "## s\nadded link a\n"),
+			("a/j/.differences", "## s\nadded link j\n"),
+			("a/j/shop.differences", "## s\nadded link shop\n"),
+			("a/other/.differences", "## s\nadded link other\n"));
+
+		var rules = RuleLoader.Load(fs, Root, P(fs, "a/j/shop.differences"));
+
+		rules.Rules.Select(r => r.Text).Should().Equal("ignore url", "added link a", "added link j", "added link shop");
+		rules.Rules.Select(r => r.Origin).Should().Equal(RuleOrigin.Shared, RuleOrigin.Shared, RuleOrigin.Shared, RuleOrigin.Sidecar);
+		rules.Files.Where(f => f.Exists).Select(f => f.Path).Should().NotContain(P(fs, "a/other/.differences"), "a sibling folder's file is not on the way");
+	}
+
+	[Test]
+	public void AFolderFileCanIncludeAndItsOptionalIncludeIsEphemeral()
+	{
+		var fs = Repo(
+			("a/.differences", "include? known.differences\n"),
+			("a/known.differences", "## s\nadded link x\n"));
+
+		var rules = RuleLoader.Load(fs, Root, P(fs, "a/j/shop.differences"));
+
+		rules.Rules.Should().ContainSingle().Which.Origin.Should().Be(RuleOrigin.Optional);
+	}
+
+	[Test]
+	public void AFolderFileWithABadLineIsAnErrorNamingIt() =>
+		Errors(Repo(("j/.differences", "nonsense\n"))).Should().ContainSingle().Which.Should().StartWith($"{P(new MockFileSystem(), "j/.differences")}:1:");
+
+	[Test]
 	public void FindsTheGitRootAboveAFolder()
 	{
 		var fs = Repo();

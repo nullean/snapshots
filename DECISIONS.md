@@ -677,10 +677,12 @@ two sites. This change is the rules and what reads them; running the two sites i
   grammar, sections, includes, matching of verbs to difference kinds, staleness, suggestion, record and prune; a format owns what
   a target means (`RuleTargets`, one `IRuleTarget` per rule). Sections are the transcript's top-level items, headed by `step` or
   `request`, so a rule's `## heading` is a glob over that.
-- **The sidecar only, no folder-level file.** `shop.differences` next to `shop.journey` is the one file read on its own. A
-  folder-wide file would make "this rule matched nothing" meaningless per file; shared rules come in with `include`.
+- **The sidecar, and a `.differences` file in each folder on the way.** `shop.differences` next to `shop.journey` is the file's own; a hidden
+  `.differences` in any folder from the file's up to the git root applies to every file below it, root first and nearest last, and the sidecar
+  after them. Any journey can then be compared without a line in it, and a folder shares what its journeys share. A folder file's rules are
+  shared (see below), so they never go stale per file. The file is hidden, so the scoped file system allows that one name.
 - **A rule that matches nothing is stale, and stale fails, except `maybe` and shared rules.** The run reports what is gone so an
-  excuse does not outlive the difference. A rule from an `include` is shared by many files and cannot be judged by one of them;
+  excuse does not outlive the difference. A rule from an `include` or a folder file is shared by many files and cannot be judged by one of them;
   rules in the sidecar and in `include?` files can.
 - **Ephemeral differences have their own file.** `include?` may be absent, so the differences of one preview live in a file that
   can be checked in on the pull request that needs them, deleted at release, or never checked in. Promoting a difference is moving
