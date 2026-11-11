@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Nullean.Snapshots.Images</RootNamespace>
+    <Description>AwesomeAssertions extensions for Nullean.Snapshots.Images: MatchImageSnapshot for PNG bytes and streams.</Description>
+    <PackageTags>snapshot;approval;testing;image;png;screenshot;awesomeassertions</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Nullean.Snapshots.Images/Nullean.Snapshots.Images.csproj" />
+    <ProjectReference Include="../Nullean.Snapshots.AwesomeAssertions/Nullean.Snapshots.AwesomeAssertions.csproj" />
+  </ItemGroup>
+
+</Project>

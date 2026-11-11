@@ -2,8 +2,6 @@ using System.Globalization;
 using System.Diagnostics;
 using System.Text;
 using Nullean.Cdp.Journeys;
-using Nullean.TerminalImages;
-using Nullean.TerminalImages.Detection;
 
 namespace Nullean.Snapshots.Browser.Console;
 
@@ -56,7 +54,6 @@ public sealed class ConsoleJourneyReporter : IJourneyReporter
 	private int _total;
 	private int _statusWidth;
 	private bool _stale;
-	private TerminalImageCapabilities? _capabilities;
 
 	/// <summary>Writes to <paramref name="output"/>; <paramref name="interactive"/> adds colour, icons and the status line.</summary>
 	public ConsoleJourneyReporter(TextWriter output, JourneyRunOptions options, bool interactive)
@@ -284,25 +281,8 @@ public sealed class ConsoleJourneyReporter : IJourneyReporter
 		return (text.ToString(), foot.ToString());
 	}
 
-	/// <summary>
-	/// Draws <paramref name="png"/> with the best protocol the terminal has. False when it cannot show images, or drawing failed:
-	/// a screenshot is a help to the reader and must never fail a run.
-	/// </summary>
-	private bool TryDrawScreenshot(byte[] png)
-	{
-		try
-		{
-			_capabilities ??= Task.Run(async () => await TerminalImageDetector.DetectAsync().ConfigureAwait(false)).GetAwaiter().GetResult();
-			var renderer = new TerminalImageRenderer(_capabilities, new TerminalImageRenderOptions { MaxColumns = Math.Min(100, Width - 2), MaxRows = 30 });
-			return renderer.RenderPng(png, _output);
-		}
-#pragma warning disable CA1031 // A screenshot is a convenience: whatever goes wrong drawing it, the failure text above stands.
-		catch (Exception)
-#pragma warning restore CA1031
-		{
-			return false;
-		}
-	}
+	/// <summary>Draws <paramref name="png"/> with the best protocol the terminal has; false when it cannot, which never fails a run.</summary>
+	private bool TryDrawScreenshot(byte[] png) => TerminalPicture.TryDraw(_output, png);
 
 	private static void AppendSource(StringBuilder text, string path, int failedLine)
 	{

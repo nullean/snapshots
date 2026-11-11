@@ -10,6 +10,7 @@
     <PackageReference Include="Nullean.Cdp" />
     <PackageReference Include="Nullean.Cdp.Journeys" />
     <ProjectReference Include="../Nullean.Snapshots/Nullean.Snapshots.csproj" />
+    <ProjectReference Include="../Nullean.Snapshots.Images/Nullean.Snapshots.Images.csproj" />
   </ItemGroup>
 
   <ItemGroup>

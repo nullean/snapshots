@@ -7,6 +7,7 @@
     <PackageReference Include="StbImageSharp" />
     <PackageReference Include="TestableIO.System.IO.Abstractions.TestingHelpers" />
     <ProjectReference Include="../../src/Nullean.Snapshots.Images/Nullean.Snapshots.Images.csproj" />
+    <ProjectReference Include="../../src/Nullean.Snapshots.Images.Assertions/Nullean.Snapshots.Images.Assertions.csproj" />
     <ProjectReference Include="../../src/Nullean.Snapshots.TUnit/Nullean.Snapshots.TUnit.csproj" />
   </ItemGroup>
 

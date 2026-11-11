@@ -1,0 +1,3 @@
+open index.html
+snapshot -c -s nav
+screenshot nav.png

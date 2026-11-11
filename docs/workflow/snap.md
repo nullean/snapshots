@@ -131,6 +131,24 @@ through a preview and how a change that shipped stops being excused. The runs ar
 `@mutates`, `--read-only`, `--parallel`, `--junit` and the other options of `snap journey run` work the same, and exit
 codes are those of `run`, with a rules file that does not parse as 2.
 
+**Screenshots.** A journey's `screenshot nav.png` steps write PNGs, and a comparison gives each site a folder of its own
+(`{journey}.baseline.artifacts` and `{journey}.target.artifacts` in the received tree), so the second run does not empty the
+first's. Pictures with the same name are compared pixel by pixel, as [image snapshots](../formats/images.md) are, and each
+pair that differs gets a diff image next to the target's: the page faded, the changed pixels in red. They are listed after the
+run with where the pixels differ, and drawn there on a terminal that can show images.
+
+```
+1 screenshot(s) differ between the baseline and the target (not a failure: --image-diff fail makes it one):
+  journeys/shop  nav.png: 296 of 360,000 pixels differ (0.08%), 0 allowed; 159 anti-aliased pixel(s) left out
+      x 99-171, y 11-23 (73x13): 296 pixel(s)
+      diff: .artifacts/.snapshots/received/Shop.Tests/journeys/shop.target.artifacts/nav.diff.png
+```
+
+`--image-diff report` (the default) lists them, `fail` makes a differing screenshot a failure, and `off` compares none. A page
+that differs in what it says differs in pixels, so on a live site `report` is the useful setting and `fail` is for pages that
+should look the same. `--screenshot-on-failure` takes a screenshot when a step fails on either site. With `--artifacts <folder>`
+each site writes to a folder of that name inside it, and pictures are not compared.
+
 `snap http compare` does the same for `.http` files:
 
 ```sh
