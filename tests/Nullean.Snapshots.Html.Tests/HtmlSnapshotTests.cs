@@ -9,11 +9,11 @@ public class HtmlSnapshotTests
 	/// <summary>Random HTML from a small grammar: nested elements, attributes, and text with characters that need escaping.</summary>
 	private static readonly Gen<string> Html = Gen.Recursive<string>((depth, inner) =>
 	{
-		var text = Gen.String[Gen.Char["ab <>&\"'{}"], 0, 6].Select(s => System.Net.WebUtility.HtmlEncode(s));
+		var text = Gen.String[Gen.Char["ab <>&\"'{}\n"], 0, 6].Select(s => System.Net.WebUtility.HtmlEncode(s));
 		if (depth >= 3)
 			return text;
 		var attribute = Gen.Select(Gen.OneOf("class", "id", "hx-get", "data-x"), Gen.String[Gen.Char["xyz"], 0, 3]).Select((n, v) => $" {n}=\"{v}\"");
-		var element = Gen.Select(Gen.OneOf("p", "div", "span", "b", "ul", "li", "a"), attribute.Array[0, 2], inner.Array[0, 3]).Select(
+		var element = Gen.Select(Gen.OneOf("p", "div", "span", "b", "ul", "li", "a", "pre", "textarea"), attribute.Array[0, 2], inner.Array[0, 3]).Select(
 			(tag, attrs, children) => $"<{tag}{string.Concat(attrs)}>{string.Concat(children)}</{tag}>"
 		);
 		return Gen.Frequency((1, text), (3, element));
@@ -31,6 +31,64 @@ public class HtmlSnapshotTests
 	// the HTML it was printed from.
 	[Test]
 	public void PrettyPrintingDoesNotChangeStructure() => Html.Sample(html => HtmlSnapshot.Compare(html, HtmlSnapshot.Pretty(html)).IsMatch);
+
+	// Whitespace inside <pre> and <textarea> is content: the snapshot keeps it, and a change that only moves newlines there fails.
+
+	[Test]
+	public void PreKeepsItsLinesAndBlankLinesAndIndentation() =>
+		HtmlSnapshot.Pretty("<div><pre>line 1\n  line 2\n\nline 4</pre></div>").Should().Be("<div>\n\t<pre>line 1\n  line 2\n\nline 4</pre>\n</div>\n");
+
+	[Test]
+	public void ACodeBlockKeepsItsMarkupAndLinesUntouched() =>
+		HtmlSnapshot
+			.Pretty("<div><pre class=\"x\"><code class=\"c\"><span class=\"k\">var</span> x;\n<span>y</span></code></pre><p>after</p></div>")
+			.Should()
+			.Be("<div>\n\t<pre class=\"x\"><code class=\"c\"><span class=\"k\">var</span> x;\n<span>y</span></code></pre>\n\t<p>after</p>\n</div>\n");
+
+	[Test]
+	public void ATextareaKeepsItsLines() => HtmlSnapshot.Pretty("<textarea>x\n  y</textarea>").Should().Be("<textarea>x\n  y</textarea>\n");
+
+	[Test]
+	public void ASelectedPreKeepsItsContentToo() => HtmlSnapshot.Pretty("<pre>a\n  b</pre>", new HtmlSnapshotOptions().Select("pre")).Should().Be("a\n  b\n");
+
+	[Test]
+	public void ANewlineAtTheStartOfPreContentSurvivesAPrintAndAReparse()
+	{
+		var printed = HtmlSnapshot.Pretty("<pre>\n\nx</pre>");
+
+		printed.Should().Be("<pre>\n\nx</pre>\n", "the extra newline after the start tag is the serializer's, for content that starts with one");
+		HtmlSnapshot.Pretty(printed).Should().Be(printed);
+	}
+
+	[Test]
+	public void ChangingOnlyTheNewlinesInAPreFailsTheComparison()
+	{
+		var verified = HtmlSnapshot.Pretty("<pre><code>1\n2\n3</code></pre>");
+
+		HtmlSnapshot.Compare(verified, HtmlSnapshot.Pretty("<pre><code>1\n\n2\n3</code></pre>")).IsMatch.Should().BeFalse();
+		HtmlSnapshot.Compare(verified, HtmlSnapshot.Pretty("<pre><code>1 2 3</code></pre>")).IsMatch.Should().BeFalse();
+		HtmlSnapshot.Compare(verified, HtmlSnapshot.Pretty("<pre><code>1\n2\n3</code></pre>")).IsMatch.Should().BeTrue();
+	}
+
+	[Test]
+	public void TheMessageForAPreShowsTheLinesNotCollapsedText()
+	{
+		var comparison = HtmlSnapshot.Compare(
+			HtmlSnapshot.Pretty("<div><pre><code>1\n2\n3</code></pre></div>"),
+			HtmlSnapshot.Pretty("<div><pre><code>1\n\n2\n3</code></pre></div>")
+		);
+
+		SnapshotMessages
+			.Describe(comparison)
+			.Should()
+			.StartWith(
+				"1 difference(s):\nThe text in div(0) > pre(1) > code(0) > #text(0) is different.\n  expected: 1\n            2\n            3\n  actual:   1\n\n            2\n            3"
+			);
+	}
+
+	[Test]
+	public void WhitespaceOutsideAPreIsStillInsignificant() =>
+		HtmlSnapshot.Compare(HtmlSnapshot.Pretty("<p>1\n2   3</p>"), HtmlSnapshot.Pretty("<p>1 2 3</p>")).IsMatch.Should().BeTrue();
 
 	[Test]
 	public void PrettyIndentsWithTabsAndEndsInOneNewline() =>

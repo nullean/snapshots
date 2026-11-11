@@ -31,6 +31,12 @@ Line diff:
 +			<td class="x">{Kibana}</td>
 ```
 
+## Code blocks keep their whitespace
+
+Whitespace is significant inside `<pre>`, `<textarea>` and `<listing>`, so the snapshot keeps it exactly, at any depth: a code block's lines,
+blank lines and indentation, with the markup of a highlighted block (`<pre><code><span>…`) printed as it is, on the lines it has. A change that only
+moves a newline or a space there fails the comparison, and the message shows the lines. Everywhere else whitespace still does not matter.
+
 ## Narrowing what is compared
 
 `HtmlSnapshotOptions` select, remove and transform before printing, applied to both sides:

@@ -803,3 +803,13 @@ two sites. This change is the rules and what reads them; running the two sites i
   the crop most of the page, and then there is no zoom (more than half the image's area: the diff already shows it). The report names both files
   and draws the zoom, **enlarged smoothly in the terminal only**: a 1:1 crop of a few dozen pixels draws tiny on a screen with small pixels,
   so the terminal drawing fills a 60 by 12 cell box (bilinear, `AllowUpscale`), while the file on disk stays a plain crop.
+
+## HTML: whitespace in preformatted content (#36)
+
+- **Everything inside `pre`, `textarea` and `listing` is printed and compared exactly.** AngleSharp's pretty printer turned each newline in such an element into a space and
+  indented before a child element, so a code block's line structure was lost from the snapshot, and AngleSharp.Diffing keeps whitespace only for text that is a *direct* child of
+  `pre`, so the usual `<pre><code>` block was compared collapsed too: a change that only moved newlines did not fail. `WhitespaceKeepingFormatter` (a subclass of the pretty printer
+  that hands text, open and close tags below a preformatted element to the plain HTML serializer, and keeps the closing tag of the element itself off a line of its own) prints
+  it, a specialised Diffing comparer compares text in the subtree ordinally, and the failure message prints a node the same way. The serializer's rule that content which starts with a newline
+  gets an extra one after the start tag is the plain serializer's, so a print and a reparse are stable (a property test generates `pre` and `textarea` with newlines).
+- **No option to collapse it again.** It is HTML semantics, and the issue asked for it by default. Verified files with a `<pre>` change once and need accepting.
