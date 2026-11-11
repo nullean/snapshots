@@ -37,7 +37,13 @@ internal sealed class SnapCommands
 	/// <summary>Review pending snapshots one by one: see each diff, then accept, reject or skip it.</summary>
 	/// <param name="root">The folder to search from. Defaults to the current folder.</param>
 	public static int Review(string? root = null) =>
-		Cli(root).Review(new ConsolePrompt(), ConsolePrompt.UseColor, ConsolePrompt.UseColor ? static (png, zoom) => zoom ? TerminalPicture.TryDrawZoom(Console.Out, png) : TerminalPicture.TryDraw(Console.Out, png) : null);
+		Cli(root).Review(
+			new ConsolePrompt(),
+			ConsolePrompt.UseColor,
+			ConsolePrompt.UseColor
+				? static (png, zoom) => zoom ? TerminalPicture.TryDrawZoom(Console.Out, png) : TerminalPicture.TryDraw(Console.Out, png)
+				: null
+		);
 
 	/// <summary>List verified snapshots the latest test run did not use. Exits 1 when there are any.</summary>
 	/// <param name="json">Print a JSON array of {project, verified} instead.</param>
