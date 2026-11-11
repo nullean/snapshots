@@ -43,7 +43,7 @@ moves a newline or a space there fails the comparison, and the message shows the
 
 ```csharp
 var html = new HtmlSnapshotOptions()
-	.Select("main#content")                 // print this element's content instead of the body
+	.Select("main#content")                 // print the content of every match instead of the body (SelectFirst: only the first)
 	.Remove("script")                       // drop matching elements
 	.RemoveAttributes("hx-*", "preload")    // drop attributes everywhere; * is a wildcard
 	.RemoveAttributesFrom("a", "data-*")    // or only from matching elements
@@ -51,6 +51,9 @@ var html = new HtmlSnapshotOptions()
 
 page.Should().MatchHtmlSnapshot(html);
 ```
+
+`Select` prints every element the selector matches, one after the other in document order, so `.Select(".card")` covers all the cards; an
+element inside another match is not printed twice. `SelectFirst` keeps one. Removals, attribute removals and transforms run on each match.
 
 `ContainHtml` ignores indentation, so a fragment matches wherever it is nested.
 
