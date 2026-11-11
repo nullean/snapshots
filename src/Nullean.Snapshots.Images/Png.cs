@@ -293,7 +293,14 @@ internal static class Png
 
 	private readonly record struct Header(int Width, int Height, int BitDepth, int ColorType, int Interlace)
 	{
-		public int Channels => ColorType switch { 0 => 1, 2 => 3, 3 => 1, 4 => 2, _ => 4 };
+		public int Channels => ColorType switch
+		{
+			0 => 1,
+			2 => 3,
+			3 => 1,
+			4 => 2,
+			_ => 4
+		};
 
 		public int BitsPerPixel => Channels * BitDepth;
 

@@ -32,8 +32,7 @@ public static class SnapshotDefaults
 	}
 
 	/// <summary>Adds a scrubber applied to every snapshot that replaces every match of <paramref name="pattern"/>.</summary>
-	public static void AddScrubber(Regex pattern, string replacement) =>
-		AddScrubber(Nullean.Snapshots.Scrubbers.Regex(pattern, replacement));
+	public static void AddScrubber(Regex pattern, string replacement) => AddScrubber(Nullean.Snapshots.Scrubbers.Regex(pattern, replacement));
 
 	/// <summary>Removes every scrubber added through <see cref="AddScrubber(Func{string, string})"/>.</summary>
 	public static void ClearScrubbers() => Volatile.Write(ref AllScrubbers, []);
@@ -42,6 +41,5 @@ public static class SnapshotDefaults
 	/// Registers where the current test's identity comes from. The <c>Nullean.Snapshots.TUnit</c> package does this
 	/// for you. Without a provider a snapshot is named after its test file and calling member.
 	/// </summary>
-	public static void UseTestIdentity(ISnapshotTestIdentityProvider? provider) =>
-		Volatile.Write(ref IdentityProvider, provider);
+	public static void UseTestIdentity(ISnapshotTestIdentityProvider? provider) => Volatile.Write(ref IdentityProvider, provider);
 }

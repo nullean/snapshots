@@ -63,11 +63,11 @@ public class YamlSnapshotTests
 
 	[Test]
 	public void AliasesAreTheAnchoredValue() =>
-		TreeDiffer.Instance.Diff(
-				YamlSnapshot.Parse("base: &b {x: 1, y: [2]}\ncopy: *b"),
-				YamlSnapshot.Parse("base: {x: 1, y: [2]}\ncopy: {x: 1, y: [2]}"),
-				Exact)
-			.Should().BeEmpty();
+		TreeDiffer
+			.Instance
+			.Diff(YamlSnapshot.Parse("base: &b {x: 1, y: [2]}\ncopy: *b"), YamlSnapshot.Parse("base: {x: 1, y: [2]}\ncopy: {x: 1, y: [2]}"), Exact)
+			.Should()
+			.BeEmpty();
 
 	[Test]
 	public void ExplicitKeysWinOverMergedOnesAndTheFirstMergeWins()
@@ -79,13 +79,11 @@ public class YamlSnapshotTests
 			  <<: [*a, *b]
 			  x: 9
 			""";
-		TreeDiffer.Instance.Diff(YamlSnapshot.Parse(yaml), YamlSnapshot.Parse("a: {x: 1, y: 1}\nb: {y: 2, z: 2}\nc: {y: 1, z: 2, x: 9}"))
-			.Should().BeEmpty();
+		TreeDiffer.Instance.Diff(YamlSnapshot.Parse(yaml), YamlSnapshot.Parse("a: {x: 1, y: 1}\nb: {y: 2, z: 2}\nc: {y: 1, z: 2, x: 9}")).Should().BeEmpty();
 	}
 
 	[Test]
-	public void QuotedMergeKeyIsAnOrdinaryKey() =>
-		((MapNode)YamlSnapshot.Parse("\"<<\": 1")).Entries.Single().Key.Canonical.Should().Be("<<");
+	public void QuotedMergeKeyIsAnOrdinaryKey() => ((MapNode)YamlSnapshot.Parse("\"<<\": 1")).Entries.Single().Key.Canonical.Should().Be("<<");
 
 	[Test]
 	public void PositionsAreOneBased()
@@ -120,30 +118,36 @@ public class YamlSnapshotTests
 	// 10: JSON is YAML. Parsed by either package it is the same tree, kinds and number text included.
 	[Test]
 	public void JsonParsesTheSameAsYaml() =>
-		TreeGen.Tree.Sample(tree =>
-		{
-			var json = TreeGen.ToJson(tree);
-			return TreeDiffer.Instance.Diff(JsonSnapshot.Parse(json), YamlSnapshot.Parse(json), Exact).Count == 0;
-		}, print: TreeGen.ToJson);
+		TreeGen.Tree.Sample(
+			tree =>
+			{
+				var json = TreeGen.ToJson(tree);
+				return TreeDiffer.Instance.Diff(JsonSnapshot.Parse(json), YamlSnapshot.Parse(json), Exact).Count == 0;
+			},
+			print: TreeGen.ToJson
+		);
 
 	// 11: a merge key and an alias read the same as writing the merged mapping out by hand.
 	[Test]
 	public void MergeKeysEqualTheirManualExpansion() =>
-		Gen.Select(TreeGen.MapWith(1), TreeGen.MapWith(0)).Sample((baseMap, overrides) =>
-		{
-			var overrideKeys = overrides.Entries.Select(e => e.Key.Canonical).ToHashSet(StringComparer.Ordinal);
-			var overrideJson = TreeGen.ToJson(overrides);
-			var extra = overrides.Entries.Count == 0 ? "" : ", " + overrideJson[1..^1];
-			var yaml = "{\"base\": &a " + TreeGen.ToJson(baseMap) + ", \"child\": {<<: *a" + extra + "}}";
-			var expanded = new MapNode([
-				new(ScalarNode.String("base"), baseMap),
-				new(ScalarNode.String("child"), new MapNode([
-					.. baseMap.Entries.Where(e => !overrideKeys.Contains(e.Key.Canonical)),
-					.. overrides.Entries,
-				])),
-			]);
-			return TreeDiffer.Instance.Diff(expanded, YamlSnapshot.Parse(yaml), new TreeDiffOptions { StrictNumbers = true }).Count == 0;
-		}, print: t => TreeGen.ToJson(t.Item1) + " <- " + TreeGen.ToJson(t.Item2));
+		Gen.Select(TreeGen.MapWith(1), TreeGen.MapWith(0)).Sample(
+			(baseMap, overrides) =>
+			{
+				var overrideKeys = overrides.Entries.Select(e => e.Key.Canonical).ToHashSet(StringComparer.Ordinal);
+				var overrideJson = TreeGen.ToJson(overrides);
+				var extra = overrides.Entries.Count == 0 ? "" : ", " + overrideJson[1..^1];
+				var yaml = "{\"base\": &a " + TreeGen.ToJson(baseMap) + ", \"child\": {<<: *a" + extra + "}}";
+				var expanded = new MapNode([
+					new(ScalarNode.String("base"), baseMap),
+					new(
+						ScalarNode.String("child"),
+						new MapNode([.. baseMap.Entries.Where(e => !overrideKeys.Contains(e.Key.Canonical)), .. overrides.Entries,])
+					),
+				]);
+				return TreeDiffer.Instance.Diff(expanded, YamlSnapshot.Parse(yaml), new TreeDiffOptions { StrictNumbers = true }).Count == 0;
+			},
+			print: t => TreeGen.ToJson(t.Item1) + " <- " + TreeGen.ToJson(t.Item2)
+		);
 }
 
 public class YamlAssertionTests
@@ -171,7 +175,10 @@ public class YamlAssertionTests
 	public void SnapshotMismatchMessage()
 	{
 		var p = new TestProject { Identity = TestProject.TUnitLike() };
-		p.Fs.AddFile(p.VerifiedFile(Key, "yml"), new("""
+		p.Fs.AddFile(
+			p.VerifiedFile(Key, "yml"),
+			new(
+				"""
 			# products
 			items:
 			  - name: kibana
@@ -180,15 +187,23 @@ public class YamlAssertionTests
 			    tier: 2
 			meta:
 			  version: 0x10
-			"""));
-		var message = WithEngine(p, () => """
+			"""
+			)
+		);
+		var message = WithEngine(
+			p,
+			() => """
 			items:
 			  - name: Kibana
 			    tier: 1
 			meta:
 			  version: 16
 			  extra: true
-			""".Should().MatchYamlSnapshot(callerFilePath: p.TestFile, callerMemberName: "RendersTable"));
+			""".Should().MatchYamlSnapshot(
+				callerFilePath: p.TestFile,
+				callerMemberName: "RendersTable"
+			)
+		);
 		message.Should().MatchSnapshot();
 	}
 

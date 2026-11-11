@@ -46,7 +46,8 @@ internal sealed class SnapshotDiscovery(IFileSystem fs)
 			// The marker is written with the first received file; without it fall back to the default layout.
 			var marker = Marker(received);
 			var project = marker?.Project ?? fs.Path.GetFileNameWithoutExtension(
-				fs.Directory.EnumerateFiles(projectDirectory, "*.csproj").Order(StringComparer.Ordinal).First());
+				fs.Directory.EnumerateFiles(projectDirectory, "*.csproj").Order(StringComparer.Ordinal).First()
+			);
 			var verified = marker?.ResolveVerified(fs, received) ?? fs.Path.Combine(projectDirectory, ".snapshots");
 			roots.Add(new ReceivedRoot(received, project, verified));
 		}

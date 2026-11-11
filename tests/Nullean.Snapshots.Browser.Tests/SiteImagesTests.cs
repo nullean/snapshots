@@ -81,17 +81,29 @@ public class SiteImagesTests
 	[Test]
 	public void AScreenshotOnlyOneSideTookIsADifference()
 	{
-		var fs = Folders(("baseline", "only-baseline.png", Solid(4, 4, 1)), ("target", "only-target.png", Solid(4, 4, 1)), ("baseline", "both.png", Solid(4, 4, 1)), ("target", "both.png", Solid(4, 4, 1)));
+		var fs = Folders(
+			("baseline", "only-baseline.png", Solid(4, 4, 1)),
+			("target", "only-target.png", Solid(4, 4, 1)),
+			("baseline", "both.png", Solid(4, 4, 1)),
+			("target", "both.png", Solid(4, 4, 1))
+		);
 
-		SiteImages.Compare(fs, Baseline, Target).Select(d => (d.Name, d.Summary)).Should().Equal(
-			("only-baseline.png", "the target did not take it"),
-			("only-target.png", "the baseline did not take it"));
+		SiteImages
+			.Compare(fs, Baseline, Target)
+			.Select(d => (d.Name, d.Summary))
+			.Should()
+			.Equal(("only-baseline.png", "the target did not take it"), ("only-target.png", "the baseline did not take it"));
 	}
 
 	[Test]
 	public void ScreenshotsInFoldersArePairedByTheirPath()
 	{
-		var fs = Folders(("baseline", "a/nav.png", Solid(4, 4, 1)), ("target", "a/nav.png", Solid(4, 4, 1, (1, 1))), ("baseline", "b/nav.png", Solid(4, 4, 1)), ("target", "b/nav.png", Solid(4, 4, 1)));
+		var fs = Folders(
+			("baseline", "a/nav.png", Solid(4, 4, 1)),
+			("target", "a/nav.png", Solid(4, 4, 1, (1, 1))),
+			("baseline", "b/nav.png", Solid(4, 4, 1)),
+			("target", "b/nav.png", Solid(4, 4, 1))
+		);
 
 		SiteImages.Compare(fs, Baseline, Target).Should().ContainSingle().Which.Name.Should().Be("a/nav.png");
 	}

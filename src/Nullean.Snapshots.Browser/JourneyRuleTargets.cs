@@ -72,9 +72,7 @@ public sealed class JourneyRuleTargets : RuleTargets
 			throw new FormatException($"{token.Raw} is not [attribute] or [attribute=value].");
 		var inner = token.Value[1..^1];
 		var equals = inner.IndexOf('=', StringComparison.Ordinal);
-		return equals < 0
-			? (inner, null)
-			: (inner[..equals], new RuleValue(new RuleToken(token.Raw, RuleTokenKind.Word, inner[(equals + 1)..])));
+		return equals < 0 ? (inner, null) : (inner[..equals], new RuleValue(new RuleToken(token.Raw, RuleTokenKind.Word, inner[(equals + 1)..])));
 	}
 
 	/// <inheritdoc />
@@ -90,19 +88,15 @@ public sealed class JourneyRuleTargets : RuleTargets
 		if (found.Inside)
 		{
 			var role = Field(found.Ancestors[^1], "role") ?? "*";
-			return facts.Kind is DifferenceKind.Missing or DifferenceKind.Unexpected && found.FieldKey is { } key
-				? [$"{role} [{key}]"]
-				: [role];
+			return facts.Kind is DifferenceKind.Missing or DifferenceKind.Unexpected && found.FieldKey is { } key ? [$"{role} [{key}]"] : [role];
 		}
 
 		return [Describe(found.Ancestors[^1])];
 	}
 
-	private static string Describe(MapNode node) =>
-		Field(node, "role") + (Field(node, "name") is { } name ? " " + Quote(name) : string.Empty);
+	private static string Describe(MapNode node) => Field(node, "role") + (Field(node, "name") is { } name ? " " + Quote(name) : string.Empty);
 
-	internal static string? Field(MapNode node, string key) =>
-		(node.Entries.FirstOrDefault(e => e.Key.Canonical == key).Value as ScalarNode)?.Canonical;
+	internal static string? Field(MapNode node, string key) => (node.Entries.FirstOrDefault(e => e.Key.Canonical == key).Value as ScalarNode)?.Canonical;
 
 	/// <summary>Where a difference sits in an accessibility tree.</summary>
 	/// <param name="Ancestors">The aria nodes from the root down to the one the difference is at or in.</param>
@@ -120,8 +114,10 @@ public sealed class JourneyRuleTargets : RuleTargets
 		var lastNode = -1;
 		for (var i = 1; i < path.Count; i++)
 		{
-			if (path[i].Kind == PathSegmentKind.Index && path[i - 1] is { Kind: PathSegmentKind.Key, Key: "tree" or "children" }
-				&& i + 1 < facts.Chain.Count && facts.Chain[i + 1] is MapNode node)
+			if (
+				path[i].Kind == PathSegmentKind.Index && path[i - 1] is { Kind: PathSegmentKind.Key, Key: "tree" or "children" } && i + 1 < facts.Chain.Count &&
+				facts.Chain[i + 1] is MapNode node
+			)
 			{
 				ancestors.Add(node);
 				lastNode = i;
@@ -146,8 +142,7 @@ public sealed class JourneyRuleTargets : RuleTargets
 
 	private sealed class FieldTarget(string field) : IRuleTarget
 	{
-		public bool Matches(DifferenceFacts facts, RuleVerb verb) =>
-			facts.Path is [{ Kind: PathSegmentKind.Key } only] && only.Key == field;
+		public bool Matches(DifferenceFacts facts, RuleVerb verb) => facts.Path is [{ Kind: PathSegmentKind.Key } only] && only.Key == field;
 	}
 
 	private sealed class AriaTarget(IReadOnlyList<Term> terms) : IRuleTarget

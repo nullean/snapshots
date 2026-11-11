@@ -24,8 +24,7 @@ public sealed record HttpFileContext(IReadOnlySet<string> Features, string? Buil
 public sealed record HttpFileRequirement(string Kind, IReadOnlyList<string> Values, bool Negated)
 {
 	/// <summary>The condition as written: <c>flag</c>, <c>!flag</c>, <c>build-type:assembler,codex</c>.</summary>
-	public override string ToString() =>
-		(Negated ? "!" : "") + (Kind == "feature" ? Values[0] : $"{Kind}:{string.Join(',', Values)}");
+	public override string ToString() => (Negated ? "!" : "") + (Kind == "feature" ? Values[0] : $"{Kind}:{string.Join(',', Values)}");
 
 	/// <summary>Whether <paramref name="context"/> meets the condition.</summary>
 	public bool IsMetBy(HttpFileContext context)
@@ -128,14 +127,17 @@ internal sealed partial class HttpFileMetadataBuilder
 		}
 	}
 
-	internal HttpFileMetadata Build() => !_any ? HttpFileMetadata.None : new HttpFileMetadata
-	{
-		Tags = [.. _tags.Distinct(StringComparer.Ordinal)],
-		Requires = _requires,
-		Monitor = _monitor,
-		Alerts = [.. _alerts.Distinct(StringComparer.Ordinal)],
-		Mutates = _mutates,
-	};
+	internal HttpFileMetadata Build() =>
+		!_any
+			? HttpFileMetadata.None
+			: new HttpFileMetadata
+			{
+				Tags = [.. _tags.Distinct(StringComparer.Ordinal)],
+				Requires = _requires,
+				Monitor = _monitor,
+				Alerts = [.. _alerts.Distinct(StringComparer.Ordinal)],
+				Mutates = _mutates,
+			};
 
 	private void Apply(string name, string[] words)
 	{
@@ -144,7 +146,9 @@ internal sealed partial class HttpFileMetadataBuilder
 			case "tags":
 				NeedsWords(name, words, "@tags <name...>, e.g. @tags navigation smoke");
 				foreach (var tag in words)
-					_tags.Add(TagName().IsMatch(tag) ? tag : throw new FormatException($"'{tag}' is not a tag name: use lower case letters, digits, '.', '_' or '-'"));
+					_tags.Add(
+						TagName().IsMatch(tag) ? tag : throw new FormatException($"'{tag}' is not a tag name: use lower case letters, digits, '.', '_' or '-'")
+					);
 				break;
 			case "requires":
 				NeedsWords(name, words, "@requires <condition...>, e.g. @requires navigation-preview !env:prod build-type:assembler,codex");
@@ -156,7 +160,11 @@ internal sealed partial class HttpFileMetadataBuilder
 			case "alert":
 				NeedsWords(name, words, "@alert <channel...>, e.g. @alert pagerduty");
 				foreach (var channel in words)
-					_alerts.Add(FeatureName().IsMatch(channel) ? channel : throw new FormatException($"'{channel}' is not an alert channel: use lower case letters, digits and '-'"));
+					_alerts.Add(
+						FeatureName().IsMatch(channel)
+							? channel
+							: throw new FormatException($"'{channel}' is not an alert channel: use lower case letters, digits and '-'")
+					);
 				break;
 			case "mutates":
 				_mutates = words.Length == 0 ? true : throw new FormatException("usage: @mutates, with nothing after it");
@@ -180,7 +188,9 @@ internal sealed partial class HttpFileMetadataBuilder
 		if (colon < 0)
 			return FeatureName().IsMatch(body)
 				? new HttpFileRequirement("feature", [body], negated)
-				: throw new FormatException($"'{text}' is not a condition: use a feature flag (navigation-preview), build-type:<a,b> or env:<a,b>, each optionally with a leading '!'");
+				: throw new FormatException(
+					$"'{text}' is not a condition: use a feature flag (navigation-preview), build-type:<a,b> or env:<a,b>, each optionally with a leading '!'"
+				);
 		var kind = body[..colon];
 		var values = body[(colon + 1)..].Split(',');
 		if (kind is not ("build-type" or "env"))

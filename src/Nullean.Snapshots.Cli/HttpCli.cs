@@ -72,14 +72,28 @@ internal sealed class HttpCli(
 			return ExitCode.Usage;
 
 		if (getVariable(SnapshotEnvironment.AcceptVariable) is { Length: > 0 })
-			error.WriteLine($"{SnapshotEnvironment.AcceptVariable} is ignored: 'snap http run' never accepts. Review with 'snap review' or accept with 'snap accept'.");
+			error.WriteLine(
+				$"{SnapshotEnvironment.AcceptVariable} is ignored: 'snap http run' never accepts. Review with 'snap review' or accept with 'snap accept'."
+			);
 
 		// No test identity, no manifest flush, and the accept variable hidden: comparing is all this does. The project is
 		// always the one holding the .http file, found by walking up to its csproj, never this process's assembly.
 		var projects = new SnapshotProjectResolver(fileSystem);
-		var engine = new SnapshotEngine(fileSystem, k => k == SnapshotEnvironment.AcceptVariable ? null : getVariable(k), () => null,
-			(site, _) => JourneyCli.WithArtifactsReceived(fileSystem, projects.FromCallerFile(site.FilePath)));
-		var options = new HttpFileSnapshotOptions { Environment = environment, Variables = values, Headers = headers ?? [], Transcript = mode, Variant = variant, ReadOnly = readOnly };
+		var engine = new SnapshotEngine(
+			fileSystem,
+			k => k == SnapshotEnvironment.AcceptVariable ? null : getVariable(k),
+			() => null,
+			(site, _) => JourneyCli.WithArtifactsReceived(fileSystem, projects.FromCallerFile(site.FilePath))
+		);
+		var options = new HttpFileSnapshotOptions
+		{
+			Environment = environment,
+			Variables = values,
+			Headers = headers ?? [],
+			Transcript = mode,
+			Variant = variant,
+			ReadOnly = readOnly
+		};
 		var exit = ExitCode.Ok;
 		foreach (var file in files)
 		{
@@ -107,9 +121,11 @@ internal sealed class HttpCli(
 				: engine.MatchFile(recorded.Text, HttpFileSnapshot.Format, file, null, null, variant);
 			var result = HttpFileSnapshot.WithFailure(recorded, compared);
 			if (result.Passed)
-				output.WriteLine(mode == TranscriptMode.Off
-					? $"ok   {fileSystem.Path.GetRelativePath(_root, file).Replace('\\', '/')} (transcript off)"
-					: $"ok   {result.Key}");
+				output.WriteLine(
+					mode == TranscriptMode.Off
+						? $"ok   {fileSystem.Path.GetRelativePath(_root, file).Replace('\\', '/')} (transcript off)"
+						: $"ok   {result.Key}"
+				);
 			else
 			{
 				output.WriteLine(result.FailureMessage);
@@ -149,7 +165,10 @@ internal sealed class HttpCli(
 			return ExitCode.Usage;
 		}
 
-		if (!JourneyCli.TryParseSite("--baseline", baseline, out var baselineUri, out var problem) || !JourneyCli.TryParseSite("--target", target, out var targetUri, out problem))
+		if (
+			!JourneyCli.TryParseSite("--baseline", baseline, out var baselineUri, out var problem) ||
+			!JourneyCli.TryParseSite("--target", target, out var targetUri, out problem)
+		)
 		{
 			error.WriteLine(problem);
 			return ExitCode.Usage;
@@ -175,8 +194,12 @@ internal sealed class HttpCli(
 			return ExitCode.Usage;
 
 		var projects = new SnapshotProjectResolver(fileSystem);
-		var engine = new SnapshotEngine(fileSystem, k => k == SnapshotEnvironment.AcceptVariable ? null : getVariable(k), () => null,
-			(site, _) => JourneyCli.WithArtifactsReceived(fileSystem, projects.FromCallerFile(site.FilePath)));
+		var engine = new SnapshotEngine(
+			fileSystem,
+			k => k == SnapshotEnvironment.AcceptVariable ? null : getVariable(k),
+			() => null,
+			(site, _) => JourneyCli.WithArtifactsReceived(fileSystem, projects.FromCallerFile(site.FilePath))
+		);
 		var recordFile = record is null ? null : fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, record));
 		var pruneFile = prune is null ? null : fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, prune));
 		var exit = ExitCode.Ok;
@@ -186,7 +209,8 @@ internal sealed class HttpCli(
 			var store = new SiteStore(
 				text => engine.SeedBaseline(text, HttpFileSnapshot.Format.Extension, file, null),
 				() => engine.ReadBaseline(HttpFileSnapshot.Format.Extension, file, null),
-				(text, compare) => engine.CompareSites(text, HttpFileSnapshot.Format, HttpRuleTargets.Instance, file, compare));
+				(text, compare) => engine.CompareSites(text, HttpFileSnapshot.Format, HttpRuleTargets.Instance, file, compare)
+			);
 			var options = new HttpCompareOptions
 			{
 				Baseline = baselineUri,
@@ -219,7 +243,9 @@ internal sealed class HttpCli(
 			}
 
 			if (result.Recorded.Count > 0)
-				output.WriteLine($"Recorded {result.Recorded.Count} rule(s) for {display} in {fileSystem.Path.GetRelativePath(_root, recordFile!).Replace('\\', '/')}.");
+				output.WriteLine(
+					$"Recorded {result.Recorded.Count} rule(s) for {display} in {fileSystem.Path.GetRelativePath(_root, recordFile!).Replace('\\', '/')}."
+				);
 			if (result.Passed)
 				output.WriteLine($"ok   {display} ({result.Application.Explained.Count} expected difference(s))");
 			else
@@ -251,9 +277,20 @@ internal sealed class HttpCli(
 				continue;
 			}
 
-			all ??= [.. fileSystem.Directory.EnumerateFiles(_root, "*.http", SearchOption.AllDirectories)
-				.Where(f => !fileSystem.Path.GetRelativePath(_root, f).Split('/', '\\')
-					.Any(part => part is "bin" or "obj" or "node_modules" || part.StartsWith('.')))];
+			all ??=
+			[
+				.. fileSystem
+					.Directory
+					.EnumerateFiles(_root, "*.http", SearchOption.AllDirectories)
+					.Where(
+						f =>
+							!fileSystem
+								.Path
+								.GetRelativePath(_root, f)
+								.Split('/', '\\')
+								.Any(part => part is "bin" or "obj" or "node_modules" || part.StartsWith('.'))
+					)
+			];
 			var regex = new Regex("^" + JourneyCli.FileGlob(pattern.Replace('\\', '/').TrimStart('.', '/')) + "$", RegexOptions.CultureInvariant);
 			var matched = all.Where(f => regex.IsMatch(fileSystem.Path.GetRelativePath(_root, f).Replace('\\', '/'))).ToList();
 			if (matched.Count == 0)
@@ -292,8 +329,14 @@ internal sealed class HttpCommands
 		bool readOnly = false
 	)
 	{
-		var cli = new HttpCli(new FileSystem(), root ?? Directory.GetCurrentDirectory(), Console.Out, Console.Error,
-			HttpFileSnapshot.RunFileAsync, Environment.GetEnvironmentVariable);
+		var cli = new HttpCli(
+			new FileSystem(),
+			root ?? Directory.GetCurrentDirectory(),
+			Console.Out,
+			Console.Error,
+			HttpFileSnapshot.RunFileAsync,
+			Environment.GetEnvironmentVariable
+		);
 		return await cli.RunAsync(files, env, var, CancellationToken.None, header, variant, transcript, readOnly).ConfigureAwait(false);
 	}
 	/// <summary>
@@ -333,8 +376,29 @@ internal sealed class HttpCommands
 		bool readOnly = false
 	)
 	{
-		var cli = new HttpCli(new FileSystem(), root ?? Directory.GetCurrentDirectory(), Console.Out, Console.Error,
-			HttpFileSnapshot.RunFileAsync, Environment.GetEnvironmentVariable);
-		return await cli.CompareAsync(files, baseline, target, CancellationToken.None, baselineEnv, targetEnv, var, header, hostVariable, values, reuseBaseline, record, prune, readOnly).ConfigureAwait(false);
+		var cli = new HttpCli(
+			new FileSystem(),
+			root ?? Directory.GetCurrentDirectory(),
+			Console.Out,
+			Console.Error,
+			HttpFileSnapshot.RunFileAsync,
+			Environment.GetEnvironmentVariable
+		);
+		return await cli.CompareAsync(
+			files,
+			baseline,
+			target,
+			CancellationToken.None,
+			baselineEnv,
+			targetEnv,
+			var,
+			header,
+			hostVariable,
+			values,
+			reuseBaseline,
+			record,
+			prune,
+			readOnly
+		).ConfigureAwait(false);
 	}
 }

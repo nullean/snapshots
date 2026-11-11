@@ -25,7 +25,12 @@ public static class HttpFileRunner
 	/// </param>
 	/// <param name="options">Environment, variables, secrets, clock and randomness.</param>
 	/// <param name="cancellationToken">Cancels the run; cancellation throws instead of becoming a failure.</param>
-	public static async Task<HttpFileRunResult> RunAsync(HttpFile file, HttpClient? client = null, HttpFileRunOptions? options = null, CancellationToken cancellationToken = default)
+	public static async Task<HttpFileRunResult> RunAsync(
+		HttpFile file,
+		HttpClient? client = null,
+		HttpFileRunOptions? options = null,
+		CancellationToken cancellationToken = default
+	)
 	{
 		ArgumentNullException.ThrowIfNull(file);
 		options ??= new HttpFileRunOptions();
@@ -72,7 +77,9 @@ public static class HttpFileRunner
 				}
 				catch (OperationCanceledException e)
 				{
-					var limit = request.Directives.Timeout is { } t ? $"the @timeout of {t.TotalSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture)}s" : "HttpClient.Timeout";
+					var limit = request.Directives.Timeout is { } t
+						? $"the @timeout of {t.TotalSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture)}s"
+						: "HttpClient.Timeout";
 					failure = Fail(file, request, request.Line, $"timed out ({limit})", e, resolver);
 				}
 				catch (HttpRequestException e)
@@ -136,7 +143,13 @@ public static class HttpFileRunner
 	}
 
 	private static async Task<HttpFileExchange> SendAsync(
-		HttpFileRequest request, HttpClient client, CookieContainer? cookies, Resolver resolver, HttpFileRunOptions options, CancellationToken ct)
+		HttpFileRequest request,
+		HttpClient client,
+		CookieContainer? cookies,
+		Resolver resolver,
+		HttpFileRunOptions options,
+		CancellationToken ct
+	)
 	{
 		var outgoing = await ResolveAsync(request, client, resolver, ct).ConfigureAwait(false);
 		var first = outgoing;
@@ -188,8 +201,16 @@ public static class HttpFileRunner
 			var (body, encoding) = Decode(raw, response.Content.Headers.ContentEncoding);
 			var contentType = response.Content.Headers.ContentType;
 			var received = new HttpFileResponse(
-				status, response.ReasonPhrase, response.Version, Fields(response.Headers), Fields(response.Content.Headers), body,
-				contentType?.MediaType, contentType?.CharSet, encoding);
+				status,
+				response.ReasonPhrase,
+				response.Version,
+				Fields(response.Headers),
+				Fields(response.Content.Headers),
+				body,
+				contentType?.MediaType,
+				contentType?.CharSet,
+				encoding
+			);
 			var sentHeaders = firstJar is null ? first.Headers : [.. first.Headers, new HttpHeaderField("Cookie", firstJar)];
 			var sent = new HttpFileSentRequest(first.Method, first.Uri, first.Version, sentHeaders, first.Body);
 			return new HttpFileExchange(request, sent, received, redirects);
@@ -204,8 +225,12 @@ public static class HttpFileRunner
 	{
 		var toGet = (status == 303 && previous.Method != "HEAD") || (status is 301 or 302 && previous.Method == "POST");
 		var sameOrigin = Uri.Compare(previous.Uri, target, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) == 0;
-		var headers = previous.Headers
-			.Where(h => sameOrigin || !(h.Name.Equals("Authorization", StringComparison.OrdinalIgnoreCase) || h.Name.Equals("Cookie", StringComparison.OrdinalIgnoreCase)))
+		var headers = previous
+			.Headers
+			.Where(
+				h => sameOrigin ||
+					!(h.Name.Equals("Authorization", StringComparison.OrdinalIgnoreCase) || h.Name.Equals("Cookie", StringComparison.OrdinalIgnoreCase))
+			)
 			.Where(h => !toGet || !IsContentHeader(h.Name))
 			.ToList();
 		return new Outgoing
@@ -219,8 +244,10 @@ public static class HttpFileRunner
 	}
 
 	private static bool IsContentHeader(string name) =>
-		name.StartsWith("Content-", StringComparison.OrdinalIgnoreCase) || name.Equals("Expires", StringComparison.OrdinalIgnoreCase)
-		|| name.Equals("Last-Modified", StringComparison.OrdinalIgnoreCase) || name.Equals("Allow", StringComparison.OrdinalIgnoreCase);
+		name.StartsWith("Content-", StringComparison.OrdinalIgnoreCase) || name.Equals("Expires", StringComparison.OrdinalIgnoreCase) || name.Equals(
+			"Last-Modified",
+			StringComparison.OrdinalIgnoreCase
+		) || name.Equals("Allow", StringComparison.OrdinalIgnoreCase);
 
 	private static HttpRequestMessage Build(Outgoing outgoing, string jar)
 	{
@@ -307,7 +334,12 @@ public static class HttpFileRunner
 			return null;
 		var contentType = headers.LastOrDefault(h => h.Name.Equals("Content-Type", StringComparison.OrdinalIgnoreCase)).Value ?? "";
 		var textEncoding = Encoding.UTF8;
-		if (MediaTypeHeaderValue.TryParse(contentType, out var parsed) && parsed.CharSet is { } charSet && HttpFileParser.TryGetEncoding(charSet.Trim('"'), out var named))
+		if (
+			MediaTypeHeaderValue.TryParse(contentType, out var parsed) && parsed.CharSet is { } charSet && HttpFileParser.TryGetEncoding(
+				charSet.Trim('"'),
+				out var named
+			)
+		)
 			textEncoding = named;
 		var formUrlEncoded = parsed?.MediaType?.Equals("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase) == true;
 
@@ -352,8 +384,7 @@ public static class HttpFileRunner
 		return await File.ReadAllBytesAsync(part.FullPath, ct).ConfigureAwait(false);
 	}
 
-	private static List<HttpHeaderField> Fields(HttpHeaders headers) =>
-		[.. headers.SelectMany(h => h.Value.Select(v => new HttpHeaderField(h.Key, v)))];
+	private static List<HttpHeaderField> Fields(HttpHeaders headers) => [.. headers.SelectMany(h => h.Value.Select(v => new HttpHeaderField(h.Key, v)))];
 
 	/// <summary>Undoes <c>Content-Encoding</c> a client's handler left in place, last applied first.</summary>
 	internal static (byte[] Body, string? Encoding) Decode(byte[] body, ICollection<string> encodings)
@@ -366,8 +397,7 @@ public static class HttpFileRunner
 		return (body, string.Join(", ", applied));
 	}
 
-	private static bool IsKnown(string encoding) =>
-		encoding.ToLowerInvariant() is "gzip" or "x-gzip" or "deflate" or "br";
+	private static bool IsKnown(string encoding) => encoding.ToLowerInvariant() is "gzip" or "x-gzip" or "deflate" or "br";
 
 	private static byte[] DecodeOne(byte[] body, string encoding)
 	{
@@ -383,9 +413,11 @@ public static class HttpFileRunner
 				return Inflate(new DeflateStream(new MemoryStream(body), CompressionMode.Decompress));
 			}
 		}
-		return Inflate(encoding == "br"
-			? new BrotliStream(new MemoryStream(body), CompressionMode.Decompress)
-			: new GZipStream(new MemoryStream(body), CompressionMode.Decompress));
+		return Inflate(
+			encoding == "br"
+				? new BrotliStream(new MemoryStream(body), CompressionMode.Decompress)
+				: new GZipStream(new MemoryStream(body), CompressionMode.Decompress)
+		);
 	}
 
 	private static byte[] Inflate(Stream stream)

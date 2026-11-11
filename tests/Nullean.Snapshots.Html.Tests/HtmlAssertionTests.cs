@@ -8,19 +8,26 @@ public class HtmlAssertionTests
 	[Test]
 	public void BeHtmlPassesForTheSameStructure()
 	{
-		var act = () => "<div><p class='a' id='b'>hi</p></div>".Should().BeHtml("""
+		var act =
+			() => "<div><p class='a' id='b'>hi</p></div>".Should().BeHtml(
+				"""
 			<div>
 			  <p id="b" class="a">hi</p>
 			</div>
-			""");
+			"""
+			);
 		act.Should().NotThrow();
 	}
 
 	[Test]
 	public void BeHtmlFailureMessage()
 	{
-		var message = Message(() => "<p class=\"b\">{Kibana}</p><ul><li>one</li></ul>".Should()
-			.BeHtml("<p class=\"a\">{kibana}</p><ul><li>one</li><li>two</li></ul>", because: "the list must not shrink"));
+		var message = Message(
+			() => "<p class=\"b\">{Kibana}</p><ul><li>one</li></ul>".Should().BeHtml(
+				"<p class=\"a\">{kibana}</p><ul><li>one</li><li>two</li></ul>",
+				because: "the list must not shrink"
+			)
+		);
 		message.Should().MatchSnapshot();
 	}
 
@@ -28,16 +35,14 @@ public class HtmlAssertionTests
 	public void BeHtmlAppliesOptionsToBothSides()
 	{
 		var options = new HtmlSnapshotOptions().Select("main").RemoveAttributes("hx-*");
-		var act = () => "<nav>menu</nav><main><a hx-get=x href=y>l</a></main>".Should()
-			.BeHtml("<main><a href=y hx-swap=z>l</a></main>", options);
+		var act = () => "<nav>menu</nav><main><a hx-get=x href=y>l</a></main>".Should().BeHtml("<main><a href=y hx-swap=z>l</a></main>", options);
 		act.Should().NotThrow();
 	}
 
 	[Test]
 	public void ContainHtmlFindsNestedFragments()
 	{
-		var act = () => "<section><div><p>Rendered <strong>output</strong></p></div></section>".Should()
-			.ContainHtml("<p>Rendered <strong>output</strong></p>");
+		var act = () => "<section><div><p>Rendered <strong>output</strong></p></div></section>".Should().ContainHtml("<p>Rendered <strong>output</strong></p>");
 		act.Should().NotThrow();
 	}
 
@@ -55,12 +60,12 @@ public class HtmlAssertionTests
 		var pass = () => "<p>a</p>".Should().NotContainHtml("<b>a</b>");
 		pass.Should().NotThrow();
 		Message(() => "<div><b>a</b></div>".Should().NotContainHtml("<b>a</b>"))
-			.Should().StartWith("Expected HTML not to contain:\n<b>a</b>\nbut it was found in:\n<div>");
+			.Should()
+			.StartWith("Expected HTML not to contain:\n<b>a</b>\nbut it was found in:\n<div>");
 	}
 
 	[Test]
-	public void NullIsAFailure() =>
-		Message(() => ((string?)null).Should().BeHtml("<p/>")).Should().Be("Expected HTML, but it was <null>.");
+	public void NullIsAFailure() => Message(() => ((string?)null).Should().BeHtml("<p/>")).Should().Be("Expected HTML, but it was <null>.");
 
 	[Test]
 	public void SnapshotIsStoredPrettyAndComparedStructurally()
@@ -69,7 +74,8 @@ public class HtmlAssertionTests
 		Snapshot.EngineOverride.Value = p.Engine;
 		try
 		{
-			var first = () => "<div><p>a</p></div>".Should().MatchHtmlSnapshot(callerFilePath: p.TestFile, callerMemberName: "RendersTable", callerLineNumber: 1);
+			var first =
+				() => "<div><p>a</p></div>".Should().MatchHtmlSnapshot(callerFilePath: p.TestFile, callerMemberName: "RendersTable", callerLineNumber: 1);
 			first.Should().Throw<Exception>().WithMessage("HTML snapshot is new*");
 			var received = p.ReceivedFile("Rendering/HtmlTests/RendersTable", "html");
 			p.Read(received).Should().Be("<div>\n\t<p>a</p>\n</div>\n");
@@ -77,7 +83,8 @@ public class HtmlAssertionTests
 			var verified = p.VerifiedFile("Rendering/HtmlTests/RendersTable", "html");
 			p.Fs.Directory.CreateDirectory(p.Fs.Path.GetDirectoryName(verified)!);
 			p.Fs.File.Move(received, verified);
-			var whitespaceOnly = () => "<div>\n   <p>a</p></div>".Should().MatchHtmlSnapshot(callerFilePath: p.TestFile, callerMemberName: "RendersTable", callerLineNumber: 1);
+			var whitespaceOnly =
+				() => "<div>\n   <p>a</p></div>".Should().MatchHtmlSnapshot(callerFilePath: p.TestFile, callerMemberName: "RendersTable", callerLineNumber: 1);
 			whitespaceOnly.Should().NotThrow();
 		}
 		finally
@@ -95,8 +102,12 @@ public class HtmlAssertionTests
 		string message;
 		try
 		{
-			message = Message(() => "<table><tr><td class=x>{Kibana}</td></tr></table>".Should()
-				.MatchHtmlSnapshot(callerFilePath: p.TestFile, callerMemberName: "RendersTable"));
+			message = Message(
+				() => "<table><tr><td class=x>{Kibana}</td></tr></table>".Should().MatchHtmlSnapshot(
+					callerFilePath: p.TestFile,
+					callerMemberName: "RendersTable"
+				)
+			);
 		}
 		finally
 		{

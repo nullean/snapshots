@@ -8,8 +8,7 @@ namespace Nullean.Snapshots.Tests;
 public class TUnitIdentityTests
 {
 	[Test]
-	public void ModuleInitializerRegisteredTUnit() =>
-		SnapshotDefaults.TestIdentity.Should().BeSameAs(TUnitTestIdentity.Instance);
+	public void ModuleInitializerRegisteredTUnit() => SnapshotDefaults.TestIdentity.Should().BeSameAs(TUnitTestIdentity.Instance);
 
 	[Test]
 	public void ReportsClassMethodAndFilter()
@@ -25,8 +24,7 @@ public class TUnitIdentityTests
 	[Test]
 	[Arguments(1, "a")]
 	[Arguments(2, "b")]
-	public void ReportsArguments(int number, string text) =>
-		TUnitTestIdentity.Instance.Current!.Arguments.Should().Equal(number, text);
+	public void ReportsArguments(int number, string text) => TUnitTestIdentity.Instance.Current!.Arguments.Should().Equal(number, text);
 
 	[Test]
 	public void NestedAndGenericClassNames()
@@ -88,18 +86,15 @@ public sealed class InjectedFixtureIdentity(IdentityFixture fixture)
 	[Test]
 	[Arguments(1)]
 	[Arguments(2)]
-	public void MethodDataIsStillAnArgument(int number) =>
-		TUnitTestIdentity.Instance.Current!.Arguments.Should().Equal(number);
+	public void MethodDataIsStillAnArgument(int number) => TUnitTestIdentity.Instance.Current!.Arguments.Should().Equal(number);
 
 	[Test]
 	[Arguments(3)]
-	public void SingleMethodDataIsStillAnArgument(int number) =>
-		TUnitTestIdentity.Instance.Current!.Arguments.Should().Equal(number);
+	public void SingleMethodDataIsStillAnArgument(int number) => TUnitTestIdentity.Instance.Current!.Arguments.Should().Equal(number);
 
 	[Test]
 	[MethodDataSource(nameof(Numbers))]
-	public void MethodDataSourceIsStillAnArgument(int number) =>
-		TUnitTestIdentity.Instance.Current!.Arguments.Should().Equal(number);
+	public void MethodDataSourceIsStillAnArgument(int number) => TUnitTestIdentity.Instance.Current!.Arguments.Should().Equal(number);
 
 	public static IEnumerable<int> Numbers() => [4];
 
@@ -118,8 +113,7 @@ public sealed class InjectedFixtureIdentity(IdentityFixture fixture)
 public sealed class ClassDataIdentity(string value)
 {
 	[Test]
-	public void ClassDataIsAnArgument() =>
-		TUnitTestIdentity.Instance.Current!.Arguments.Should().Equal(value);
+	public void ClassDataIsAnArgument() => TUnitTestIdentity.Instance.Current!.Arguments.Should().Equal(value);
 }
 
 /// <summary>A single constructor data source is still data.</summary>
@@ -127,8 +121,7 @@ public sealed class ClassDataIdentity(string value)
 public sealed class SingleClassDataIdentity(string value)
 {
 	[Test]
-	public void ClassDataIsAnArgument() =>
-		TUnitTestIdentity.Instance.Current!.Arguments.Should().Equal(value);
+	public void ClassDataIsAnArgument() => TUnitTestIdentity.Instance.Current!.Arguments.Should().Equal(value);
 }
 
 public class InjectedSourceTests
@@ -141,7 +134,10 @@ public class InjectedSourceTests
 		TUnitTestIdentity.IsInjected(new ClassDataSourceAttribute<IdentityFixture, IdentityFixture>()).Should().BeTrue();
 		TUnitTestIdentity.IsInjected(new ClassDataSourceAttribute<IdentityFixture, IdentityFixture, IdentityFixture>()).Should().BeTrue();
 		TUnitTestIdentity.IsInjected(new ClassDataSourceAttribute<IdentityFixture, IdentityFixture, IdentityFixture, IdentityFixture>()).Should().BeTrue();
-		TUnitTestIdentity.IsInjected(new ClassDataSourceAttribute<IdentityFixture, IdentityFixture, IdentityFixture, IdentityFixture, IdentityFixture>()).Should().BeTrue();
+		TUnitTestIdentity
+			.IsInjected(new ClassDataSourceAttribute<IdentityFixture, IdentityFixture, IdentityFixture, IdentityFixture, IdentityFixture>())
+			.Should()
+			.BeTrue();
 	}
 
 	[Test]
@@ -159,12 +155,10 @@ public class InjectedSourceTests
 public sealed class TwoFixtureSourcesIdentity(object fixture)
 {
 	[Test]
-	public void FixtureStaysAnArgument() =>
-		TUnitTestIdentity.Instance.Current!.Arguments.Should().Equal(fixture);
+	public void FixtureStaysAnArgument() => TUnitTestIdentity.Instance.Current!.Arguments.Should().Equal(fixture);
 
 	[Test]
 	[ClassDataSource<IdentityFixture>]
 	[ClassDataSource<OtherIdentityFixture>]
-	public void InjectedMethodFixtureStaysAnArgument(object other) =>
-		TUnitTestIdentity.Instance.Current!.Arguments.Should().Equal(fixture, other);
+	public void InjectedMethodFixtureStaysAnArgument(object other) => TUnitTestIdentity.Instance.Current!.Arguments.Should().Equal(fixture, other);
 }

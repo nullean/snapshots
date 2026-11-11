@@ -9,7 +9,8 @@ namespace Nullean.Snapshots.Http.Tests;
 /// <summary>A <c>.http</c> file run against two sites: the engine on a mock file system, the CLI with a fake runner, and two real servers.</summary>
 public class HttpSiteCompareTests
 {
-	private static string Catalog(bool badge) => $$$"""
+	private static string Catalog(bool badge) =>
+		$$$"""
 		## GET {{host}}/api/catalog
 		status: 200 OK
 		content-type: application/json; charset=utf-8
@@ -54,8 +55,14 @@ public class HttpSiteCompareTests
 
 		path.Should().Be(p.Fs.Path.Combine(p.Project.ReceivedDirectory, "http", "shop.baseline.responses"));
 		p.Read(path).Should().Be(Catalog(false));
-		p.Fs.AllFiles.Should().NotContain(f => f.Contains(".verified.", StringComparison.Ordinal) || f.Contains(".received.", StringComparison.Ordinal),
-			"a baseline is neither a verified nor a received snapshot");
+		p
+			.Fs
+			.AllFiles
+			.Should()
+			.NotContain(
+				f => f.Contains(".verified.", StringComparison.Ordinal) || f.Contains(".received.", StringComparison.Ordinal),
+				"a baseline is neither a verified nor a received snapshot"
+			);
 		p.Engine.ReadBaseline("responses", HttpFile(p), null).Should().Be(Catalog(false));
 		p.Engine.ReadBaseline("responses", HttpFile(p), "preview").Should().BeNull("a variant keeps its own baseline");
 	}
@@ -82,16 +89,18 @@ public class HttpSiteCompareTests
 		var result = Compare(p, Catalog(true));
 
 		result.Passed.Should().BeFalse();
-		result.FailureMessage.Should().Be(
-			"HTTP differs between baseline and target: tests/Acme.Tests/http/shop.http\n" +
-			"1 unexplained difference(s), baseline expected, target actual:\n" +
-			"$[0].body.items[0].badge   unexpected in actual\n" +
-			"Rules that would explain them (under these headings in a file the rules include, or with --record):\n" +
-			"  ## GET {{host}}/api/catalog\n" +
-			"  added body $.items[*].badge\n" +
-			"Baseline: .artifacts/.snapshots/received/Acme.Tests/http/shop.baseline.responses\n" +
-			"Target:   .artifacts/.snapshots/received/Acme.Tests/http/shop.target.responses\n" +
-			"Rules:    tests/Acme.Tests/http/shop.differences (none yet)");
+		result
+			.FailureMessage
+			.Should()
+			.Be(
+				"HTTP differs between baseline and target: tests/Acme.Tests/http/shop.http\n" +
+					"1 unexplained difference(s), baseline expected, target actual:\n" + "$[0].body.items[0].badge   unexpected in actual\n" +
+					"Rules that would explain them (under these headings in a file the rules include, or with --record):\n" +
+					"  ## GET {{host}}/api/catalog\n" + "  added body $.items[*].badge\n" +
+					"Baseline: .artifacts/.snapshots/received/Acme.Tests/http/shop.baseline.responses\n" +
+					"Target:   .artifacts/.snapshots/received/Acme.Tests/http/shop.target.responses\n" +
+					"Rules:    tests/Acme.Tests/http/shop.differences (none yet)"
+			);
 		p.Read(result.TargetPath!).Should().Be(Catalog(true), "the target is written for review");
 		p.Fs.AllFiles.Should().NotContain(f => f.Contains(".received.", StringComparison.Ordinal), "so snap status shows nothing pending");
 	}
@@ -120,8 +129,12 @@ public class HttpSiteCompareTests
 		var result = Compare(p, Catalog(true));
 
 		result.Passed.Should().BeFalse();
-		result.FailureMessage.Should().Contain("1 rule(s) matched nothing, so they are stale:\n  tests/Acme.Tests/http/shop.differences:3: removed body $.items[*].legacy")
-			.And.NotContain("unexplained");
+		result
+			.FailureMessage
+			.Should()
+			.Contain("1 rule(s) matched nothing, so they are stale:\n  tests/Acme.Tests/http/shop.differences:3: removed body $.items[*].legacy")
+			.And
+			.NotContain("unexplained");
 	}
 
 	[Test]
@@ -131,7 +144,10 @@ public class HttpSiteCompareTests
 
 		var act = () => Compare(p, Catalog(false));
 
-		act.Should().Throw<InvalidOperationException>().WithMessage("There is no baseline for tests/Acme.Tests/http/shop.http: run it against the baseline site first*");
+		act
+			.Should()
+			.Throw<InvalidOperationException>()
+			.WithMessage("There is no baseline for tests/Acme.Tests/http/shop.http: run it against the baseline site first*");
 	}
 
 	[Test]
@@ -142,7 +158,16 @@ public class HttpSiteCompareTests
 
 		var act = () => Compare(p, Catalog(false));
 
-		act.Should().Throw<ExpectedDifferencesException>().Which.Errors.Should().ContainSingle().Which.Should().Contain("shop.differences:1: 'frobnicate' is not a verb");
+		act
+			.Should()
+			.Throw<ExpectedDifferencesException>()
+			.Which
+			.Errors
+			.Should()
+			.ContainSingle()
+			.Which
+			.Should()
+			.Contain("shop.differences:1: 'frobnicate' is not a verb");
 	}
 
 	[Test]
@@ -197,15 +222,43 @@ public class HttpSiteCompareTests
 		public Func<string, string> Text { get; set; } = host => Catalog(host.Contains("preview", StringComparison.Ordinal));
 
 		public Task<int> Invoke(
-			string? baseline = "http://prod.test/", string? target = "http://preview.test/", bool values = false, bool reuse = false,
-			string? record = null, string? prune = null, string[]? files = null, string? baselineEnv = null, string? targetEnv = null
+			string? baseline = "http://prod.test/",
+			string? target = "http://preview.test/",
+			bool values = false,
+			bool reuse = false,
+			string? record = null,
+			string? prune = null,
+			string[]? files = null,
+			string? baselineEnv = null,
+			string? targetEnv = null
 		) =>
-			new HttpCli(P.Fs, P.Project.Directory, Out, Err, (file, options, _) =>
-			{
-				var host = options.Variables["host"];
-				Ran.Add((host, options.Transcript, options.Environment));
-				return Task.FromResult(new HttpTranscript(file, Text(host), null));
-			}, _ => null).CompareAsync(files ?? ["http/shop.http"], baseline, target, CancellationToken.None, baselineEnv, targetEnv, null, null, "host", values, reuse, record, prune);
+			new HttpCli(
+				P.Fs,
+				P.Project.Directory,
+				Out,
+				Err,
+				(file, options, _) =>
+				{
+					var host = options.Variables["host"];
+					Ran.Add((host, options.Transcript, options.Environment));
+					return Task.FromResult(new HttpTranscript(file, Text(host), null));
+				},
+				_ => null
+			).CompareAsync(
+				files ?? ["http/shop.http"],
+				baseline,
+				target,
+				CancellationToken.None,
+				baselineEnv,
+				targetEnv,
+				null,
+				null,
+				"host",
+				values,
+				reuse,
+				record,
+				prune
+			);
 
 		public string Output => Out.ToString().Replace("\r\n", "\n", StringComparison.Ordinal);
 
@@ -220,9 +273,15 @@ public class HttpSiteCompareTests
 		(await run.Invoke(baselineEnv: "prod", targetEnv: "edge")).Should().Be(1);
 		(await run.Invoke(values: true)).Should().Be(1);
 
-		run.Ran.Should().Equal(
-			("http://prod.test", TranscriptMode.Shape, "prod"), ("http://preview.test", TranscriptMode.Shape, "edge"),
-			("http://prod.test", TranscriptMode.Compare, null), ("http://preview.test", TranscriptMode.Compare, null));
+		run
+			.Ran
+			.Should()
+			.Equal(
+				("http://prod.test", TranscriptMode.Shape, "prod"),
+				("http://preview.test", TranscriptMode.Shape, "edge"),
+				("http://prod.test", TranscriptMode.Compare, null),
+				("http://preview.test", TranscriptMode.Compare, null)
+			);
 	}
 
 	[Test]
@@ -260,7 +319,12 @@ public class HttpSiteCompareTests
 		(await run.Invoke(record: "http/known/shop.differences")).Should().Be(0);
 		(await run.Invoke(reuse: true)).Should().Be(0);
 
-		run.Output.Should().StartWith("Recorded 1 rule(s) for http/shop.http in http/known/shop.differences.\nok   http/shop.http (0 expected difference(s))\nok   http/shop.http (1 expected difference(s))");
+		run
+			.Output
+			.Should()
+			.StartWith(
+				"Recorded 1 rule(s) for http/shop.http in http/known/shop.differences.\nok   http/shop.http (0 expected difference(s))\nok   http/shop.http (1 expected difference(s))"
+			);
 	}
 
 	[Test]
@@ -275,26 +339,35 @@ public class HttpSiteCompareTests
 		(await run.Invoke()).Should().Be(2);
 		(await run.Invoke(record: "http/other.differences")).Should().Be(2);
 
-		run.Error.Should().Contain("Error: --baseline is required").And.Contain("--target 'ftp://x' is not an absolute http, https or file URL")
-			.And.Contain("no .http file matches 'http/nope.http'").And.Contain("'nonsense' is not a verb");
+		run
+			.Error
+			.Should()
+			.Contain("Error: --baseline is required")
+			.And
+			.Contain("--target 'ftp://x' is not an absolute http, https or file URL")
+			.And
+			.Contain("no .http file matches 'http/nope.http'")
+			.And
+			.Contain("'nonsense' is not a verb");
 	}
 
 	// Two real servers
 
-	private static readonly Lazy<TestServer> Preview = new(() =>
-	{
-		var server = new TestServer(preview: true);
-		AppDomain.CurrentDomain.ProcessExit += (_, _) => server.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(5));
-		return server;
-	}, LazyThreadSafetyMode.ExecutionAndPublication);
+	private static readonly Lazy<TestServer> Preview = new(
+		() =>
+		{
+			var server = new TestServer(preview: true);
+			AppDomain.CurrentDomain.ProcessExit += (_, _) => server.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(5));
+			return server;
+		},
+		LazyThreadSafetyMode.ExecutionAndPublication
+	);
 
 	private static Task<SiteComparisonResult> Real(string file, bool values = false) =>
-		HttpFileSnapshot.CompareAsync($"compare-http/{file}.http", new HttpCompareOptions
-		{
-			Baseline = new Uri(TestServer.Shared.Host),
-			Target = new Uri(Preview.Value.Host),
-			Values = values,
-		});
+		HttpFileSnapshot.CompareAsync(
+			$"compare-http/{file}.http",
+			new HttpCompareOptions { Baseline = new Uri(TestServer.Shared.Host), Target = new Uri(Preview.Value.Host), Values = values, }
+		);
 
 	[Test]
 	public async Task TheShapeOfAPreviewDiffersOnlyByTheAddedProperty()
@@ -311,7 +384,12 @@ public class HttpSiteCompareTests
 		var result = await Real("catalog-norule");
 
 		result.Passed.Should().BeFalse();
-		result.FailureMessage.Should().Contain("added body $.items[*].badge").And.Contain("Rules:    tests/Nullean.Snapshots.Http.Tests/compare-http/catalog-norule.differences (none yet)");
+		result
+			.FailureMessage
+			.Should()
+			.Contain("added body $.items[*].badge")
+			.And
+			.Contain("Rules:    tests/Nullean.Snapshots.Http.Tests/compare-http/catalog-norule.differences (none yet)");
 	}
 
 	[Test]

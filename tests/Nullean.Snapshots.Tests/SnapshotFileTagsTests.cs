@@ -19,8 +19,7 @@ public class SnapshotFileTagsTests
 		Tags("# a note\n# @tags navigation smoke\n# @tags more\n# @requires x\nopen /\n").Should().Equal("navigation", "smoke", "more");
 
 	[Test]
-	public void Journey_TagsAfterTheFirstStep_AreNotRead() =>
-		Tags("# @tags one\nopen /\n# @tags two\n").Should().Equal("one");
+	public void Journey_TagsAfterTheFirstStep_AreNotRead() => Tags("# @tags one\nopen /\n# @tags two\n").Should().Equal("one");
 
 	[Test]
 	public void Http_TagsBeforeVariablesAndTheFirstRequest_AreRead() =>
@@ -35,14 +34,11 @@ public class SnapshotFileTagsTests
 		Tags("# @tags first\n\n### health\n# @tags late\nGET https://example.test/\n").Should().Equal("first");
 
 	[Test]
-	public void InvalidAndDuplicateNames_AreLeftOut() =>
-		Tags("# @tags Bad ok ok good.one a_b -x\nopen /\n").Should().Equal("ok", "good.one", "a_b");
+	public void InvalidAndDuplicateNames_AreLeftOut() => Tags("# @tags Bad ok ok good.one a_b -x\nopen /\n").Should().Equal("ok", "good.one", "a_b");
 
 	[Test]
-	public void MissingFile_HasNoTags() =>
-		SnapshotFile.ReadTags(new MockFileSystem(), MockUnixSupport.Path(@"c:\repo\nope.journey")).Should().BeEmpty();
+	public void MissingFile_HasNoTags() => SnapshotFile.ReadTags(new MockFileSystem(), MockUnixSupport.Path(@"c:\repo\nope.journey")).Should().BeEmpty();
 
 	[Test]
-	public void FileWithoutDirectives_HasNoTags() =>
-		Tags("# just a comment\nopen /\n").Should().BeEmpty();
+	public void FileWithoutDirectives_HasNoTags() => Tags("# just a comment\nopen /\n").Should().BeEmpty();
 }

@@ -102,9 +102,7 @@ public static class JsonAssertions
 	{
 		ArgumentNullException.ThrowIfNull(assertions);
 		var subject = assertions.Subject;
-		var json = subject is null
-			? "null"
-			: JsonSerializer.Serialize(subject, subject.GetType(), serializerOptions ?? JsonSerializerOptions.Default);
+		var json = subject is null ? "null" : JsonSerializer.Serialize(subject, subject.GetType(), serializerOptions ?? JsonSerializerOptions.Default);
 		Match(json, diff, name, options, because, callerFilePath, callerMemberName, callerLineNumber);
 		return new AndConstraint<ObjectAssertions>(assertions);
 	}
@@ -114,7 +112,12 @@ public static class JsonAssertions
 	/// <param name="expected">The expected JSON.</param>
 	/// <param name="diff">How trees are compared.</param>
 	/// <param name="because">An optional reason, shown in the failure message.</param>
-	public static AndConstraint<StringAssertions> BeJson(this StringAssertions assertions, [StringSyntax(StringSyntaxAttribute.Json)] string expected, TreeDiffOptions? diff = null, string because = "")
+	public static AndConstraint<StringAssertions> BeJson(
+		this StringAssertions assertions,
+		[StringSyntax(StringSyntaxAttribute.Json)] string expected,
+		TreeDiffOptions? diff = null,
+		string because = ""
+	)
 	{
 		ArgumentNullException.ThrowIfNull(assertions);
 		ArgumentNullException.ThrowIfNull(expected);
@@ -132,9 +135,7 @@ public static class JsonAssertions
 			return new AndConstraint<StringAssertions>(assertions);
 		}
 
-		var message = comparison.IsMatch
-			? string.Empty
-			: $"JSON did not match the expected JSON{Because(because)}:\n{SnapshotMessages.Describe(comparison)}";
+		var message = comparison.IsMatch ? string.Empty : $"JSON did not match the expected JSON{Because(because)}:\n{SnapshotMessages.Describe(comparison)}";
 		SnapshotAssertions.FailUnless(assertions.CurrentAssertionChain, comparison.IsMatch, message);
 		return new AndConstraint<StringAssertions>(assertions);
 	}
@@ -169,7 +170,18 @@ public static class JsonAssertions
 		ArgumentNullException.ThrowIfNull(assertions);
 		if (assertions.Subject is null)
 			return FailNull(assertions);
-		MatchInline(assertions.CurrentAssertionChain, assertions.Subject, expected, diff, options, because, expectedExpression, callerFilePath, callerMemberName, callerLineNumber);
+		MatchInline(
+			assertions.CurrentAssertionChain,
+			assertions.Subject,
+			expected,
+			diff,
+			options,
+			because,
+			expectedExpression,
+			callerFilePath,
+			callerMemberName,
+			callerLineNumber
+		);
 		return new AndConstraint<StringAssertions>(assertions);
 	}
 
@@ -203,7 +215,18 @@ public static class JsonAssertions
 		ArgumentNullException.ThrowIfNull(assertions);
 		ArgumentNullException.ThrowIfNull(typeInfo);
 		var json = JsonSerializer.Serialize((T)assertions.Subject, typeInfo);
-		MatchInline(assertions.CurrentAssertionChain, json, expected, diff, options, because, expectedExpression, callerFilePath, callerMemberName, callerLineNumber);
+		MatchInline(
+			assertions.CurrentAssertionChain,
+			json,
+			expected,
+			diff,
+			options,
+			because,
+			expectedExpression,
+			callerFilePath,
+			callerMemberName,
+			callerLineNumber
+		);
 		return new AndConstraint<ObjectAssertions>(assertions);
 	}
 
@@ -238,10 +261,19 @@ public static class JsonAssertions
 	{
 		ArgumentNullException.ThrowIfNull(assertions);
 		var subject = assertions.Subject;
-		var json = subject is null
-			? "null"
-			: JsonSerializer.Serialize(subject, subject.GetType(), serializerOptions ?? JsonSerializerOptions.Default);
-		MatchInline(assertions.CurrentAssertionChain, json, expected, diff, options, because, expectedExpression, callerFilePath, callerMemberName, callerLineNumber);
+		var json = subject is null ? "null" : JsonSerializer.Serialize(subject, subject.GetType(), serializerOptions ?? JsonSerializerOptions.Default);
+		MatchInline(
+			assertions.CurrentAssertionChain,
+			json,
+			expected,
+			diff,
+			options,
+			because,
+			expectedExpression,
+			callerFilePath,
+			callerMemberName,
+			callerLineNumber
+		);
 		return new AndConstraint<ObjectAssertions>(assertions);
 	}
 
@@ -263,8 +295,16 @@ public static class JsonAssertions
 		SnapshotAssertions.FailUnless(chain, result.Passed, result.FailureMessage ?? string.Empty);
 	}
 
-	private static void Match(string json, TreeDiffOptions? diff, string? name, SnapshotOptions? options, string because, string file, string member, int line) =>
-		JsonSnapshot.Pretty(json).Should().MatchSnapshot(JsonSnapshot.FormatWith(diff), name, options, because, file, member, line);
+	private static void Match(
+		string json,
+		TreeDiffOptions? diff,
+		string? name,
+		SnapshotOptions? options,
+		string because,
+		string file,
+		string member,
+		int line
+	) => JsonSnapshot.Pretty(json).Should().MatchSnapshot(JsonSnapshot.FormatWith(diff), name, options, because, file, member, line);
 
 	private static string Because(string because)
 	{

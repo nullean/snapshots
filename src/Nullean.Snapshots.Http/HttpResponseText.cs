@@ -60,7 +60,8 @@ internal static class HttpResponseText
 			text.Append(' ').Append(OneLine(section.ReasonPhrase.Trim()));
 		text.Append('\n');
 
-		foreach (var header in section.Headers
+		foreach (var header in section
+			.Headers
 			.Select(h => (Name: h.Key.ToLowerInvariant(), h.Value))
 			.Where(h => chosen.Contains(h.Name))
 			.GroupBy(h => h.Name, StringComparer.Ordinal)
@@ -122,12 +123,16 @@ internal static class HttpResponseText
 			text.Append(line.Length == 0 ? ">" : "> " + line).Append('\n');
 	}
 
-	internal static string[] Lines(string text) =>
-		text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n');
+	internal static string[] Lines(string text) => text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n');
 
 	private static string OneLine(string text) => text.Replace("\r", " ", StringComparison.Ordinal).Replace("\n", " ", StringComparison.Ordinal);
 
-	internal enum BodyKind { Json, Text, Binary }
+	internal enum BodyKind
+	{
+		Json,
+		Text,
+		Binary
+	}
 
 	/// <summary>
 	/// JSON for <c>application/json</c> and <c>+json</c>; text for <c>text/*</c>, XML, JavaScript, YAML, other JSON
@@ -138,14 +143,15 @@ internal static class HttpResponseText
 		var type = mediaType?.Trim().ToLowerInvariant() ?? string.Empty;
 		if (type == "application/json" || type.EndsWith("+json", StringComparison.Ordinal))
 			return BodyKind.Json;
-		if (type.StartsWith("text/", StringComparison.Ordinal)
-			|| type == "application/x-www-form-urlencoded"
-			|| type.Contains("xml", StringComparison.Ordinal)
-			|| type.Contains("javascript", StringComparison.Ordinal)
-			|| type.Contains("ecmascript", StringComparison.Ordinal)
-			|| type.Contains("json", StringComparison.Ordinal)
-			|| type.Contains("yaml", StringComparison.Ordinal)
-			|| !string.IsNullOrWhiteSpace(charSet))
+		if (
+			type.StartsWith("text/", StringComparison.Ordinal) || type == "application/x-www-form-urlencoded" || type.Contains(
+				"xml",
+				StringComparison.Ordinal
+			) || type.Contains("javascript", StringComparison.Ordinal) || type.Contains("ecmascript", StringComparison.Ordinal) || type.Contains(
+				"json",
+				StringComparison.Ordinal
+			) || type.Contains("yaml", StringComparison.Ordinal) || !string.IsNullOrWhiteSpace(charSet)
+		)
 			return BodyKind.Text;
 		return BodyKind.Binary;
 	}
@@ -337,7 +343,11 @@ internal static class HttpResponseText
 	/// <summary>Moves a tree parsed from the body alone to its lines in the whole text.</summary>
 	private static Node Shift(Node node, int lines) => node switch
 	{
-		MapNode m => new MapNode([.. m.Entries.Select(e => new KeyValuePair<ScalarNode, Node>((ScalarNode)Shift(e.Key, lines), Shift(e.Value, lines)))], Shift(m.Span, lines)),
+		MapNode m =>
+			new MapNode(
+				[.. m.Entries.Select(e => new KeyValuePair<ScalarNode, Node>((ScalarNode)Shift(e.Key, lines), Shift(e.Value, lines)))],
+				Shift(m.Span, lines)
+			),
 		SeqNode s => new SeqNode([.. s.Items.Select(n => Shift(n, lines))], Shift(s.Span, lines)),
 		ScalarNode s => s with { Span = Shift(s.Span, lines) },
 		_ => node,

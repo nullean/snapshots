@@ -70,7 +70,11 @@ public static class HtmlAssertions
 		ArgumentNullException.ThrowIfNull(assertions);
 		if (assertions.Subject is null)
 			return FailNull(assertions);
-		var site = new InlineSnapshotCallSite(new SnapshotCallSite(callerFilePath, callerMemberName, callerLineNumber), nameof(MatchInlineHtmlSnapshot), expectedExpression);
+		var site = new InlineSnapshotCallSite(
+			new SnapshotCallSite(callerFilePath, callerMemberName, callerLineNumber),
+			nameof(MatchInlineHtmlSnapshot),
+			expectedExpression
+		);
 		return SnapshotAssertions.MatchInline(assertions, HtmlSnapshot.Pretty(assertions.Subject, html), expected, HtmlSnapshot.Format, site, options, because);
 	}
 
@@ -79,16 +83,19 @@ public static class HtmlAssertions
 	/// <param name="expected">The expected HTML.</param>
 	/// <param name="html">What to select and remove before comparing; applied to both sides.</param>
 	/// <param name="because">An optional reason, shown in the failure message.</param>
-	public static AndConstraint<StringAssertions> BeHtml(this StringAssertions assertions, [StringSyntax("html")] string expected, HtmlSnapshotOptions? html = null, string because = "")
+	public static AndConstraint<StringAssertions> BeHtml(
+		this StringAssertions assertions,
+		[StringSyntax("html")] string expected,
+		HtmlSnapshotOptions? html = null,
+		string because = ""
+	)
 	{
 		ArgumentNullException.ThrowIfNull(assertions);
 		ArgumentNullException.ThrowIfNull(expected);
 		if (assertions.Subject is null)
 			return FailNull(assertions);
 		var comparison = HtmlSnapshot.Compare(HtmlSnapshot.Pretty(expected, html), HtmlSnapshot.Pretty(assertions.Subject, html));
-		var message = comparison.IsMatch
-			? string.Empty
-			: $"HTML did not match the expected HTML{Because(because)}:\n{SnapshotMessages.Describe(comparison)}";
+		var message = comparison.IsMatch ? string.Empty : $"HTML did not match the expected HTML{Because(because)}:\n{SnapshotMessages.Describe(comparison)}";
 		SnapshotAssertions.FailUnless(assertions.CurrentAssertionChain, comparison.IsMatch, message);
 		return new AndConstraint<StringAssertions>(assertions);
 	}
@@ -101,18 +108,32 @@ public static class HtmlAssertions
 	/// <param name="expected">The HTML fragment that must appear.</param>
 	/// <param name="html">What to select and remove before comparing; applied to both sides.</param>
 	/// <param name="because">An optional reason, shown in the failure message.</param>
-	public static AndConstraint<StringAssertions> ContainHtml(this StringAssertions assertions, [StringSyntax("html")] string expected, HtmlSnapshotOptions? html = null, string because = "") =>
-		Contain(assertions, expected, html, because, shouldContain: true);
+	public static AndConstraint<StringAssertions> ContainHtml(
+		this StringAssertions assertions,
+		[StringSyntax("html")] string expected,
+		HtmlSnapshotOptions? html = null,
+		string because = ""
+	) => Contain(assertions, expected, html, because, shouldContain: true);
 
 	/// <summary>Asserts that the pretty-printed HTML does not contain the pretty-printed <paramref name="unexpected"/>.</summary>
 	/// <param name="assertions">The string assertions.</param>
 	/// <param name="unexpected">The HTML fragment that must not appear.</param>
 	/// <param name="html">What to select and remove before comparing; applied to both sides.</param>
 	/// <param name="because">An optional reason, shown in the failure message.</param>
-	public static AndConstraint<StringAssertions> NotContainHtml(this StringAssertions assertions, [StringSyntax("html")] string unexpected, HtmlSnapshotOptions? html = null, string because = "") =>
-		Contain(assertions, unexpected, html, because, shouldContain: false);
+	public static AndConstraint<StringAssertions> NotContainHtml(
+		this StringAssertions assertions,
+		[StringSyntax("html")] string unexpected,
+		HtmlSnapshotOptions? html = null,
+		string because = ""
+	) => Contain(assertions, unexpected, html, because, shouldContain: false);
 
-	private static AndConstraint<StringAssertions> Contain(StringAssertions assertions, string fragment, HtmlSnapshotOptions? html, string because, bool shouldContain)
+	private static AndConstraint<StringAssertions> Contain(
+		StringAssertions assertions,
+		string fragment,
+		HtmlSnapshotOptions? html,
+		string because,
+		bool shouldContain
+	)
 	{
 		ArgumentNullException.ThrowIfNull(assertions);
 		ArgumentNullException.ThrowIfNull(fragment);
@@ -126,8 +147,11 @@ public static class HtmlAssertions
 		var message = found == shouldContain
 			? string.Empty
 			: new StringBuilder()
-				.Append(shouldContain ? "Expected HTML to contain" : "Expected HTML not to contain").Append(Because(because)).Append(":\n")
-				.Append(prettyFragment.TrimEnd('\n')).Append('\n')
+				.Append(shouldContain ? "Expected HTML to contain" : "Expected HTML not to contain")
+				.Append(Because(because))
+				.Append(":\n")
+				.Append(prettyFragment.TrimEnd('\n'))
+				.Append('\n')
 				.Append(shouldContain ? "but it was not found in:\n" : "but it was found in:\n")
 				.Append(Capped(prettyActual))
 				.ToString();

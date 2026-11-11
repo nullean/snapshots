@@ -134,9 +134,12 @@ public static partial class JourneySnapshot
 		var root = Path.Combine(project, folder);
 		if (!Directory.Exists(root))
 			return [];
-		return [.. Directory.EnumerateFiles(root, "*.journey", SearchOption.AllDirectories)
-			.Select(f => Path.GetRelativePath(project, f).Replace('\\', '/'))
-			.Order(StringComparer.Ordinal)];
+		return [
+			.. Directory
+				.EnumerateFiles(root, "*.journey", SearchOption.AllDirectories)
+				.Select(f => Path.GetRelativePath(project, f).Replace('\\', '/'))
+				.Order(StringComparer.Ordinal)
+		];
 	}
 
 	/// <summary>
@@ -161,34 +164,47 @@ public static partial class JourneySnapshot
 
 	/// <summary>Runs a journey file in a new context of <paramref name="browser"/>.</summary>
 	/// <exception cref="JourneyParseException">The journey has errors.</exception>
-	public static async Task<JourneyTranscript> RunAsync(string journeyFile, Cdp.Browser browser, JourneySnapshotOptions? options, CancellationToken cancellationToken = default)
+	public static async Task<JourneyTranscript> RunAsync(
+		string journeyFile,
+		Cdp.Browser browser,
+		JourneySnapshotOptions? options,
+		CancellationToken cancellationToken = default
+	)
 	{
 		ArgumentException.ThrowIfNullOrEmpty(journeyFile);
 		options ??= new JourneySnapshotOptions();
 		if (options.Transcript == TranscriptMode.Shape)
-			throw new ArgumentException("TranscriptMode.Shape applies to .http runs; a journey's transcript has no values to reduce to a shape.", nameof(options));
+			throw new ArgumentException(
+				"TranscriptMode.Shape applies to .http runs; a journey's transcript has no values to reduce to a shape.",
+				nameof(options)
+			);
 		var full = Path.GetFullPath(journeyFile);
 		var journey = Journey.Load(full);
-		var result = await JourneyRunner.RunAsync(journey, browser, new JourneyOptions
-		{
-			BaseUrl = options.BaseUrl,
-			ActionTimeout = options.ActionTimeout,
-			NavigationTimeout = options.NavigationTimeout,
-			AllowedHosts = options.AllowedHosts,
-			FileRoot = options.FileRoot,
-			ArtifactsDirectory = options.ArtifactsDirectory,
-			Secrets = options.Secrets ?? Environment.GetEnvironmentVariable,
-			Features = options.Features,
-			BuildType = options.BuildType,
-			Env = options.Env,
-			ReadOnly = options.ReadOnly,
-			WritableUrls = options.WritableUrls,
-			Viewport = options.Viewport,
-			UserAgent = options.UserAgent,
-			Headers = options.Headers,
-			OnStep = options.OnStep,
-			ScreenshotOnFailure = options.ScreenshotOnFailure,
-		}, cancellationToken).ConfigureAwait(false);
+		var result = await JourneyRunner.RunAsync(
+			journey,
+			browser,
+			new JourneyOptions
+			{
+				BaseUrl = options.BaseUrl,
+				ActionTimeout = options.ActionTimeout,
+				NavigationTimeout = options.NavigationTimeout,
+				AllowedHosts = options.AllowedHosts,
+				FileRoot = options.FileRoot,
+				ArtifactsDirectory = options.ArtifactsDirectory,
+				Secrets = options.Secrets ?? Environment.GetEnvironmentVariable,
+				Features = options.Features,
+				BuildType = options.BuildType,
+				Env = options.Env,
+				ReadOnly = options.ReadOnly,
+				WritableUrls = options.WritableUrls,
+				Viewport = options.Viewport,
+				UserAgent = options.UserAgent,
+				Headers = options.Headers,
+				OnStep = options.OnStep,
+				ScreenshotOnFailure = options.ScreenshotOnFailure,
+			},
+			cancellationToken
+		).ConfigureAwait(false);
 		return new JourneyTranscript(full, JourneyTranscript.Render(result, options.BaseUrl), result.Failure)
 		{
 			Mode = options.Transcript,
@@ -200,28 +216,29 @@ public static partial class JourneySnapshot
 	internal static bool WritesFiles(string journeyFile) =>
 		Journey.Load(journeyFile).Steps.Any(s => s.Command is ScreenshotCommand or HarCommand { Action: "stop" });
 
-	internal static JourneySnapshotOptions With(JourneySnapshotOptions options, string? artifactsDirectory = null, Uri? baseUrl = null) => new()
-	{
-		BaseUrl = baseUrl ?? options.BaseUrl,
-		ActionTimeout = options.ActionTimeout,
-		NavigationTimeout = options.NavigationTimeout,
-		AllowedHosts = options.AllowedHosts,
-		FileRoot = options.FileRoot,
-		ArtifactsDirectory = artifactsDirectory ?? options.ArtifactsDirectory,
-		Secrets = options.Secrets,
-		Transcript = options.Transcript,
-		Variant = options.Variant,
-		Features = options.Features,
-		BuildType = options.BuildType,
-		Env = options.Env,
-		ReadOnly = options.ReadOnly,
-		WritableUrls = options.WritableUrls,
-		Viewport = options.Viewport,
-		UserAgent = options.UserAgent,
-		Headers = options.Headers,
-		OnStep = options.OnStep,
-		ScreenshotOnFailure = options.ScreenshotOnFailure,
-	};
+	internal static JourneySnapshotOptions With(JourneySnapshotOptions options, string? artifactsDirectory = null, Uri? baseUrl = null) =>
+		new()
+		{
+			BaseUrl = baseUrl ?? options.BaseUrl,
+			ActionTimeout = options.ActionTimeout,
+			NavigationTimeout = options.NavigationTimeout,
+			AllowedHosts = options.AllowedHosts,
+			FileRoot = options.FileRoot,
+			ArtifactsDirectory = artifactsDirectory ?? options.ArtifactsDirectory,
+			Secrets = options.Secrets,
+			Transcript = options.Transcript,
+			Variant = options.Variant,
+			Features = options.Features,
+			BuildType = options.BuildType,
+			Env = options.Env,
+			ReadOnly = options.ReadOnly,
+			WritableUrls = options.WritableUrls,
+			Viewport = options.Viewport,
+			UserAgent = options.UserAgent,
+			Headers = options.Headers,
+			OnStep = options.OnStep,
+			ScreenshotOnFailure = options.ScreenshotOnFailure,
+		};
 
 	/// <summary>
 	/// Why a journey should not run in <paramref name="context"/>: the first <c>@requires</c> condition it does not meet,
@@ -279,11 +296,7 @@ public static partial class JourneySnapshot
 		if (transcript.Failure is not { } failure)
 			return result;
 		var stopped = $"Journey stopped at {failure.Describe(Relative(transcript.File))}";
-		return result with
-		{
-			Passed = false,
-			FailureMessage = result.FailureMessage is { } message ? stopped + "\n" + message : stopped,
-		};
+		return result with { Passed = false, FailureMessage = result.FailureMessage is { } message ? stopped + "\n" + message : stopped, };
 	}
 
 	// Messages use paths relative to the working folder when the journey is below it, as the rest of the library's do.
@@ -299,8 +312,9 @@ public static partial class JourneySnapshot
 	/// </summary>
 	internal static string ProjectDirectory(string callerFilePath)
 	{
-		var fromMetadata = Assembly.GetEntryAssembly()?.GetCustomAttributes<AssemblyMetadataAttribute>()
-			.LastOrDefault(a => a.Key == "Nullean.Snapshots.ProjectDirectory")?.Value;
+		var fromMetadata = Assembly.GetEntryAssembly()?.GetCustomAttributes<AssemblyMetadataAttribute>().LastOrDefault(
+			a => a.Key == "Nullean.Snapshots.ProjectDirectory"
+		)?.Value;
 		if (!string.IsNullOrWhiteSpace(fromMetadata))
 			return fromMetadata;
 		for (var dir = Path.GetDirectoryName(callerFilePath); !string.IsNullOrEmpty(dir); dir = Path.GetDirectoryName(dir))
@@ -310,6 +324,7 @@ public static partial class JourneySnapshot
 		}
 
 		throw new InvalidOperationException(
-			$"Cannot find the test project for '{callerFilePath}'. Reference Nullean.Snapshots from the test project so its build targets record it.");
+			$"Cannot find the test project for '{callerFilePath}'. Reference Nullean.Snapshots from the test project so its build targets record it."
+		);
 	}
 }

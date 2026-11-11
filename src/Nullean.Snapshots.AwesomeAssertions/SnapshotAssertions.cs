@@ -70,7 +70,8 @@ public static class SnapshotAssertions
 			new SnapshotCallSite(callerFilePath, callerMemberName, callerLineNumber),
 			name,
 			options,
-			because);
+			because
+		);
 
 		FailUnless(chain, result.Passed, result.FailureMessage ?? string.Empty);
 		return new AndConstraint<StringAssertions>(assertions);
@@ -102,7 +103,8 @@ public static class SnapshotAssertions
 		[CallerFilePath] string callerFilePath = "",
 		[CallerMemberName] string callerMemberName = "",
 		[CallerLineNumber] int callerLineNumber = 0
-	) => assertions.MatchInlineSnapshot(SnapshotFormats.Text, expected, options, because, expectedExpression, callerFilePath, callerMemberName, callerLineNumber);
+	) =>
+		assertions.MatchInlineSnapshot(SnapshotFormats.Text, expected, options, because, expectedExpression, callerFilePath, callerMemberName, callerLineNumber);
 
 	/// <summary>
 	/// Asserts that the string equals the expected value written in the test, compared in the given
@@ -135,9 +137,14 @@ public static class SnapshotAssertions
 			assertions.Subject,
 			expected,
 			format,
-			new InlineSnapshotCallSite(new SnapshotCallSite(callerFilePath, callerMemberName, callerLineNumber), nameof(MatchInlineSnapshot), expectedExpression),
+			new InlineSnapshotCallSite(
+				new SnapshotCallSite(callerFilePath, callerMemberName, callerLineNumber),
+				nameof(MatchInlineSnapshot),
+				expectedExpression
+			),
 			options,
-			because);
+			because
+		);
 	}
 
 	/// <summary>

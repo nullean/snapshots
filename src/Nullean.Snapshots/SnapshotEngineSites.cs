@@ -12,7 +12,10 @@ internal sealed partial class SnapshotEngine
 	private (SnapshotProject Project, string FullPath, string Dir, string Name, string? Variant) SiteFile(string sourceFile, string? variant)
 	{
 		if (variant is not null && !SnapshotPath.IsValidName(variant))
-			throw new ArgumentException($"The variant '{variant}' must be a non-empty name of letters, digits, '.', '-' and '_', without a leading or trailing dot.", nameof(variant));
+			throw new ArgumentException(
+				$"The variant '{variant}' must be a non-empty name of letters, digits, '.', '-' and '_', without a leading or trailing dot.",
+				nameof(variant)
+			);
 		var identity = (identityProvider is null ? SnapshotDefaults.TestIdentity : identityProvider())?.Current;
 		var (project, fullPath, relative, name) = ResolveFile(sourceFile, identity?.TestAssembly ?? Assembly.GetEntryAssembly());
 		var slash = relative.LastIndexOf('/');
@@ -68,7 +71,13 @@ internal sealed partial class SnapshotEngine
 		return fs.File.Exists(path) ? fs.File.ReadAllText(path, SnapshotText.Encoding) : null;
 	}
 
-	public SiteComparisonResult CompareSites(string targetText, TreeSnapshotFormat format, RuleTargets targets, string sourceFile, SiteComparisonOptions options)
+	public SiteComparisonResult CompareSites(
+		string targetText,
+		TreeSnapshotFormat format,
+		RuleTargets targets,
+		string sourceFile,
+		SiteComparisonOptions options
+	)
 	{
 		ArgumentNullException.ThrowIfNull(targetText);
 		var (project, fullPath, dir, name, variant) = SiteFile(sourceFile, options.Variant);
@@ -78,7 +87,8 @@ internal sealed partial class SnapshotEngine
 		if (!fs.File.Exists(baselinePath))
 		{
 			throw new InvalidOperationException(
-				$"There is no baseline for {SnapshotPath.Relative(fileSystem, project.RepositoryRoot, fullPath)}: run it against the baseline site first (at {SnapshotPath.Relative(fileSystem, project.RepositoryRoot, baselinePath)}).");
+				$"There is no baseline for {SnapshotPath.Relative(fileSystem, project.RepositoryRoot, fullPath)}: run it against the baseline site first (at {SnapshotPath.Relative(fileSystem, project.RepositoryRoot, baselinePath)})."
+			);
 		}
 
 		var rules = RuleLoader.Load(fileSystem, project.RepositoryRoot, RuleLoader.SidecarPath(fullPath));
@@ -94,7 +104,21 @@ internal sealed partial class SnapshotEngine
 		}
 		catch (FormatException e)
 		{
-			return Failed(project, format, targets, fullPath, baselinePath, targetPath, target, fs, $"A transcript is not valid {format.Name}: {e.Message}", null, [], 0, rules);
+			return Failed(
+				project,
+				format,
+				targets,
+				fullPath,
+				baselinePath,
+				targetPath,
+				target,
+				fs,
+				$"A transcript is not valid {format.Name}: {e.Message}",
+				null,
+				[],
+				0,
+				rules
+			);
 		}
 
 		var differences = TreeDiffer.Instance.Diff(baseline, actual, format.Options);
@@ -103,31 +127,69 @@ internal sealed partial class SnapshotEngine
 		IReadOnlyList<string> recorded = [];
 		if (options.Record is { } recordFile && application.UnexplainedFacts.Count > 0)
 		{
-			recorded = ExpectedDifferences.Record(rules, recordFile, application.UnexplainedFacts, targets,
-				options.Note ?? ("recorded " + DateTimeOffset.UtcNow.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)));
+			recorded = ExpectedDifferences.Record(
+				rules,
+				recordFile,
+				application.UnexplainedFacts,
+				targets,
+				options.Note ?? ("recorded " + DateTimeOffset.UtcNow.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))
+			);
 		}
 
 		var pruned = options.Prune is { } pruneFile ? ExpectedDifferences.Prune(rules, pruneFile, application) : 0;
 		var unresolved = application.Unexplained.Count > 0 && options.Record is null;
-		var staleLeft = application.Stale.Where(r => options.Prune is null || !RuleLoader.Comparer.Equals(r.Where.File, fileSystem.Path.GetFullPath(options.Prune))).ToList();
+		var staleLeft = application
+			.Stale
+			.Where(r => options.Prune is null || !RuleLoader.Comparer.Equals(r.Where.File, fileSystem.Path.GetFullPath(options.Prune)))
+			.ToList();
 		if (!unresolved && staleLeft.Count == 0)
 		{
 			DeleteIfExists(fs, targetPath);
 			return new SiteComparisonResult(true, null, application, baselinePath, null, recorded, pruned);
 		}
 
-		return Failed(project, format, targets, fullPath, baselinePath, targetPath, target, fs, null, application, recorded, pruned, rules, staleLeft, unresolved);
+		return Failed(
+			project,
+			format,
+			targets,
+			fullPath,
+			baselinePath,
+			targetPath,
+			target,
+			fs,
+			null,
+			application,
+			recorded,
+			pruned,
+			rules,
+			staleLeft,
+			unresolved
+		);
 	}
 
 	private SiteComparisonResult Failed(
-		SnapshotProject project, TreeSnapshotFormat format, RuleTargets targets, string fullPath, string baselinePath, string targetPath, string target, IFileSystem fs,
-		string? invalid, RuleApplication? application, IReadOnlyList<string> recorded, int pruned, RuleSet rules,
-		List<DifferenceRule>? stale = null, bool unresolved = true
+		SnapshotProject project,
+		TreeSnapshotFormat format,
+		RuleTargets targets,
+		string fullPath,
+		string baselinePath,
+		string targetPath,
+		string target,
+		IFileSystem fs,
+		string? invalid,
+		RuleApplication? application,
+		IReadOnlyList<string> recorded,
+		int pruned,
+		RuleSet rules,
+		List<DifferenceRule>? stale = null,
+		bool unresolved = true
 	)
 	{
 		PrepareReceived(new SnapshotTarget(project, null, fs, string.Empty, string.Empty, string.Empty, targetPath));
 		AtomicFile.Write(fs, targetPath, target);
+
 		string Rel(string path) => SnapshotPath.Relative(fileSystem, project.RepositoryRoot, path);
+
 		var message = new StringBuilder();
 		message.Append(format.Name).Append(" differs between baseline and target: ").Append(Rel(fullPath)).Append('\n');
 		if (invalid is not null)
@@ -135,8 +197,9 @@ internal sealed partial class SnapshotEngine
 		application ??= new RuleApplication([], [], [], []);
 		if (unresolved && application.Unexplained.Count > 0)
 		{
-			message.Append(application.Unexplained.Count.ToString(CultureInfo.InvariantCulture))
-				.Append(" unexplained difference(s), baseline expected, target actual:\n");
+			message.Append(application.Unexplained.Count.ToString(CultureInfo.InvariantCulture)).Append(
+				" unexplained difference(s), baseline expected, target actual:\n"
+			);
 			AppendCapped(message, TreeDifferences.Describe(application.Unexplained, "baseline." + format.Extension));
 		}
 
@@ -144,7 +207,14 @@ internal sealed partial class SnapshotEngine
 		{
 			message.Append(stale.Count.ToString(CultureInfo.InvariantCulture)).Append(" rule(s) matched nothing, so they are stale:\n");
 			foreach (var rule in stale)
-				message.Append("  ").Append(Rel(rule.Where.File)).Append(':').Append(rule.Where.Line.ToString(CultureInfo.InvariantCulture)).Append(": ").Append(rule.Text).Append('\n');
+				message
+					.Append("  ")
+					.Append(Rel(rule.Where.File))
+					.Append(':')
+					.Append(rule.Where.Line.ToString(CultureInfo.InvariantCulture))
+					.Append(": ")
+					.Append(rule.Text)
+					.Append('\n');
 		}
 
 		if (unresolved && application.UnexplainedFacts.Count > 0)

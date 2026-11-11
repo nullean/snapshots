@@ -18,7 +18,10 @@ public class BinarySnapshotTests
 
 		result.Passed.Should().BeFalse();
 		p.Fs.File.ReadAllBytes(p.ReceivedFile(Key, "bin")).Should().Equal(Bytes);
-		result.FailureMessage.Should().StartWith("Bytes snapshot is new: no verified file at tests/Acme.Tests/.snapshots/Rendering/HtmlTests/RendersTable.verified.bin");
+		result
+			.FailureMessage
+			.Should()
+			.StartWith("Bytes snapshot is new: no verified file at tests/Acme.Tests/.snapshots/Rendering/HtmlTests/RendersTable.verified.bin");
 		result.FailureMessage.Should().NotContain("Diff:");
 		p.Fs.File.Exists(Attachment(p)).Should().BeFalse();
 	}
@@ -35,9 +38,13 @@ public class BinarySnapshotTests
 		p.Fs.File.ReadAllBytes(p.ReceivedFile(Key, "bin")).Should().Equal(Bytes);
 		p.Fs.File.ReadAllBytes(Attachment(p)).Should().Equal([9, 9]);
 		p.Fs.File.ReadAllBytes(p.VerifiedFile(Key, "bin")).Should().Equal([1, 2, 3]);
-		result.FailureMessage.Should().Contain(
-			"Received: .artifacts/.snapshots/received/Acme.Tests/Rendering/HtmlTests/RendersTable.received.bin\n"
-			+ "Diff:     .artifacts/.snapshots/received/Acme.Tests/Rendering/HtmlTests/RendersTable.received-diff.bin\n");
+		result
+			.FailureMessage
+			.Should()
+			.Contain(
+				"Received: .artifacts/.snapshots/received/Acme.Tests/Rendering/HtmlTests/RendersTable.received.bin\n" +
+					"Diff:     .artifacts/.snapshots/received/Acme.Tests/Rendering/HtmlTests/RendersTable.received-diff.bin\n"
+			);
 	}
 
 	[Test]
@@ -145,8 +152,7 @@ public class BinarySnapshotTests
 		SnapshotPath.IsBinary(lateNul).Should().BeFalse();
 	}
 
-	private static string Attachment(TestProject p) =>
-		SnapshotPath.File(p.Fs, p.Project.ReceivedDirectory, Key, SnapshotPath.AttachmentInfix, "diff.bin");
+	private static string Attachment(TestProject p) => SnapshotPath.File(p.Fs, p.Project.ReceivedDirectory, Key, SnapshotPath.AttachmentInfix, "diff.bin");
 
 	private static void AddVerified(TestProject p, byte[] content) => p.Fs.AddFile(p.VerifiedFile(Key, "bin"), new MockFileData(content));
 
@@ -166,6 +172,9 @@ public class BinarySnapshotTests
 		public override BinarySnapshotComparison Compare(ReadOnlySpan<byte> verified, ReadOnlySpan<byte> actual) =>
 			verified.SequenceEqual(actual)
 				? BinarySnapshotComparison.Match
-				: new(new SnapshotComparison(false, [["bytes differ"]]), [new SnapshotAttachment("Diff", undeclared ? "oops.bin" : "diff.bin", new byte[] { 9, 9 })]);
+				: new(
+					new SnapshotComparison(false, [["bytes differ"]]),
+					[new SnapshotAttachment("Diff", undeclared ? "oops.bin" : "diff.bin", new byte[] { 9, 9 })]
+				);
 	}
 }

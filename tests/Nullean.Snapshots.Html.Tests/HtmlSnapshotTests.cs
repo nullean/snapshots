@@ -12,10 +12,10 @@ public class HtmlSnapshotTests
 		var text = Gen.String[Gen.Char["ab <>&\"'{}"], 0, 6].Select(System.Net.WebUtility.HtmlEncode);
 		if (depth >= 3)
 			return text;
-		var attribute = Gen.Select(Gen.OneOf("class", "id", "hx-get", "data-x"), Gen.String[Gen.Char["xyz"], 0, 3])
-			.Select((n, v) => $" {n}=\"{v}\"");
-		var element = Gen.Select(Gen.OneOf("p", "div", "span", "b", "ul", "li", "a"), attribute.Array[0, 2], inner.Array[0, 3])
-			.Select((tag, attrs, children) => $"<{tag}{string.Concat(attrs)}>{string.Concat(children)}</{tag}>");
+		var attribute = Gen.Select(Gen.OneOf("class", "id", "hx-get", "data-x"), Gen.String[Gen.Char["xyz"], 0, 3]).Select((n, v) => $" {n}=\"{v}\"");
+		var element = Gen.Select(Gen.OneOf("p", "div", "span", "b", "ul", "li", "a"), attribute.Array[0, 2], inner.Array[0, 3]).Select(
+			(tag, attrs, children) => $"<{tag}{string.Concat(attrs)}>{string.Concat(children)}</{tag}>"
+		);
 		return Gen.Frequency((1, text), (3, element));
 	});
 
@@ -30,8 +30,7 @@ public class HtmlSnapshotTests
 	// The whitespace the printer adds must be invisible to the structural comparison, or a snapshot would not match
 	// the HTML it was printed from.
 	[Test]
-	public void PrettyPrintingDoesNotChangeStructure() =>
-		Html.Sample(html => HtmlSnapshot.Compare(html, HtmlSnapshot.Pretty(html)).IsMatch);
+	public void PrettyPrintingDoesNotChangeStructure() => Html.Sample(html => HtmlSnapshot.Compare(html, HtmlSnapshot.Pretty(html)).IsMatch);
 
 	[Test]
 	public void PrettyIndentsWithTabsAndEndsInOneNewline() =>
@@ -43,13 +42,11 @@ public class HtmlSnapshotTests
 
 	// Regression, found by PrettyIsIdempotent: top-level text was written unescaped, so "&lt;a" came back as a tag.
 	[Test]
-	public void TopLevelTextIsEscaped() =>
-		HtmlSnapshot.Pretty("&amp;&lt;a}}").Should().Be("&amp;&lt;a}}\n");
+	public void TopLevelTextIsEscaped() => HtmlSnapshot.Pretty("&amp;&lt;a}}").Should().Be("&amp;&lt;a}}\n");
 
 	[Test]
 	public void SelectPrintsTheMatchedElementsContent() =>
-		HtmlSnapshot.Pretty("<header>x</header><main id=c><p>kept</p></main>", new HtmlSnapshotOptions().Select("main#c"))
-			.Should().Be("<p>kept</p>\n");
+		HtmlSnapshot.Pretty("<header>x</header><main id=c><p>kept</p></main>", new HtmlSnapshotOptions().Select("main#c")).Should().Be("<p>kept</p>\n");
 
 	[Test]
 	public void SelectorThatMatchesNothingThrows()
@@ -60,32 +57,36 @@ public class HtmlSnapshotTests
 
 	[Test]
 	public void RemoveDropsElements() =>
-		HtmlSnapshot.Pretty("<p>a<script>x()</script></p><nav>n</nav>", new HtmlSnapshotOptions().Remove("script").Remove("nav"))
-			.Should().Be("<p>a</p>\n");
+		HtmlSnapshot.Pretty("<p>a<script>x()</script></p><nav>n</nav>", new HtmlSnapshotOptions().Remove("script").Remove("nav")).Should().Be("<p>a</p>\n");
 
 	[Test]
 	public void RemoveAttributesTakesWildcards() =>
-		HtmlSnapshot.Pretty(
+		HtmlSnapshot
+			.Pretty(
 				"<a href=x hx-get=y hx-swap=z preload data-hx=keep>l</a><div hx-get=d></div>",
-				new HtmlSnapshotOptions().RemoveAttributes("hx-*", "preload"))
-			.Should().Be("<a href=\"x\" data-hx=\"keep\">l</a>\n<div></div>\n");
+				new HtmlSnapshotOptions().RemoveAttributes("hx-*", "preload")
+			)
+			.Should()
+			.Be("<a href=\"x\" data-hx=\"keep\">l</a>\n<div></div>\n");
 
 	[Test]
 	public void RemoveAttributesFromOnlyTouchesMatchingElements() =>
-		HtmlSnapshot.Pretty("<a hx-get=y>l</a><div hx-get=d></div>", new HtmlSnapshotOptions().RemoveAttributesFrom("a", "hx-*"))
-			.Should().Be("<a>l</a>\n<div hx-get=\"d\"></div>\n");
+		HtmlSnapshot
+			.Pretty("<a hx-get=y>l</a><div hx-get=d></div>", new HtmlSnapshotOptions().RemoveAttributesFrom("a", "hx-*"))
+			.Should()
+			.Be("<a>l</a>\n<div hx-get=\"d\"></div>\n");
 
 	// docs-builder's harness drops a leading H1; that stays in docs-builder, as a transform like this one.
 	[Test]
 	public void TransformRunsBeforePrinting() =>
-		HtmlSnapshot.Pretty(
-				"<h1>Test Document</h1><p>body</p>",
-				new HtmlSnapshotOptions().Transform(root =>
-				{
-					if (root.FirstElementChild is { TagName: "H1" } h1)
-						h1.Remove();
-				}))
-			.Should().Be("<p>body</p>\n");
+		HtmlSnapshot
+			.Pretty("<h1>Test Document</h1><p>body</p>", new HtmlSnapshotOptions().Transform(root =>
+			{
+				if (root.FirstElementChild is { TagName: "H1" } h1)
+					h1.Remove();
+			}))
+			.Should()
+			.Be("<p>body</p>\n");
 
 	[Test]
 	[Arguments("hx-*", "hx-get", true)]
@@ -107,16 +108,21 @@ public class HtmlSnapshotTests
 	[Test]
 	public void DifferencesAreLabelledAndComeWithALineDiff()
 	{
-		var comparison = HtmlSnapshot.Compare(
-			HtmlSnapshot.Pretty("<p class=\"a\">hi <b>x</b></p>"),
-			HtmlSnapshot.Pretty("<p class=\"b\">hi <i>x</i></p>"));
+		var comparison = HtmlSnapshot.Compare(HtmlSnapshot.Pretty("<p class=\"a\">hi <b>x</b></p>"), HtmlSnapshot.Pretty("<p class=\"b\">hi <i>x</i></p>"));
 		comparison.IsMatch.Should().BeFalse();
-		comparison.Differences.Select(d => d[0]).Should().Equal(
-			"The values of the attribute at p(0)[class] are different.",
-			"The element at p(0) > b(1) is missing.",
-			"The element at p(0) > i(1) was not expected.");
-		comparison.Differences[0].Should().Equal(
-			"The values of the attribute at p(0)[class] are different.", "  expected: class=\"a\"", "  actual:   class=\"b\"");
+		comparison
+			.Differences
+			.Select(d => d[0])
+			.Should()
+			.Equal(
+				"The values of the attribute at p(0)[class] are different.",
+				"The element at p(0) > b(1) is missing.",
+				"The element at p(0) > i(1) was not expected."
+			);
+		comparison
+			.Differences[0]
+			.Should()
+			.Equal("The values of the attribute at p(0)[class] are different.", "  expected: class=\"a\"", "  actual:   class=\"b\"");
 		comparison.LineDiff.Should().NotBeNullOrEmpty();
 	}
 

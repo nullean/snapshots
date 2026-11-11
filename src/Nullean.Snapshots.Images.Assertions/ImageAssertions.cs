@@ -98,7 +98,8 @@ public static class ImageAssertions
 			new ImageSnapshotFormat(image),
 			new SnapshotCallSite(callerFilePath, callerMemberName, callerLineNumber),
 			name,
-			because);
+			because
+		);
 		SnapshotAssertions.FailUnless(chain, result.Passed, result.FailureMessage ?? string.Empty);
 	}
 }

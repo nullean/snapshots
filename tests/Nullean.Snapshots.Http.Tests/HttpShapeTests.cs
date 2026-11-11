@@ -12,15 +12,31 @@ public class HttpShapeTests
 	private static string Render(string? body, string? mediaType = "application/json", int status = 200, bool shape = true)
 	{
 		var text = new StringBuilder();
-		HttpResponseText.Append(text, new HttpResponseSection("GET {{host}}/api/orders", status, status == 200 ? "OK" : "Not Found", [],
-			body is null ? [] : Encoding.UTF8.GetBytes(body), mediaType, mediaType is null or "application/octet-stream" ? null : "utf-8"), Defaults, shape);
+		HttpResponseText.Append(
+			text,
+			new HttpResponseSection(
+				"GET {{host}}/api/orders",
+				status,
+				status == 200 ? "OK" : "Not Found",
+				[],
+				body is null ? [] : Encoding.UTF8.GetBytes(body),
+				mediaType,
+				mediaType is null or "application/octet-stream" ? null : "utf-8"
+			),
+			Defaults,
+			shape
+		);
 		return text.ToString();
 	}
 
 	[Test]
 	public void AJsonBodyIsWrittenAsItsShape() =>
-		Render(/*lang=json,strict*/ """{"total":42,"price":9.5,"open":true,"customer":{"name":"ada","vip":null},"lines":[{"sku":"a","qty":1},{"sku":"b","qty":2,"note":"x"}]}""")
-			.Should().Be("""
+		Render(/*lang=json,strict*/
+			"""{"total":42,"price":9.5,"open":true,"customer":{"name":"ada","vip":null},"lines":[{"sku":"a","qty":1},{"sku":"b","qty":2,"note":"x"}]}"""
+		)
+			.Should()
+			.Be(
+				"""
 				## GET {{host}}/api/orders
 				status: 200 OK
 
@@ -41,20 +57,22 @@ public class HttpShapeTests
 				  "total": 1
 				}
 
-				""".Replace("\r\n", "\n", StringComparison.Ordinal));
+				""".Replace(
+					"\r\n",
+					"\n",
+					StringComparison.Ordinal
+				)
+			);
 
 	[Test]
 	public void ATextBodyIsItsMediaTypeAlone() =>
-		Render("<html>changes every minute</html>", "text/html")
-			.Should().Be("## GET {{host}}/api/orders\nstatus: 200 OK\n\ntext: text/html\n");
+		Render("<html>changes every minute</html>", "text/html").Should().Be("## GET {{host}}/api/orders\nstatus: 200 OK\n\ntext: text/html\n");
 
 	[Test]
-	public void InvalidJsonWithAJsonTypeIsTextSoItsShapeIsItsType() =>
-		Render("{not json", "application/json").Should().EndWith("\ntext: application/json\n");
+	public void InvalidJsonWithAJsonTypeIsTextSoItsShapeIsItsType() => Render("{not json", "application/json").Should().EndWith("\ntext: application/json\n");
 
 	[Test]
-	public void ABinaryBodyIsUnchanged() =>
-		Render("abc", "application/octet-stream").Should().Be(Render("abc", "application/octet-stream", shape: false));
+	public void ABinaryBodyIsUnchanged() => Render("abc", "application/octet-stream").Should().Be(Render("abc", "application/octet-stream", shape: false));
 
 	[Test]
 	public void ShapeTextParsesAndRoundTrips()
@@ -100,6 +118,5 @@ public class HttpShapeTests
 		HttpSnapshot.Format.Compare(Render("a", "text/html"), Render("a", "text/plain")).IsMatch.Should().BeFalse();
 
 	[Test]
-	public void ThePlainRenderingIsUnchangedWhenShapeIsOff() =>
-		Render(/*lang=json,strict*/ """{"id":1}""", shape: false).Should().Contain("\"id\": 1");
+	public void ThePlainRenderingIsUnchangedWhenShapeIsOff() => Render(/*lang=json,strict*/ """{"id":1}""", shape: false).Should().Contain("\"id\": 1");
 }

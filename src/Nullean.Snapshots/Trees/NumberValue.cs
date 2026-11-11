@@ -8,7 +8,13 @@ namespace Nullean.Snapshots.Trees;
 /// </summary>
 public readonly record struct NumberValue
 {
-	private enum Special : byte { Finite, PositiveInfinity, NegativeInfinity, NaN }
+	private enum Special : byte
+	{
+		Finite,
+		PositiveInfinity,
+		NegativeInfinity,
+		NaN
+	}
 
 	private readonly Special _special;
 
@@ -108,9 +114,7 @@ public readonly record struct NumberValue
 		var d = digits.ToString().TrimStart('0');
 		var trimmed = d.TrimEnd('0');
 		exponent += d.Length - trimmed.Length;
-		value = trimmed.Length == 0
-			? new(Special.Finite, false, "", 0)
-			: new(Special.Finite, negative, trimmed, exponent);
+		value = trimmed.Length == 0 ? new(Special.Finite, false, "", 0) : new(Special.Finite, negative, trimmed, exponent);
 		return true;
 	}
 }

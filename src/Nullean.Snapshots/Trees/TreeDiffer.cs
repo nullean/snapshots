@@ -106,7 +106,12 @@ public sealed class TreeDiffer : ITreeDiffer
 	internal static int MatchedItems(SeqNode expected, SeqNode actual, TreeDiffOptions? options = null) =>
 		new Run(options ?? TreeDiffOptions.Default).Align(expected.Items, actual.Items).Count(o => o.Kind == OpKind.Match);
 
-	internal enum OpKind { Match, Delete, Insert }
+	internal enum OpKind
+	{
+		Match,
+		Delete,
+		Insert
+	}
 
 	internal readonly record struct Op(OpKind Kind, int Expected, int Actual);
 
@@ -269,7 +274,9 @@ public sealed class TreeDiffer : ITreeDiffer
 			var ah = a.Select(Hash).ToArray();
 			var width = m + 1;
 			var table = new int[(n + 1) * width];
+
 			bool Eq(int i, int j) => eh[i] == ah[j] && EqualAt(e[i], a[j], i);
+
 			for (var i = n - 1; i >= 0; i--)
 			{
 				for (var j = m - 1; j >= 0; j--)
@@ -515,8 +522,7 @@ public sealed class TreeDiffer : ITreeDiffer
 		{
 			var path = NodePath.Format(kind == DifferenceKind.Unexpected ? _actualPath : _path);
 			var actualPath = NodePath.Format(_actualPath);
-			Differences.Add(new TreeDifference(kind, path, expected, actual,
-				kind == DifferenceKind.Unexpected || actualPath == path ? null : actualPath));
+			Differences.Add(new TreeDifference(kind, path, expected, actual, kind == DifferenceKind.Unexpected || actualPath == path ? null : actualPath));
 		}
 
 		private void AddAt(DifferenceKind kind, int expectedIndex, int actualIndex, Node? expected, Node? actual)

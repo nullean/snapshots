@@ -156,14 +156,7 @@ internal sealed partial class SnapshotEngine(
 	// gets there first, keeps parallel failures from replacing the same file at once, which Windows refuses.
 	private readonly ConcurrentDictionary<SnapshotProject, byte> _markers = new();
 
-	public SnapshotResult Match(
-		string actual,
-		SnapshotFormat format,
-		SnapshotCallSite callSite,
-		string? name,
-		SnapshotOptions? options,
-		string? because
-	)
+	public SnapshotResult Match(string actual, SnapshotFormat format, SnapshotCallSite callSite, string? name, SnapshotOptions? options, string? because)
 	{
 		ArgumentNullException.ThrowIfNull(actual);
 		ArgumentNullException.ThrowIfNull(format);
@@ -172,13 +165,7 @@ internal sealed partial class SnapshotEngine(
 		return Compare(actual, format, project, key, identity?.TreeNodeFilter, options, because);
 	}
 
-	public SnapshotResult Match(
-		ReadOnlyMemory<byte> actual,
-		BinarySnapshotFormat format,
-		SnapshotCallSite callSite,
-		string? name,
-		string? because
-	)
+	public SnapshotResult Match(ReadOnlyMemory<byte> actual, BinarySnapshotFormat format, SnapshotCallSite callSite, string? name, string? because)
 	{
 		ArgumentNullException.ThrowIfNull(format);
 		format.Validate(actual.Span);
@@ -204,7 +191,8 @@ internal sealed partial class SnapshotEngine(
 			identity?.ClassName ?? fileSystem.Path.GetFileNameWithoutExtension(callSite.FilePath),
 			identity?.MethodName ?? callSite.MemberName,
 			name,
-			identity is null ? null : SnapshotPath.ArgumentsHash(identity.Arguments));
+			identity is null ? null : SnapshotPath.ArgumentsHash(identity.Arguments)
+		);
 		return (project, key, identity);
 	}
 
@@ -255,7 +243,9 @@ internal sealed partial class SnapshotEngine(
 
 		PrepareReceived(target);
 		AtomicFile.Write(fs, target.ReceivedPath, record);
-		var location = SnapshotPath.Relative(fileSystem, project.RepositoryRoot, source) + ":" + callSite.LineNumber.ToString(System.Globalization.CultureInfo.InvariantCulture);
+		var location = SnapshotPath.Relative(fileSystem, project.RepositoryRoot, source) + ":" + callSite.LineNumber.ToString(
+			System.Globalization.CultureInfo.InvariantCulture
+		);
 		return Failed(target, format.Name, comparison, because, environment, [], new InlineFailure(location, site.MethodName, note));
 	}
 
@@ -288,7 +278,9 @@ internal sealed partial class SnapshotEngine(
 				throw new InlineSnapshotException("the source changed since the test project was built; build and run again.");
 			var queued = _inline.GetOrAdd((source, start), _ => new QueuedInline(project, target, source, edit, record, sourceHash));
 			if (!string.Equals(queued.Edit.NewValue, edit.NewValue, StringComparison.Ordinal))
-				throw new InlineSnapshotException("test cases of one test write different values to this snapshot; use MatchSnapshot for values that differ per case.");
+				throw new InlineSnapshotException(
+					"test cases of one test write different values to this snapshot; use MatchSnapshot for values that differ per case."
+				);
 			return null;
 		}
 		catch (InlineSnapshotException e)
@@ -382,7 +374,10 @@ internal sealed partial class SnapshotEngine(
 		ArgumentNullException.ThrowIfNull(format);
 		ArgumentException.ThrowIfNullOrWhiteSpace(sourceFile);
 		if (variant is not null && !SnapshotPath.IsValidName(variant))
-			throw new ArgumentException($"The variant '{variant}' must be a non-empty name of letters, digits, '.', '-' and '_', without a leading or trailing dot.", nameof(variant));
+			throw new ArgumentException(
+				$"The variant '{variant}' must be a non-empty name of letters, digits, '.', '-' and '_', without a leading or trailing dot.",
+				nameof(variant)
+			);
 
 		var identity = (identityProvider is null ? SnapshotDefaults.TestIdentity : identityProvider())?.Current;
 		var (project, fullPath, relative, name) = ResolveFile(sourceFile, identity?.TestAssembly ?? Assembly.GetEntryAssembly());
@@ -431,10 +426,11 @@ internal sealed partial class SnapshotEngine(
 		else
 		{
 			project = (projectResolver is null
-					? assembly is null ? null : _resolver.FromAssembly(assembly)
-					: projectResolver(new SnapshotCallSite(sourceFile, string.Empty, 0), assembly))
-				?? throw new InvalidOperationException(
-					$"Cannot resolve '{sourceFile}' without a test project. Pass a full path, or reference Nullean.Snapshots from the test project.");
+				? assembly is null ? null : _resolver.FromAssembly(assembly)
+				: projectResolver(new SnapshotCallSite(sourceFile, string.Empty, 0), assembly)) ??
+				throw new InvalidOperationException(
+					$"Cannot resolve '{sourceFile}' without a test project. Pass a full path, or reference Nullean.Snapshots from the test project."
+				);
 			fullPath = fileSystem.Path.GetFullPath(fileSystem.Path.Combine(project.Directory, sourceFile));
 		}
 
@@ -495,7 +491,9 @@ internal sealed partial class SnapshotEngine(
 			comparison = format.Compare(verified, actual.Span);
 			var undeclared = comparison.Attachments.FirstOrDefault(a => !format.AttachmentSuffixes.Contains(a.Suffix, StringComparer.Ordinal));
 			if (undeclared is not null)
-				throw new InvalidOperationException($"{format.Name} returned attachment '{undeclared.Suffix}', which it does not declare in AttachmentSuffixes.");
+				throw new InvalidOperationException(
+					$"{format.Name} returned attachment '{undeclared.Suffix}', which it does not declare in AttachmentSuffixes."
+				);
 		}
 
 		if (comparison is { Comparison.IsMatch: true })
@@ -583,11 +581,9 @@ internal sealed partial class SnapshotEngine(
 			Because(because),
 			project.RelativeDirectory(fileSystem),
 			target.TreeNodeFilter,
-			environment.AcceptIgnoredInCi)
-		{
-			Attachments = [.. attachments.Select(a => (a.Label, SnapshotPath.Relative(fileSystem, project.RepositoryRoot, a.Path)))],
-			Inline = inline,
-		};
+			environment.AcceptIgnoredInCi
+		)
+		{ Attachments = [.. attachments.Select(a => (a.Label, SnapshotPath.Relative(fileSystem, project.RepositoryRoot, a.Path)))], Inline = inline, };
 		return new SnapshotResult(false, failure.Render(), target.Key, target.VerifiedPath, target.ReceivedPath);
 	}
 
@@ -675,11 +671,14 @@ internal sealed partial class SnapshotEngine(
 	/// bug in this library can write anywhere else.
 	/// </summary>
 	private IFileSystem Scope(SnapshotProject project) =>
-		new ScopedFileSystem.ScopedFileSystem(fileSystem, new ScopedFileSystemOptions(project.SnapshotsDirectory, project.ReceivedDirectory)
-		{
-			AllowedHiddenFolderNames = [".snapshots", ".artifacts"],
-			AllowedHiddenFileNames = [ReceivedMarker.FileName, RunManifest.FileName],
-		});
+		new ScopedFileSystem.ScopedFileSystem(
+			fileSystem,
+			new ScopedFileSystemOptions(project.SnapshotsDirectory, project.ReceivedDirectory)
+			{
+				AllowedHiddenFolderNames = [".snapshots", ".artifacts"],
+				AllowedHiddenFileNames = [ReceivedMarker.FileName, RunManifest.FileName],
+			}
+		);
 }
 
 /// <summary>Where one assertion's snapshot lives, resolved once per call.</summary>
@@ -708,8 +707,7 @@ internal sealed class RunManifest(DateTimeOffset started)
 	/// <summary>The touched files; a concurrent dictionary used as a lock-free set.</summary>
 	public ConcurrentDictionary<string, byte> Seen { get; } = new(StringComparer.Ordinal);
 
-	public string Render() =>
-		Header(started) + string.Concat(Seen.Keys.Order(StringComparer.Ordinal).Select(f => f + "\n"));
+	public string Render() => Header(started) + string.Concat(Seen.Keys.Order(StringComparer.Ordinal).Select(f => f + "\n"));
 
 	public static string Header(DateTimeOffset started) =>
 		HeaderPrefix + started.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture) + "\n";

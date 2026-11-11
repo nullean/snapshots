@@ -25,7 +25,12 @@ public static class SiteImages
 	/// <paramref name="targetDirectory"/>, or are missing from it, and the ones only the target has. A diff image is written
 	/// for each pair of the same size that differs. Nothing differs when either folder does not exist.
 	/// </summary>
-	public static IReadOnlyList<ImageDifference> Compare(IFileSystem fileSystem, string baselineDirectory, string targetDirectory, ImageSnapshotOptions? options = null)
+	public static IReadOnlyList<ImageDifference> Compare(
+		IFileSystem fileSystem,
+		string baselineDirectory,
+		string targetDirectory,
+		ImageSnapshotOptions? options = null
+	)
 	{
 		ArgumentNullException.ThrowIfNull(fileSystem);
 		if (!fileSystem.Directory.Exists(baselineDirectory) || !fileSystem.Directory.Exists(targetDirectory))
@@ -84,7 +89,9 @@ public static class SiteImages
 
 	/// <summary>The PNGs under a folder by their path in it, leaving out diff images.</summary>
 	private static Dictionary<string, string> Pictures(IFileSystem fs, string directory) =>
-		fs.Directory.EnumerateFiles(directory, "*.png", SearchOption.AllDirectories)
+		fs
+			.Directory
+			.EnumerateFiles(directory, "*.png", SearchOption.AllDirectories)
 			.Where(f => !f.EndsWith("." + ImageSnapshotFormat.DiffSuffix, StringComparison.OrdinalIgnoreCase))
 			.ToDictionary(f => fs.Path.GetRelativePath(directory, f).Replace('\\', '/'), f => f, StringComparer.Ordinal);
 }

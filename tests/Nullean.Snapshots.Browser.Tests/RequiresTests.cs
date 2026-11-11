@@ -79,7 +79,10 @@ public class RequiresTests
 		var file = Journey("open /\nfeature navigation-preview\n  click #nothing-here\nend\nget title\n");
 
 		var skipped = await JourneySnapshot.RunAsync(file, new JourneySnapshotOptions { BaseUrl = new Uri(server.Url) });
-		var run = await JourneySnapshot.RunAsync(file, new JourneySnapshotOptions { BaseUrl = new Uri(server.Url), Features = new HashSet<string> { "navigation-preview" } });
+		var run = await JourneySnapshot.RunAsync(
+			file,
+			new JourneySnapshotOptions { BaseUrl = new Uri(server.Url), Features = new HashSet<string> { "navigation-preview" } }
+		);
 
 		skipped.Failure.Should().BeNull();
 		skipped.Text.Should().Contain("skipped: navigation-preview");
@@ -93,12 +96,15 @@ public class RequiresTests
 		await using var server = new RunOptionsServer();
 		var file = Journey("open /\n");
 
-		var transcript = await JourneySnapshot.RunAsync(file, new JourneySnapshotOptions
-		{
-			BaseUrl = new Uri(server.Url),
-			UserAgent = "Elastic/Synthetics requires-test",
-			Headers = new Dictionary<string, string> { ["X-Run"] = "monitor" },
-		});
+		var transcript = await JourneySnapshot.RunAsync(
+			file,
+			new JourneySnapshotOptions
+			{
+				BaseUrl = new Uri(server.Url),
+				UserAgent = "Elastic/Synthetics requires-test",
+				Headers = new Dictionary<string, string> { ["X-Run"] = "monitor" },
+			}
+		);
 
 		transcript.Failure.Should().BeNull();
 		server.UserAgents.Should().Contain("Elastic/Synthetics requires-test");
@@ -114,12 +120,10 @@ public class RequiresTests
 
 		var refused = await JourneySnapshot.RunAsync(file, new JourneySnapshotOptions { BaseUrl = new Uri(server.Url), ReadOnly = true });
 		server.Methods.Should().NotContain("POST /save");
-		var allowed = await JourneySnapshot.RunAsync(file, new JourneySnapshotOptions
-		{
-			BaseUrl = new Uri(server.Url),
-			ReadOnly = true,
-			WritableUrls = [server.Url + "save"],
-		});
+		var allowed = await JourneySnapshot.RunAsync(
+			file,
+			new JourneySnapshotOptions { BaseUrl = new Uri(server.Url), ReadOnly = true, WritableUrls = [server.Url + "save"], }
+		);
 
 		refused.Failure.Should().NotBeNull();
 		allowed.Failure.Should().BeNull();
@@ -133,7 +137,10 @@ public class RequiresTests
 		await using var server = new RunOptionsServer();
 		var file = Journey("open /\nget box html\n");
 
-		var transcript = await JourneySnapshot.RunAsync(file, new JourneySnapshotOptions { BaseUrl = new Uri(server.Url), Viewport = new JourneyViewport(777, 555) });
+		var transcript = await JourneySnapshot.RunAsync(
+			file,
+			new JourneySnapshotOptions { BaseUrl = new Uri(server.Url), Viewport = new JourneyViewport(777, 555) }
+		);
 
 		transcript.Text.Should().Contain("777");
 	}

@@ -95,6 +95,7 @@ public class PixelComparerTests
 		// black pixel at (3, 3) have three, so only rows 3 to 5 read as anti-aliasing.
 		// Swapped, black and white trade places, so the flat area is on the brighter side.
 		byte near = swapped ? (byte)255 : (byte)0, far = swapped ? (byte)0 : (byte)255;
+
 		RgbaImage Columns(byte grey)
 		{
 			var image = TestImages.Solid(9, 9, 0, 0, 255);
@@ -201,8 +202,9 @@ public class PixelComparerTests
 		Gen.Select(TestImages.Image(40), Gen.Int[0, 3]).Sample((a, seed) =>
 		{
 			var result = PixelComparer.Compare(a, Perturb(a, seed), 0.1, false, false);
-			return result.Regions.Sum(r => r.Pixels) == result.DifferentPixels
-				&& result.Regions.All(r => r.Left <= r.Right && r.Top <= r.Bottom && r.Right < a.Width && r.Bottom < a.Height);
+			return result.Regions.Sum(r => r.Pixels) == result.DifferentPixels && result.Regions.All(
+				r => r.Left <= r.Right && r.Top <= r.Bottom && r.Right < a.Width && r.Bottom < a.Height
+			);
 		});
 
 	/// <summary>A black block (columns 0–4), an anti-aliased grey column 5, white from column 6, in two greys.</summary>

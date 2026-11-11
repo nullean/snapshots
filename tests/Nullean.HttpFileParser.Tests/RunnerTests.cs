@@ -15,12 +15,14 @@ public class RunnerTests
 	}
 
 	/// <summary>A client like a caller's: BaseAddress set, no redirects, no decompression.</summary>
-	private static HttpClient Client(TestServer server) =>
-		new(new SocketsHttpHandler { AllowAutoRedirect = false }) { BaseAddress = server.BaseAddress };
+	private static HttpClient Client(TestServer server) => new(new SocketsHttpHandler { AllowAutoRedirect = false }) { BaseAddress = server.BaseAddress };
 
 	private static HttpFileRunOptions Host(TestServer server, HttpFileRunOptions? options = null)
 	{
-		var variables = new Dictionary<string, string>(options?.Variables ?? new Dictionary<string, string>()) { ["host"] = server.BaseAddress.ToString().TrimEnd('/') };
+		var variables = new Dictionary<string, string>(options?.Variables ?? new Dictionary<string, string>())
+		{
+			["host"] = server.BaseAddress.ToString().TrimEnd('/')
+		};
 		return new HttpFileRunOptions
 		{
 			Variables = variables,
@@ -33,14 +35,14 @@ public class RunnerTests
 		};
 	}
 
-	private static void ShouldSucceed(HttpFileRunResult result) =>
-		result.Failure.Should().BeNull(result.Failure?.ToString());
+	private static void ShouldSucceed(HttpFileRunResult result) => result.Failure.Should().BeNull(result.Failure?.ToString());
 
 	[Test]
 	public async Task ChainsALoginTokenIntoTheNextRequest()
 	{
 		await using var server = new TestServer();
-		var file = Write("""
+		var file = Write(
+			"""
 			# @name login
 			POST {{host}}/login
 			Content-Type: application/json
@@ -54,7 +56,8 @@ public class RunnerTests
 			###
 			GET {{host}}/echo?q={{login.response.body.$.user.roles[1]}}
 			X-Echo: {{login.response.body.$["user"].name}} {{login.request.body.$.user}} {{login.response.headers.content-type}} {{login.request.headers.Content-Type}}
-			""");
+			"""
+		);
 		var result = await HttpFileRunner.RunAsync(file, options: Host(server));
 		ShouldSucceed(result);
 		result.Exchanges.Select(e => e.Response.StatusCode).Should().Equal(200, 200, 200);
@@ -67,13 +70,15 @@ public class RunnerTests
 	public async Task ResolvesWholeBodyReferences()
 	{
 		await using var server = new TestServer();
-		var file = Write("""
+		var file = Write(
+			"""
 			# @name first
 			GET {{host}}/target
 			###
 			GET {{host}}/echo
 			X-Echo: {{first.response.body.*}}
-			""");
+			"""
+		);
 		var result = await HttpFileRunner.RunAsync(file, options: Host(server));
 		ShouldSucceed(result);
 		result.Exchanges[1].Response.GetHeaderValues("X-Echo-Back").Single().Should().Be("target reached");
@@ -86,21 +91,30 @@ public class RunnerTests
 		var root = TempDir.Create();
 		var dir = Path.Combine(root, "requests", "deeper");
 		Directory.CreateDirectory(dir);
-		File.WriteAllText(Path.Combine(root, "http-client.env.json"), $$"""
+		File.WriteAllText(
+			Path.Combine(root, "http-client.env.json"),
+			$$"""
 			{
 			  "$shared": { "host": "{{server.BaseAddress.ToString().TrimEnd('/')}}", "fromShared": "shared", "overriddenByDev": "shared" },
 			  "dev": { "overriddenByDev": "dev", "overriddenByUser": "dev", "beatenByFile": "env" },
 			  "prod": { "overriddenByDev": "prod" }
 			}
-			""");
-		File.WriteAllText(Path.Combine(root, "http-client.env.json.user"), /*lang=json,strict*/ """
+			"""
+		);
+		File.WriteAllText(
+			Path.Combine(root, "http-client.env.json.user"), /*lang=json,strict*/
+			"""
 			{ "dev": { "overriddenByUser": "user-value" } }
-			""");
-		var file = Write("""
+			"""
+		);
+		var file = Write(
+			"""
 			@beatenByFile = file
 			GET {{host}}/echo
 			X-Echo: {{fromShared}}|{{overriddenByDev}}|{{overriddenByUser}}|{{beatenByFile}}
-			""", dir);
+			""",
+			dir
+		);
 
 		var result = await HttpFileRunner.RunAsync(file, options: new HttpFileRunOptions { Environment = "dev" });
 		ShouldSucceed(result);
@@ -134,8 +148,13 @@ public class RunnerTests
 		var dir = TempDir.Create();
 		File.WriteAllText(Path.Combine(dir, "http-client.env.json"), /*lang=json,strict*/ """{ "dev": {}, "test": {} }""");
 		var act = () => HttpEnvironment.Load(Path.Combine(dir, "api.http"), "prod");
-		act.Should().Throw<HttpFileParseException>().Which.Message
-			.Should().Be($"{Path.Combine(dir, "http-client.env.json")}:1: environment 'prod' is not defined; defined: dev, test");
+		act
+			.Should()
+			.Throw<HttpFileParseException>()
+			.Which
+			.Message
+			.Should()
+			.Be($"{Path.Combine(dir, "http-client.env.json")}:1: environment 'prod' is not defined; defined: dev, test");
 	}
 
 	[Test]
@@ -145,9 +164,17 @@ public class RunnerTests
 		var path = Path.Combine(dir, "http-client.env.json");
 		File.WriteAllText(path, /*lang=json,strict*/ "{\n  \"dev\": {\n    \"ok\": \"1\",\n    \"bad\": [1, 2]\n  },\n  \"other\": 5\n}");
 		var act = () => HttpEnvironment.LoadFrom(dir, "dev");
-		act.Should().Throw<HttpFileParseException>().Which.Errors.Select(e => e.ToString()).Should().Equal(
-			$"{path}:4: 'bad' in environment 'dev' must be a string, a number, a boolean or a secret ({{\"provider\": ..., \"secretName\": ...}})",
-			$"{path}:6: environment 'other' must be an object of variables");
+		act
+			.Should()
+			.Throw<HttpFileParseException>()
+			.Which
+			.Errors
+			.Select(e => e.ToString())
+			.Should()
+			.Equal(
+				$"{path}:4: 'bad' in environment 'dev' must be a string, a number, a boolean or a secret ({{\"provider\": ..., \"secretName\": ...}})",
+				$"{path}:6: environment 'other' must be an object of variables"
+			);
 
 		File.WriteAllText(path, "{\n  \"dev\": {\n    \"ok\": \n}");
 		act.Should().Throw<HttpFileParseException>().Which.Errors.Single().Line.Should().Be(4);
@@ -157,7 +184,8 @@ public class RunnerTests
 	public async Task FollowsRedirectsUnlessToldNotTo()
 	{
 		await using var server = new TestServer();
-		var file = Write("""
+		var file = Write(
+			"""
 			GET {{host}}/redirect
 			###
 			# @no-redirect
@@ -167,7 +195,8 @@ public class RunnerTests
 			Content-Type: text/plain
 
 			hello
-			""");
+			"""
+		);
 		var result = await HttpFileRunner.RunAsync(file, Client(server), Host(server));
 		ShouldSucceed(result);
 		result.Exchanges[0].Response.StatusCode.Should().Be(200);
@@ -203,7 +232,10 @@ public class RunnerTests
 		result.Exchanges[0].Response.BodyText.Should().Contain("\"q\":\"relative\"");
 
 		var withoutBase = await HttpFileRunner.RunAsync(file);
-		withoutBase.Failure!.ToString().Should().Be($"{file.Path}:1: '/echo?q=relative' is relative, and the HttpClient has no BaseAddress to resolve it against");
+		withoutBase.Failure!
+			.ToString()
+			.Should()
+			.Be($"{file.Path}:1: '/echo?q=relative' is relative, and the HttpClient has no BaseAddress to resolve it against");
 	}
 
 	[Test]
@@ -219,13 +251,15 @@ public class RunnerTests
 	public async Task AConnectionFailureStopsTheRunAndKeepsEarlierExchanges()
 	{
 		await using var server = new TestServer();
-		var file = Write($$$"""
+		var file = Write(
+			$$$"""
 			GET {{host}}/target
 			###
 			GET http://localhost:{{{TestServer.RefusedPort}}}/nothing
 			###
 			GET {{host}}/target
-			""");
+			"""
+		);
 		var result = await HttpFileRunner.RunAsync(file, options: Host(server));
 		result.Succeeded.Should().BeFalse();
 		result.Exchanges.Should().ContainSingle();
@@ -241,7 +275,10 @@ public class RunnerTests
 		using var client = new System.Net.Sockets.TcpClient();
 
 		// A refusal, not a dropped connection (which would end as TimedOut). Windows takes a few seconds to say so.
-		var thrown = await FluentActions.Awaiting(() => client.ConnectAsync(System.Net.IPAddress.Loopback, TestServer.RefusedPort)).Should().ThrowAsync<System.Net.Sockets.SocketException>();
+		var thrown = await FluentActions
+			.Awaiting(() => client.ConnectAsync(System.Net.IPAddress.Loopback, TestServer.RefusedPort))
+			.Should()
+			.ThrowAsync<System.Net.Sockets.SocketException>();
 
 		thrown.Which.SocketErrorCode.Should().Be(System.Net.Sockets.SocketError.ConnectionRefused);
 	}
@@ -317,33 +354,46 @@ public class RunnerTests
 		await using var server = new TestServer();
 		var secretsRoot = TempDir.Create();
 		Directory.CreateDirectory(Path.Combine(secretsRoot, "app-1234"));
-		File.WriteAllText(Path.Combine(secretsRoot, "app-1234", "secrets.json"), /*lang=json,strict*/ """{ "Shop": { "ApiKey": "shop-secret-key" }, "Flat:Key": "flat-secret" }""");
+		File.WriteAllText(
+			Path.Combine(secretsRoot, "app-1234", "secrets.json"), /*lang=json,strict*/
+			"""{ "Shop": { "ApiKey": "shop-secret-key" }, "Flat:Key": "flat-secret" }"""
+		);
 		var dir = TempDir.Create();
-		File.WriteAllText(Path.Combine(dir, "http-client.env.json"), /*lang=json,strict*/ """
+		File.WriteAllText(
+			Path.Combine(dir, "http-client.env.json"), /*lang=json,strict*/
+			"""
 			{ "dev": {
 			  "ApiKey": { "provider": "AspnetUserSecrets", "secretName": "Shop:ApiKey" },
 			  "Flat": { "provider": "AspnetUserSecrets", "secretName": "flat:key" }
 			} }
-			""");
+			"""
+		);
 		var file = Write("GET {{host}}/echo?q={{Flat}}\nX-Echo: {{ApiKey}}", dir);
 
-		var result = await HttpFileRunner.RunAsync(file, options: Host(server, new HttpFileRunOptions { Environment = "dev", UserSecretsId = "app-1234", UserSecretsRoot = secretsRoot }));
+		var result = await HttpFileRunner.RunAsync(
+			file,
+			options: Host(server, new HttpFileRunOptions { Environment = "dev", UserSecretsId = "app-1234", UserSecretsRoot = secretsRoot })
+		);
 		ShouldSucceed(result);
 		result.Exchanges[0].Response.GetHeaderValues("X-Echo-Back").Single().Should().Be("shop-secret-key");
 		result.Exchanges[0].Sent.Uri.Query.Should().Be("?q=flat-secret");
 
 		// Without an id in the options, the nearest project file's <UserSecretsId> is used.
 		File.WriteAllText(Path.Combine(dir, "App.csproj"), "<Project><PropertyGroup><UserSecretsId>app-1234</UserSecretsId></PropertyGroup></Project>");
-		var fromProject = await HttpFileRunner.RunAsync(file, options: Host(server, new HttpFileRunOptions { Environment = "dev", UserSecretsRoot = secretsRoot }));
+		var fromProject = await HttpFileRunner.RunAsync(
+			file,
+			options: Host(server, new HttpFileRunOptions { Environment = "dev", UserSecretsRoot = secretsRoot })
+		);
 		ShouldSucceed(fromProject);
 
 		// options.Secrets is asked first.
-		var fromOptions = await HttpFileRunner.RunAsync(file, options: Host(server, new HttpFileRunOptions
-		{
-			Environment = "dev",
-			UserSecretsRoot = secretsRoot,
-			Secrets = name => name == "Shop:ApiKey" ? "from-options" : null,
-		}));
+		var fromOptions = await HttpFileRunner.RunAsync(
+			file,
+			options: Host(
+				server,
+				new HttpFileRunOptions { Environment = "dev", UserSecretsRoot = secretsRoot, Secrets = name => name == "Shop:ApiKey" ? "from-options" : null, }
+			)
+		);
 		fromOptions.Exchanges[0].Response.GetHeaderValues("X-Echo-Back").Single().Should().Be("from-options");
 	}
 
@@ -359,20 +409,40 @@ public class RunnerTests
 	{
 		await using var server = new TestServer();
 		var dir = TempDir.Create();
-		File.WriteAllText(Path.Combine(dir, "http-client.env.json"), /*lang=json,strict*/ """
+		File.WriteAllText(
+			Path.Combine(dir, "http-client.env.json"), /*lang=json,strict*/
+			"""
 			{ "dev": { "Vault": { "provider": "AzureKeyVault", "secretName": "VaultSecret", "resourceId": "/subscriptions/x" } } }
-			""");
+			"""
+		);
 		var file = Write("GET {{host}}/echo\nX-Echo: {{Vault}} {{$secret Other}}", dir);
 
 		var missing = await HttpFileRunner.RunAsync(file, options: Host(server, new HttpFileRunOptions { Environment = "dev" }));
-		missing.Failure!.ToString().Should().Be(
-			$"{file.Path}:2: secret 'VaultSecret' for '{{{{Vault}}}}' (provider AzureKeyVault, {Path.Combine(dir, "http-client.env.json")}:1) has no value: HttpFileRunOptions.Secrets did not answer it");
+		missing.Failure!
+			.ToString()
+			.Should()
+			.Be(
+				$"{file.Path}:2: secret 'VaultSecret' for '{{{{Vault}}}}' (provider AzureKeyVault, {Path.Combine(dir, "http-client.env.json")}:1) has no value: HttpFileRunOptions.Secrets did not answer it"
+			);
 
-		var answered = await HttpFileRunner.RunAsync(file, options: Host(server, new HttpFileRunOptions
-		{
-			Environment = "dev",
-			Secrets = name => name switch { "VaultSecret" => "vault-value", "Other" => "other-value", _ => null },
-		}));
+		var answered = await HttpFileRunner.RunAsync(
+			file,
+			options: Host(
+				server,
+				new HttpFileRunOptions
+				{
+					Environment = "dev",
+					Secrets =
+						name =>
+							name switch
+							{
+								"VaultSecret" => "vault-value",
+								"Other" => "other-value",
+								_ => null
+							},
+				}
+			)
+		);
 		ShouldSucceed(answered);
 		answered.Exchanges[0].Response.GetHeaderValues("X-Echo-Back").Single().Should().Be("vault-value other-value");
 
@@ -388,11 +458,16 @@ public class RunnerTests
 		Environment.SetEnvironmentVariable(variable, "env-value-123");
 		try
 		{
-			var file = Write($$$"""
+			var file = Write(
+				$$$"""
 				GET {{host}}/echo?q={{$processEnv {{{variable}}}}}
 				X-Echo: {{$secret ApiKey}}
-				""");
-			var result = await HttpFileRunner.RunAsync(file, options: Host(server, new HttpFileRunOptions { Secrets = n => n == "ApiKey" ? "secret-api-key" : null }));
+				"""
+			);
+			var result = await HttpFileRunner.RunAsync(
+				file,
+				options: Host(server, new HttpFileRunOptions { Secrets = n => n == "ApiKey" ? "secret-api-key" : null })
+			);
 			ShouldSucceed(result);
 			var raw = result.Exchanges[0];
 			raw.Response.BodyText.Should().Contain("secret-api-key").And.Contain("env-value-123");
@@ -432,7 +507,10 @@ public class RunnerTests
 	{
 		var file = Write("GET http://localhost:1/x\nX-Key: {{$secret Short}}");
 		var result = await HttpFileRunner.RunAsync(file, options: new HttpFileRunOptions { Secrets = _ => "abc" });
-		result.Failure!.ToString().Should().Be($"{file.Path}:2: the value of '{{{{$secret Short}}}}' is shorter than 4 characters, too short to redact safely from the output");
+		result.Failure!
+			.ToString()
+			.Should()
+			.Be($"{file.Path}:2: the value of '{{{{$secret Short}}}}' is shorter than 4 characters, too short to redact safely from the output");
 	}
 
 	[Test]
@@ -456,34 +534,41 @@ public class RunnerTests
 	public async Task GeneratesRepeatableDynamicValues()
 	{
 		await using var server = new TestServer();
-		var file = Write("""
+		var file = Write(
+			"""
 			GET {{host}}/echo
 			X-Echo: {{$guid}}|{{$randomInt 5 6}}|{{$datetime iso8601}}|{{$datetime rfc1123 1 d}}|{{$datetime "dd-MM-yyyy" -1 y}}|{{$timestamp}}|{{$isoTimestamp}}|{{$localDatetime "HH:mm zzz"}}|{{$timestamp -1 h}}|{{$datetime iso8601 2 M}}|{{$datetime iso8601 -1500 ms}}
-			""");
+			"""
+		);
 		var time = new FixedTime(new DateTimeOffset(2024, 1, 17, 22, 59, 55, TimeSpan.Zero));
+
 		async Task<string[]> Run(int seed)
 		{
 			var result = await HttpFileRunner.RunAsync(file, options: Host(server, new HttpFileRunOptions { Random = new Random(seed), TimeProvider = time }));
 			ShouldSucceed(result);
 			return result.Exchanges[0].Response.GetHeaderValues("X-Echo-Back").Single().Split('|');
 		}
+
 		var first = await Run(42);
 		var again = await Run(42);
 		var other = await Run(7);
 		again.Should().Equal(first);
 		other[0].Should().NotBe(first[0]);
 		Guid.Parse(first[0]).Version.Should().Be(4);
-		first[1..].Should().Equal(
-			"5",
-			"2024-01-17T22:59:55.0000000+00:00",
-			"Thu, 18 Jan 2024 22:59:55 GMT",
-			"17-01-2023",
-			"1705532395",
-			"2024-01-17T22:59:55.000Z",
-			"14:59 -08:00",
-			"1705528795",
-			"2024-03-17T22:59:55.0000000+00:00",
-			"2024-01-17T22:59:53.5000000+00:00");
+		first[1..]
+			.Should()
+			.Equal(
+				"5",
+				"2024-01-17T22:59:55.0000000+00:00",
+				"Thu, 18 Jan 2024 22:59:55 GMT",
+				"17-01-2023",
+				"1705532395",
+				"2024-01-17T22:59:55.000Z",
+				"14:59 -08:00",
+				"1705528795",
+				"2024-03-17T22:59:55.0000000+00:00",
+				"2024-01-17T22:59:53.5000000+00:00"
+			);
 	}
 
 	[Test]
@@ -494,14 +579,26 @@ public class RunnerTests
 		unknown.Failure!.Line.Should().Be(4);
 		unknown.Failure.Message.Should().Be("unknown variable 'missing' (no http-client.env.json was found)");
 
-		var notRun = await HttpFileRunner.RunAsync(Write("GET {{host}}/echo\nX-Echo: {{later.response.body.*}}\n###\n# @name later\nGET {{host}}/echo"), options: Host(server));
+		var notRun = await HttpFileRunner.RunAsync(
+			Write("GET {{host}}/echo\nX-Echo: {{later.response.body.*}}\n###\n# @name later\nGET {{host}}/echo"),
+			options: Host(server)
+		);
 		notRun.Failure!.Message.Should().Be("'{{later.response.body.*}}' references request 'later' (line 5), which has not run yet");
 
-		var noMatch = await HttpFileRunner.RunAsync(Write("# @name login\nPOST {{host}}/login\n###\nGET {{host}}/echo\nX-Echo: {{login.response.body.$.user.roles[5]}}"), options: Host(server));
-		noMatch.Failure!.ToString().Should().EndWith(":5: '{{login.response.body.$.user.roles[5]}}': '$.user.roles[5]' matches nothing in the response body of 'login'");
+		var noMatch = await HttpFileRunner.RunAsync(
+			Write("# @name login\nPOST {{host}}/login\n###\nGET {{host}}/echo\nX-Echo: {{login.response.body.$.user.roles[5]}}"),
+			options: Host(server)
+		);
+		noMatch.Failure!
+			.ToString()
+			.Should()
+			.EndWith(":5: '{{login.response.body.$.user.roles[5]}}': '$.user.roles[5]' matches nothing in the response body of 'login'");
 		noMatch.Exchanges.Should().ContainSingle();
 
-		var notJson = await HttpFileRunner.RunAsync(Write("# @name t\nGET {{host}}/target\n###\nGET {{host}}/echo\nX-Echo: {{t.response.body.$.a}}"), options: Host(server));
+		var notJson = await HttpFileRunner.RunAsync(
+			Write("# @name t\nGET {{host}}/target\n###\nGET {{host}}/echo\nX-Echo: {{t.response.body.$.a}}"),
+			options: Host(server)
+		);
 		notJson.Failure!.Message.Should().Be("'{{t.response.body.$.a}}': the response body of 't' is not JSON");
 	}
 
@@ -512,7 +609,8 @@ public class RunnerTests
 		var dir = TempDir.Create();
 		File.WriteAllText(Path.Combine(dir, "raw.txt"), "raw {{not substituted}}");
 		File.WriteAllText(Path.Combine(dir, "template.txt"), "hello {{who}}");
-		var file = Write("""
+		var file = Write(
+			"""
 			@who = world
 			POST {{host}}/echo
 			Content-Type: text/plain
@@ -529,7 +627,9 @@ public class RunnerTests
 
 			name=foo
 			&password=bar
-			""", dir);
+			""",
+			dir
+		);
 		var result = await HttpFileRunner.RunAsync(file, options: Host(server));
 		ShouldSucceed(result);
 		result.Exchanges.Select(e => e.Sent.BodyText).Should().Equal("raw {{not substituted}}", "hello world", "name=foo&password=bar");
@@ -540,14 +640,16 @@ public class RunnerTests
 	public async Task KeepsCookiesInItsOwnClientUnlessToldNotTo()
 	{
 		await using var server = new TestServer();
-		var file = Write("""
+		var file = Write(
+			"""
 			GET {{host}}/set-cookie
 			###
 			GET {{host}}/echo
 			###
 			# @no-cookie-jar
 			GET {{host}}/echo
-			""");
+			"""
+		);
 		var result = await HttpFileRunner.RunAsync(file, options: Host(server));
 		ShouldSucceed(result);
 		result.Exchanges[1].Response.BodyText.Should().Contain("\"cookie\":\"session=abc123\"");

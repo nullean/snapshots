@@ -17,8 +17,7 @@ public class RequiresTests
 		new(new HashSet<string>(features, StringComparer.Ordinal), buildType, env);
 
 	[Test]
-	public void Unmet_FileWithoutDirectives_Applies() =>
-		HttpFileSnapshot.Unmet(File("GET https://example.test/\n"), Context()).Should().BeNull();
+	public void Unmet_FileWithoutDirectives_Applies() => HttpFileSnapshot.Unmet(File("GET https://example.test/\n"), Context()).Should().BeNull();
 
 	[Test]
 	public void Unmet_EnvironmentTheRunIsIn_NamesTheConditionAsWritten()

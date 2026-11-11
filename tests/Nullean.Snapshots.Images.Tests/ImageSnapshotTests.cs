@@ -133,8 +133,10 @@ public class ImageSnapshotTests
 		Snapshot.EngineOverride.Value = p.Engine;
 		try
 		{
-			p.Fs.AddFile(SnapshotPath.File(p.Fs, p.Project.SnapshotsDirectory, "Rendering/HtmlTests/Draws", SnapshotPath.VerifiedInfix, "png"),
-				new MockFileData(Png.Encode(White)));
+			p.Fs.AddFile(
+				SnapshotPath.File(p.Fs, p.Project.SnapshotsDirectory, "Rendering/HtmlTests/Draws", SnapshotPath.VerifiedInfix, "png"),
+				new MockFileData(Png.Encode(White))
+			);
 			var bytes = Png.Encode(White);
 			var pass = () => bytes.Should().MatchImageSnapshot(callerFilePath: p.TestFile, callerMemberName: "Draws");
 			pass.Should().NotThrow();

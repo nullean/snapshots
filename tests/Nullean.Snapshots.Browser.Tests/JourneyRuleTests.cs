@@ -12,7 +12,8 @@ public class JourneyRuleTests
 {
 	private static string Root => TestProject.Root;
 
-	private const string Baseline = """
+	private const string Baseline =
+		"""
 		## snapshot -c -s nav
 		url: {origin}/index.html
 		- navigation "Main"
@@ -38,7 +39,13 @@ public class JourneyRuleTests
 		var set = RuleLoader.Load(fs, Root, fs.Path.Combine(Root, "shop.differences"));
 		var b = JourneySnapshot.Format.Parse(baseline);
 		var a = JourneySnapshot.Format.Parse(actual);
-		return ExpectedDifferences.Apply(TreeDiffer.Instance.Diff(b, a), b, a, ExpectedDifferences.Bind(set, JourneyRuleTargets.Instance), JourneyRuleTargets.Instance);
+		return ExpectedDifferences.Apply(
+			TreeDiffer.Instance.Diff(b, a),
+			b,
+			a,
+			ExpectedDifferences.Bind(set, JourneyRuleTargets.Instance),
+			JourneyRuleTargets.Instance
+		);
 	}
 
 	private static readonly string WithNews = Edit(Baseline, "  - link \"Docs\"\n", "  - link \"Docs\"\n  - link \"What's new\"\n");
@@ -77,7 +84,10 @@ public class JourneyRuleTests
 		Apply(Baseline, WithNews, "## snapshot*\nadded navigation link \"What's new\"\n").IsClean.Should().BeTrue();
 		Apply(Baseline, WithNews, "## snapshot*\nadded navigation \"Main\" link\n").IsClean.Should().BeTrue();
 		Apply(Baseline, WithNews, "## snapshot*\nadded main link\n").Unexplained.Should().ContainSingle("the link is in the navigation, not in main");
-		Apply(Baseline, WithNews, "## snapshot*\nadded navigation\n").Unexplained.Should().ContainSingle("the added node is the link, not the navigation around it");
+		Apply(Baseline, WithNews, "## snapshot*\nadded navigation\n")
+			.Unexplained
+			.Should()
+			.ContainSingle("the added node is the link, not the navigation around it");
 	}
 
 	[Test]
@@ -170,8 +180,18 @@ public class JourneyRuleTests
 		fs.AddFile(fs.Path.Combine(Root, "shop.differences"), new MockFileData("## s\n" + rule + "\n"));
 		var set = RuleLoader.Load(fs, Root, fs.Path.Combine(Root, "shop.differences"));
 
-		((Action)(() => ExpectedDifferences.Bind(set, JourneyRuleTargets.Instance))).Should().Throw<ExpectedDifferencesException>()
-			.Which.Errors.Should().ContainSingle().Which.Should().Contain("shop.differences:2:").And.Contain(message);
+		((Action)(() => ExpectedDifferences.Bind(set, JourneyRuleTargets.Instance)))
+			.Should()
+			.Throw<ExpectedDifferencesException>()
+			.Which
+			.Errors
+			.Should()
+			.ContainSingle()
+			.Which
+			.Should()
+			.Contain("shop.differences:2:")
+			.And
+			.Contain(message);
 	}
 
 	// Properties
@@ -180,15 +200,20 @@ public class JourneyRuleTests
 	{
 		var role = Gen.OneOf("link", "heading", "list", "button");
 		var name = Gen.OneOf("a", "b", "c d", "x\"y", "*", "");
-		var attrs = Gen.Select(Gen.OneOf("level", "selected"), Gen.OneOf((Node)ScalarNode.Bool(true), ScalarNode.String("1"), ScalarNode.String("2")))
-			.Array[0, 2].Select(e => e.DistinctBy(x => x.Item1).ToArray());
+		var attrs = Gen
+			.Select(Gen.OneOf("level", "selected"), Gen.OneOf((Node)ScalarNode.Bool(true), ScalarNode.String("1"), ScalarNode.String("2")))
+			.Array[0, 2]
+			.Select(e => e.DistinctBy(x => x.Item1).ToArray());
 		return Gen.Select(role, name.Null(), attrs, depth >= 3 ? Gen.Const(Array.Empty<Node>()) : inner.Array[0, 3]).Select((r, n, a, c) =>
 		{
 			var entries = new List<KeyValuePair<ScalarNode, Node>> { new(ScalarNode.String("role"), ScalarNode.String(r)) };
 			if (n is not null)
 				entries.Add(new(ScalarNode.String("name"), ScalarNode.String(n)));
 			if (a.Length > 0)
-				entries.Add(new(ScalarNode.String("attrs"), new MapNode([.. a.Select(x => new KeyValuePair<ScalarNode, Node>(ScalarNode.String(x.Item1), x.Item2))])));
+				entries.Add(new(
+					ScalarNode.String("attrs"),
+					new MapNode([.. a.Select(x => new KeyValuePair<ScalarNode, Node>(ScalarNode.String(x.Item1), x.Item2))])
+				));
 			if (c.Length > 0)
 				entries.Add(new(ScalarNode.String("children"), new SeqNode(c)));
 			return (Node)new MapNode(entries);
@@ -196,33 +221,44 @@ public class JourneyRuleTests
 	});
 
 	private static Node Page(Node[] roots) =>
-		new SeqNode([new MapNode([
-			new(ScalarNode.String("step"), ScalarNode.String("snapshot")),
-			new(ScalarNode.String("url"), ScalarNode.String("{origin}/")),
-			new(ScalarNode.String("tree"), new SeqNode(roots)),
-		])]);
+		new SeqNode([
+			new MapNode([
+				new(ScalarNode.String("step"), ScalarNode.String("snapshot")),
+				new(ScalarNode.String("url"), ScalarNode.String("{origin}/")),
+				new(ScalarNode.String("tree"), new SeqNode(roots)),
+			])
+		]);
 
 	[Test]
 	public void ASuggestedRuleExplainsItsDifference() =>
-		Gen.Select(Aria.Array[0, 3], Aria.Array[0, 3]).Sample(pair =>
-		{
-			var baseline = Page(pair.Item1);
-			var actual = Page(pair.Item2);
-			foreach (var difference in TreeDiffer.Instance.Diff(baseline, actual))
+		Gen.Select(Aria.Array[0, 3], Aria.Array[0, 3]).Sample(
+			pair =>
 			{
-				var facts = DifferenceFacts.Create(difference, baseline, actual, "step");
-				var lines = ExpectedDifferences.Suggest(facts, JourneyRuleTargets.Instance);
-				var fs = new MockFileSystem();
-				fs.AddDirectory(fs.Path.Combine(Root, ".git"));
-				fs.AddFile(fs.Path.Combine(Root, "shop.differences"), new MockFileData("## " + facts.Heading + "\n" + string.Join('\n', lines) + "\n"));
-				var set = RuleLoader.Load(fs, Root, fs.Path.Combine(Root, "shop.differences"));
-				var app = ExpectedDifferences.Apply([difference], baseline, actual, ExpectedDifferences.Bind(set, JourneyRuleTargets.Instance), JourneyRuleTargets.Instance);
-				if (lines.Count == 0 || !app.IsClean)
-					return false;
-			}
+				var baseline = Page(pair.Item1);
+				var actual = Page(pair.Item2);
+				foreach (var difference in TreeDiffer.Instance.Diff(baseline, actual))
+				{
+					var facts = DifferenceFacts.Create(difference, baseline, actual, "step");
+					var lines = ExpectedDifferences.Suggest(facts, JourneyRuleTargets.Instance);
+					var fs = new MockFileSystem();
+					fs.AddDirectory(fs.Path.Combine(Root, ".git"));
+					fs.AddFile(fs.Path.Combine(Root, "shop.differences"), new MockFileData("## " + facts.Heading + "\n" + string.Join('\n', lines) + "\n"));
+					var set = RuleLoader.Load(fs, Root, fs.Path.Combine(Root, "shop.differences"));
+					var app = ExpectedDifferences.Apply(
+						[difference],
+						baseline,
+						actual,
+						ExpectedDifferences.Bind(set, JourneyRuleTargets.Instance),
+						JourneyRuleTargets.Instance
+					);
+					if (lines.Count == 0 || !app.IsClean)
+						return false;
+				}
 
-			return true;
-		}, print: pair => $"{AriaTreeText(pair.Item1)}\n---\n{AriaTreeText(pair.Item2)}");
+				return true;
+			},
+			print: pair => $"{AriaTreeText(pair.Item1)}\n---\n{AriaTreeText(pair.Item2)}"
+		);
 
 	private static string AriaTreeText(Node[] roots) => AriaTree.Print(new SeqNode(roots));
 }

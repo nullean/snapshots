@@ -19,8 +19,7 @@ public class SnapshotPathTests
 
 	[Test]
 	public void RealPathIsRelativeToTheProject() =>
-		SnapshotPath.RelativeTestDirectory(Fs, P("tests", "Acme.Tests"), P("tests", "Acme.Tests", "Rendering", "Html", "X.cs"))
-			.Should().Be("Rendering/Html");
+		SnapshotPath.RelativeTestDirectory(Fs, P("tests", "Acme.Tests"), P("tests", "Acme.Tests", "Rendering", "Html", "X.cs")).Should().Be("Rendering/Html");
 
 	[Test]
 	public void FileOutsideTheProjectGoesToTheRoot() =>
@@ -37,8 +36,10 @@ public class SnapshotPathTests
 	public void KeyLeavesOutEmptyParts()
 	{
 		SnapshotPath.Key("Acme.Tests", "", "HtmlTests", "RendersTable", null, null).Should().Be("Acme.Tests/HtmlTests/RendersTable");
-		SnapshotPath.Key("Acme.Tests", "Rendering", "HtmlTests", "RendersPage", "header", "a1b2c3d4")
-			.Should().Be("Acme.Tests/Rendering/HtmlTests/RendersPage.header.a1b2c3d4");
+		SnapshotPath
+			.Key("Acme.Tests", "Rendering", "HtmlTests", "RendersPage", "header", "a1b2c3d4")
+			.Should()
+			.Be("Acme.Tests/Rendering/HtmlTests/RendersPage.header.a1b2c3d4");
 	}
 
 	[Test]
@@ -67,8 +68,7 @@ public class SnapshotPathTests
 	}
 
 	[Test]
-	public void VerifiedAndReceivedSwapByName() =>
-		SnapshotPath.ToVerifiedName("RendersTable.received.html").Should().Be("RendersTable.verified.html");
+	public void VerifiedAndReceivedSwapByName() => SnapshotPath.ToVerifiedName("RendersTable.received.html").Should().Be("RendersTable.verified.html");
 
 	[Test]
 	public void MarkerRoundTrips()

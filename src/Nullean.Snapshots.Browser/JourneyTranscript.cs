@@ -49,6 +49,7 @@ public sealed record JourneyTranscript(string File, string Text, JourneyFailure?
 	{
 		ArgumentNullException.ThrowIfNull(checkpoints);
 		var root = Root(baseUrl);
+
 		string Scrub(string text) => root is null ? text : text.Replace(root, Origin, StringComparison.Ordinal);
 
 		var text = new StringBuilder();

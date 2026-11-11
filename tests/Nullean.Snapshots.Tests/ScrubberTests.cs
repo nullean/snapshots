@@ -10,7 +10,8 @@ public class ScrubberTests
 		Gen.Guid.Select(g => g.ToString("B").ToUpperInvariant()),
 		Gen.DateTime.Select(d => d.ToString("O", System.Globalization.CultureInfo.InvariantCulture)),
 		Gen.DateTime.Select(d => d.ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture)),
-		Gen.String[Gen.Char["abc019-:T {}"], 0, 8]);
+		Gen.String[Gen.Char["abc019-:T {}"], 0, 8]
+	);
 
 	private static readonly Gen<string> Text = Volatile.Array[0, 8].Select(parts => string.Join(" ", parts));
 
@@ -22,8 +23,10 @@ public class ScrubberTests
 
 	[Test]
 	public void ScrubbedTextHasNoGuidsLeft() =>
-		Text.Sample(t => !System.Text.RegularExpressions.Regex.IsMatch(
-			Scrubbers.Guids(t), "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"));
+		Text.Sample(
+			t =>
+				!System.Text.RegularExpressions.Regex.IsMatch(Scrubbers.Guids(t), "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
+		);
 
 	[Test]
 	public void SameValueGetsTheSameNumber()

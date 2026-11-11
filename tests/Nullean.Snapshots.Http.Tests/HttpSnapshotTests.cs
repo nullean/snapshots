@@ -9,12 +9,10 @@ public class HttpSnapshotTests
 	private static TestServer Server => TestServer.Shared;
 
 	private static HttpClient Client(bool decompress = true) =>
-		new(new SocketsHttpHandler
+		new(new SocketsHttpHandler { AllowAutoRedirect = false, AutomaticDecompression = decompress ? DecompressionMethods.All : DecompressionMethods.None, })
 		{
-			AllowAutoRedirect = false,
-			AutomaticDecompression = decompress ? DecompressionMethods.All : DecompressionMethods.None,
-		})
-		{ BaseAddress = Server.BaseAddress };
+			BaseAddress = Server.BaseAddress
+		};
 
 	[Test]
 	public async Task RendersARealResponse()
@@ -24,7 +22,8 @@ public class HttpSnapshotTests
 
 		var text = await HttpSnapshot.RenderAsync(response, new HttpSnapshotOptions { Headers = ["X-Request-Id", "Authorization"] });
 
-		text.Should().Be("""
+		text.Should().Be(
+			"""
 			## POST /api/created?draft=1
 			status: 201 Created
 			content-type: application/json; charset=utf-8
@@ -35,7 +34,12 @@ public class HttpSnapshotTests
 			  "id": 3
 			}
 
-			""".Replace("\r\n", "\n", StringComparison.Ordinal));
+			""".Replace(
+				"\r\n",
+				"\n",
+				StringComparison.Ordinal
+			)
+		);
 	}
 
 	[Test]
@@ -91,10 +95,12 @@ public class HttpSnapshotTests
 
 	[Test]
 	public void TextThatIsNotResponsesFailsBeforeAnythingIsWritten() =>
-		FluentActions.Invoking(() => "garbage".Should().MatchHttpSnapshot())
-			.Should().Throw<Exception>().WithMessage("Expected HTTP responses text, but: Line 1: a section starts with '## ' and the request.");
+		FluentActions
+			.Invoking(() => "garbage".Should().MatchHttpSnapshot())
+			.Should()
+			.Throw<Exception>()
+			.WithMessage("Expected HTTP responses text, but: Line 1: a section starts with '## ' and the request.");
 
 	[Test]
-	public void ResponsesTextMatchesItsSnapshot() =>
-		"## GET /\nstatus: 200 OK\ncontent-type: text/plain\n\n> hello\n".Should().MatchHttpSnapshot();
+	public void ResponsesTextMatchesItsSnapshot() => "## GET /\nstatus: 200 OK\ncontent-type: text/plain\n\n> hello\n".Should().MatchHttpSnapshot();
 }

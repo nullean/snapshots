@@ -12,7 +12,8 @@ public class HttpRuleTests
 {
 	private static string Root => TestProject.Root;
 
-	private const string Baseline = """
+	private const string Baseline =
+		"""
 		## search: GET {{host}}/api/search
 		status: 200 OK
 		content-type: application/json
@@ -55,7 +56,13 @@ public class HttpRuleTests
 	{
 		var b = HttpSnapshot.Format.Parse(baseline);
 		var a = HttpSnapshot.Format.Parse(actual);
-		return ExpectedDifferences.Apply(TreeDiffer.Instance.Diff(b, a), b, a, ExpectedDifferences.Bind(rules, HttpRuleTargets.Instance), HttpRuleTargets.Instance);
+		return ExpectedDifferences.Apply(
+			TreeDiffer.Instance.Diff(b, a),
+			b,
+			a,
+			ExpectedDifferences.Bind(rules, HttpRuleTargets.Instance),
+			HttpRuleTargets.Instance
+		);
 	}
 
 	private static RuleApplication Apply(string baseline, string actual, string rules) => Apply(baseline, actual, Load(Repo(("shop.differences", rules))));
@@ -86,12 +93,14 @@ public class HttpRuleTests
 		Apply(Baseline, WithHighlight, "## GET {{host}}/api/health\nadded body $.hits[*].highlight\n").Unexplained.Should().ContainSingle();
 
 	[Test]
-	public void ARuleBeforeAnySectionAppliesToEverySection() =>
-		Apply(Baseline, WithHighlight, "added body $..highlight\n").IsClean.Should().BeTrue();
+	public void ARuleBeforeAnySectionAppliesToEverySection() => Apply(Baseline, WithHighlight, "added body $..highlight\n").IsClean.Should().BeTrue();
 
 	[Test]
 	public void APathMustMatchWhole() =>
-		Apply(Baseline, WithHighlight, "## search*\nadded body $.hits[*]\n").Unexplained.Should().ContainSingle("a rule for the hits does not cover one of their properties");
+		Apply(Baseline, WithHighlight, "## search*\nadded body $.hits[*]\n")
+			.Unexplained
+			.Should()
+			.ContainSingle("a rule for the hits does not cover one of their properties");
 
 	[Test]
 	public void IgnoreCoversEverythingBelow()
@@ -154,10 +163,13 @@ public class HttpRuleTests
 	[Test]
 	public void OnlyTheSidecarAndOptionalIncludesCanGoStale()
 	{
-		var rules = Load(Repo(
-			("shop.differences", "include shared.differences\ninclude? known.differences\n"),
-			("shared.differences", "## search*\nremoved header x-never\n"),
-			("known.differences", "## search*\nremoved header x-never-either\n")));
+		var rules = Load(
+			Repo(
+				("shop.differences", "include shared.differences\ninclude? known.differences\n"),
+				("shared.differences", "## search*\nremoved header x-never\n"),
+				("known.differences", "## search*\nremoved header x-never-either\n")
+			)
+		);
 
 		var app = Apply(Baseline, Baseline, rules);
 
@@ -195,16 +207,32 @@ public class HttpRuleTests
 		var first = Apply(Baseline, actual, Load(fs));
 		first.Unexplained.Should().HaveCount(2);
 
-		var written = ExpectedDifferences.Record(Load(fs), fs.Path.Combine(Root, "known.differences"), first.UnexplainedFacts, HttpRuleTargets.Instance, "recorded against https://preview.example.com");
+		var written = ExpectedDifferences.Record(
+			Load(fs),
+			fs.Path.Combine(Root, "known.differences"),
+			first.UnexplainedFacts,
+			HttpRuleTargets.Instance,
+			"recorded against https://preview.example.com"
+		);
 
 		written.Should().Equal("removed header x-legacy", "added body $.hits[*].highlight");
-		fs.File.ReadAllText(fs.Path.Combine(Root, "known.differences")).Should().Be("""
+		fs
+			.File
+			.ReadAllText(fs.Path.Combine(Root, "known.differences"))
+			.Should()
+			.Be(
+				"""
 			# recorded against https://preview.example.com
 			## search: GET {{host}}/api/search
 			removed header x-legacy
 			added body $.hits[*].highlight
 
-			""".Replace("\r\n", "\n", StringComparison.Ordinal));
+			""".Replace(
+					"\r\n",
+					"\n",
+					StringComparison.Ordinal
+				)
+			);
 		Apply(Baseline, actual, Load(fs)).IsClean.Should().BeTrue("the recorded rules explain everything and none is stale");
 		fs.AllFiles.Should().NotContain(f => f.EndsWith(".tmp", StringComparison.Ordinal));
 	}
@@ -217,7 +245,11 @@ public class HttpRuleTests
 
 		ExpectedDifferences.Record(Load(fs), fs.Path.Combine(Root, "known.differences"), app.UnexplainedFacts, HttpRuleTargets.Instance, "later");
 
-		fs.File.ReadAllText(fs.Path.Combine(Root, "known.differences")).Should().StartWith("## other\nignore status\n\n# later\n## search: GET {{host}}/api/search\n");
+		fs
+			.File
+			.ReadAllText(fs.Path.Combine(Root, "known.differences"))
+			.Should()
+			.StartWith("## other\nignore status\n\n# later\n## search: GET {{host}}/api/search\n");
 	}
 
 	[Test]
@@ -240,7 +272,8 @@ public class HttpRuleTests
 	{
 		var fs = Repo(
 			("shop.differences", "include? known.differences\n"),
-			("known.differences", "# kept comment\n## search*\nadded body $.hits[*].highlight\nremoved header x-gone\n\n## *health\nremoved header x-gone\n"));
+			("known.differences", "# kept comment\n## search*\nadded body $.hits[*].highlight\nremoved header x-gone\n\n## *health\nremoved header x-gone\n")
+		);
 		var rules = Load(fs);
 		var app = Apply(Baseline, WithHighlight, rules);
 
@@ -261,14 +294,20 @@ public class HttpRuleTests
 			Gen.Const((Node)ScalarNode.Null()),
 			Gen.Bool.Select(b => (Node)ScalarNode.Bool(b)),
 			Gen.Int[0, 9].Select(i => (Node)new ScalarNode(ScalarKind.Int, i.ToString(System.Globalization.CultureInfo.InvariantCulture))),
-			Gen.OneOf("", "x", "a b", "a*b", "line\nbreak", "q\"uote", "back\\slash", "c\r\nd", "\t").Select(s => (Node)ScalarNode.String(s)));
+			Gen.OneOf("", "x", "a b", "a*b", "line\nbreak", "q\"uote", "back\\slash", "c\r\nd", "\t").Select(s => (Node)ScalarNode.String(s))
+		);
 		if (depth >= 3)
 			return scalar;
-		var map = Gen.Select(Key, inner).Array[0, 3].Select(e =>
-		{
-			var seen = new HashSet<string>(StringComparer.Ordinal);
-			return (Node)new MapNode([.. e.Where(x => seen.Add(x.Item1)).Select(x => new KeyValuePair<ScalarNode, Node>(ScalarNode.String(x.Item1), x.Item2))]);
-		});
+		var map = Gen
+			.Select(Key, inner)
+			.Array[0, 3]
+			.Select(e =>
+			{
+				var seen = new HashSet<string>(StringComparer.Ordinal);
+				return (Node)new MapNode([
+					.. e.Where(x => seen.Add(x.Item1)).Select(x => new KeyValuePair<ScalarNode, Node>(ScalarNode.String(x.Item1), x.Item2))
+				]);
+			});
 		return Gen.Frequency((3, scalar), (2, map), (2, inner.Array[0, 3].Select(items => (Node)new SeqNode(items))));
 	});
 
@@ -291,7 +330,13 @@ public class HttpRuleTests
 				var lines = ExpectedDifferences.Suggest(facts, HttpRuleTargets.Instance);
 				var fs = Repo(("shop.differences", "## " + facts.Heading + "\n" + string.Join('\n', lines) + "\n"));
 				var rules = Load(fs);
-				var app = ExpectedDifferences.Apply([difference], baseline, actual, ExpectedDifferences.Bind(rules, HttpRuleTargets.Instance), HttpRuleTargets.Instance);
+				var app = ExpectedDifferences.Apply(
+					[difference],
+					baseline,
+					actual,
+					ExpectedDifferences.Bind(rules, HttpRuleTargets.Instance),
+					HttpRuleTargets.Instance
+				);
 				if (lines.Count == 0 || !app.IsClean)
 					return false;
 			}

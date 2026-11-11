@@ -76,7 +76,8 @@ public abstract class HttpExpectation
 	}
 
 	internal static string Quote(string value) =>
-		"\"" + (value.Length > 80 ? value[..80] + "…" : value).Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal) + "\"";
+		"\"" + (value.Length > 80 ? value[..80] + "…" : value).Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal) +
+			"\"";
 }
 
 internal sealed class HttpStatusExpectation : HttpExpectation
@@ -223,9 +224,7 @@ internal sealed class HttpJsonExpectation : HttpExpectation
 				return $"{Text} failed: {_path.Text} selects nothing";
 			var texts = selected.Select(e => (Element: e, Text: JsonPath.ToText(e))).ToList();
 			// equals: every selected value must equal it; contains: one selected value is enough.
-			var holds = _equals
-				? texts.All(t => t.Text == _expected)
-				: texts.Any(t => Contains(t.Element, t.Text, _expected));
+			var holds = _equals ? texts.All(t => t.Text == _expected) : texts.Any(t => Contains(t.Element, t.Text, _expected));
 			return holds ? null : $"{Text} failed: {_path.Text} selected {Describe([.. texts.Select(t => t.Text)])}";
 		}
 	}

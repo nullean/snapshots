@@ -18,7 +18,10 @@ public class SnapshotEngineTests
 		result.Key.Should().Be("Acme.Tests/" + Key);
 		p.Read(p.ReceivedFile(Key)).Should().Be("hello\nworld\n");
 		p.Fs.File.Exists(p.VerifiedFile(Key)).Should().BeFalse();
-		result.FailureMessage.Should().StartWith("Text snapshot is new: no verified file at tests/Acme.Tests/.snapshots/Rendering/HtmlTests/RendersTable.verified.txt");
+		result
+			.FailureMessage
+			.Should()
+			.StartWith("Text snapshot is new: no verified file at tests/Acme.Tests/.snapshots/Rendering/HtmlTests/RendersTable.verified.txt");
 	}
 
 	[Test]
@@ -116,7 +119,9 @@ public class SnapshotEngineTests
 		var p = new TestProject();
 		p.Match("x", line: 10);
 		var act = () => p.Match("x", line: 20);
-		act.Should().Throw<InvalidOperationException>()
+		act
+			.Should()
+			.Throw<InvalidOperationException>()
 			.WithMessage("Two snapshot assertions resolve to Acme.Tests/Rendering/HtmlTests/RendersTable; pass a name to tell them apart.");
 	}
 
@@ -151,8 +156,12 @@ public class SnapshotEngineTests
 		var p = new TestProject { Identity = TestProject.TUnitLike("DerivedHtmlTests", "RendersTable", 1, "a") };
 		var result = p.Match("x");
 		result.Key.Should().Be($"Acme.Tests/Rendering/DerivedHtmlTests/RendersTable.{SnapshotPath.ArgumentsHash([1, "a"])}");
-		result.FailureMessage.Should().Contain(
-			"or:    SNAPSHOT_ACCEPT=1 dotnet test --project tests/Acme.Tests --treenode-filter \"/Acme.Tests/Acme.Tests.Rendering/DerivedHtmlTests/RendersTable\"");
+		result
+			.FailureMessage
+			.Should()
+			.Contain(
+				"or:    SNAPSHOT_ACCEPT=1 dotnet test --project tests/Acme.Tests --treenode-filter \"/Acme.Tests/Acme.Tests.Rendering/DerivedHtmlTests/RendersTable\""
+			);
 	}
 
 	[Test]
@@ -183,7 +192,10 @@ public class SnapshotEngineTests
 	{
 		var p = new TestProject();
 		p.AddVerified(Key, "a\n");
-		p.Match("b", because: "the table changed").FailureMessage.Should()
+		p
+			.Match("b", because: "the table changed")
+			.FailureMessage
+			.Should()
 			.StartWith("Text did not match snapshot because the table changed: tests/Acme.Tests/.snapshots/");
 	}
 
@@ -215,7 +227,11 @@ public class SnapshotEngineTests
 		p.Engine.FlushManifests();
 
 		var (files, started) = RunManifest.Read(p.Read(manifest));
-		files.Should().BeEquivalentTo("Rendering/HtmlTests/RendersTable.verified.txt", "Rendering/HtmlTests/RendersTable.a.verified.txt", "Rendering/HtmlTests/RendersTable.b.verified.txt");
+		files.Should().BeEquivalentTo(
+			"Rendering/HtmlTests/RendersTable.verified.txt",
+			"Rendering/HtmlTests/RendersTable.a.verified.txt",
+			"Rendering/HtmlTests/RendersTable.b.verified.txt"
+		);
 		started.Should().NotBeNull();
 		p.Read(manifest).Split('\n').Skip(1).Where(l => l.Length > 0).Should().BeInAscendingOrder(StringComparer.Ordinal);
 
@@ -224,8 +240,15 @@ public class SnapshotEngineTests
 		for (var i = 50; i > 0; i--)
 			many.Match("x", name: $"n{i:00}", line: i);
 		many.Engine.FlushManifests();
-		many.Read(many.Fs.Path.Combine(many.Project.ReceivedDirectory, RunManifest.FileName)).Split('\n').Skip(1).Where(l => l.Length > 0)
-			.Should().HaveCount(50).And.BeInAscendingOrder(StringComparer.Ordinal);
+		many
+			.Read(many.Fs.Path.Combine(many.Project.ReceivedDirectory, RunManifest.FileName))
+			.Split('\n')
+			.Skip(1)
+			.Where(l => l.Length > 0)
+			.Should()
+			.HaveCount(50)
+			.And
+			.BeInAscendingOrder(StringComparer.Ordinal);
 		p.Fs.File.Exists(p.Fs.Path.Combine(p.Project.ReceivedDirectory, ReceivedMarker.FileName)).Should().BeTrue();
 	}
 
@@ -251,8 +274,11 @@ public class SnapshotEngineTests
 		p.AddVerified(Key, "same\n");
 		p.Match("same");
 		p.Engine.FlushManifests();
-		RunManifest.Read(p.Read(p.Fs.Path.Combine(p.Project.ReceivedDirectory, RunManifest.FileName))).Files
-			.Should().Equal("Rendering/HtmlTests/RendersTable.verified.txt");
+		RunManifest
+			.Read(p.Read(p.Fs.Path.Combine(p.Project.ReceivedDirectory, RunManifest.FileName)))
+			.Files
+			.Should()
+			.Equal("Rendering/HtmlTests/RendersTable.verified.txt");
 		p.Fs.File.Exists(p.Fs.Path.Combine(p.Project.ReceivedDirectory, ReceivedMarker.FileName)).Should().BeTrue("the CLI finds projects by their marker");
 	}
 
@@ -260,15 +286,19 @@ public class SnapshotEngineTests
 	public void RacingScrubberRegistrationsAreAllKept()
 	{
 		var before = SnapshotDefaults.Scrubbers.Count;
+
 		static string Same(string value) => value;
 		// Dedicated threads released together, so the registrations really collide.
 		using var start = new ManualResetEventSlim();
-		var threads = Enumerable.Range(0, Math.Max(4, Environment.ProcessorCount)).Select(_ => new Thread(() =>
-		{
-			start.Wait();
-			for (var i = 0; i < 300; i++)
-				SnapshotDefaults.AddScrubber(Same);
-		})).ToList();
+		var threads = Enumerable
+			.Range(0, Math.Max(4, Environment.ProcessorCount))
+			.Select(_ => new Thread(() =>
+			{
+				start.Wait();
+				for (var i = 0; i < 300; i++)
+					SnapshotDefaults.AddScrubber(Same);
+			}))
+			.ToList();
 		threads.ForEach(t => t.Start());
 		start.Set();
 		threads.ForEach(t => t.Join());
@@ -289,13 +319,20 @@ public class SnapshotEngineTests
 			var projectDir = Path.Combine(root, "tests", "Acme.Tests");
 			Directory.CreateDirectory(projectDir);
 			var project = new SnapshotProject(
-				"Acme.Tests", projectDir, Path.Combine(projectDir, ".snapshots"),
-				Path.Combine(root, ".artifacts", ".snapshots", "received", "Acme.Tests"), root);
+				"Acme.Tests",
+				projectDir,
+				Path.Combine(projectDir, ".snapshots"),
+				Path.Combine(root, ".artifacts", ".snapshots", "received", "Acme.Tests"),
+				root
+			);
 			var engine = new SnapshotEngine(fs, _ => null, () => null, (_, _) => project);
 			var file = Path.Combine(projectDir, "Rendering", "HtmlTests.cs");
 
-			var results = await Task.WhenAll(Enumerable.Range(0, 200).Select(i => Task.Run(() =>
-				engine.Match($"value {i}", SnapshotFormats.Text, new SnapshotCallSite(file, $"Test{i % 20}", i), $"n{i}", null, null))));
+			var results = await Task.WhenAll(
+				Enumerable.Range(0, 200).Select(
+					i => Task.Run(() => engine.Match($"value {i}", SnapshotFormats.Text, new SnapshotCallSite(file, $"Test{i % 20}", i), $"n{i}", null, null))
+				)
+			);
 
 			foreach (var result in results)
 			{

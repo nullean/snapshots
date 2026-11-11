@@ -26,8 +26,8 @@ public class SnapshotFilesAttribute(string folder, string pattern) : DataSourceG
 	protected override IEnumerable<Func<TestDataRow<SnapshotFile>>> GenerateDataSources(DataGeneratorMetadata dataGeneratorMetadata)
 	{
 		ArgumentNullException.ThrowIfNull(dataGeneratorMetadata);
-		var assembly = dataGeneratorMetadata.TestInformation?.Class.Type.Assembly
-			?? throw new InvalidOperationException($"[{GetType().Name}] needs a test method to find its project.");
+		var assembly = dataGeneratorMetadata.TestInformation?.Class.Type.Assembly ??
+			throw new InvalidOperationException($"[{GetType().Name}] needs a test method to find its project.");
 		var files = Files(assembly, SnapshotFile.Find(assembly, Folder, Pattern));
 		if (files.Count == 0)
 			throw new InvalidOperationException($"No {Pattern} files under {(Folder.Length == 0 ? "the project" : Folder)}.");
@@ -55,15 +55,26 @@ public class SnapshotFilesAttribute(string folder, string pattern) : DataSourceG
 	[UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Test assemblies are not trimmed, and TUnit keeps every test method.")]
 	[UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "Test assemblies are not trimmed, and TUnit keeps every test method.")]
 	private static IReadOnlyList<(string Folder, string Pattern)> ClaimsIn(Assembly assembly) =>
-		Claims.GetOrAdd(assembly, static a =>
-		[
-			.. a.GetTypes()
-				.SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly))
-				.SelectMany(m => m.GetCustomAttributes<SnapshotFilesAttribute>(inherit: false)
-					.Concat(m.GetParameters().SelectMany(p => p.GetCustomAttributes<SnapshotFilesAttribute>(inherit: false))))
-				.Select(c => (c.Folder, c.Pattern))
-				.Distinct(),
-		]);
+		Claims.GetOrAdd(
+			assembly,
+			static a =>
+				[
+					.. a
+						.GetTypes()
+						.SelectMany(
+							t => t.GetMethods(
+								BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly
+							)
+						)
+						.SelectMany(
+							m => m.GetCustomAttributes<SnapshotFilesAttribute>(inherit: false).Concat(
+								m.GetParameters().SelectMany(p => p.GetCustomAttributes<SnapshotFilesAttribute>(inherit: false))
+							)
+						)
+						.Select(c => (c.Folder, c.Pattern))
+						.Distinct(),
+				]
+		);
 }
 
 /// <summary>

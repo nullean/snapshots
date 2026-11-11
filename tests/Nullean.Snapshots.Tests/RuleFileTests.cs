@@ -20,8 +20,7 @@ public class RuleFileTests
 
 	private static string P(MockFileSystem fs, string path) => fs.Path.Combine(Root, path.Replace('/', fs.Path.DirectorySeparatorChar));
 
-	private static RuleSet Load(MockFileSystem fs, string sidecar = "j/shop.differences") =>
-		RuleLoader.Load(fs, Root, P(fs, sidecar));
+	private static RuleSet Load(MockFileSystem fs, string sidecar = "j/shop.differences") => RuleLoader.Load(fs, Root, P(fs, sidecar));
 
 	private static IReadOnlyList<string> Errors(MockFileSystem fs, string sidecar = "j/shop.differences") =>
 		((Action)(() => Load(fs, sidecar))).Should().Throw<ExpectedDifferencesException>().Which.Errors;
@@ -29,7 +28,8 @@ public class RuleFileTests
 	[Test]
 	public void ReadsSectionsRulesValuesAndComments()
 	{
-		var fs = Repo(("j/shop.differences", """
+		var fs = Repo(
+			("j/shop.differences", """
 			# why this file exists
 			ignore url                      # before any section: every section
 
@@ -42,18 +42,23 @@ public class RuleFileTests
 			## get text #log
 			changed text /9\.\d+/ -> /9\.\d+/
 			ignore
-			"""));
+			""")
+		);
 
 		var rules = Load(fs).Rules;
 
-		rules.Select(r => (r.Verb, r.Maybe, r.Section)).Should().Equal(
-			(RuleVerb.Ignore, false, null),
-			(RuleVerb.Added, false, "snapshot -c -s nav"),
-			(RuleVerb.Removed, false, "snapshot -c -s nav"),
-			(RuleVerb.Changed, false, "snapshot -c -s nav"),
-			(RuleVerb.Added, true, "snapshot -c -s nav"),
-			(RuleVerb.Changed, false, "get text #log"),
-			(RuleVerb.Ignore, false, "get text #log"));
+		rules
+			.Select(r => (r.Verb, r.Maybe, r.Section))
+			.Should()
+			.Equal(
+				(RuleVerb.Ignore, false, null),
+				(RuleVerb.Added, false, "snapshot -c -s nav"),
+				(RuleVerb.Removed, false, "snapshot -c -s nav"),
+				(RuleVerb.Changed, false, "snapshot -c -s nav"),
+				(RuleVerb.Added, true, "snapshot -c -s nav"),
+				(RuleVerb.Changed, false, "get text #log"),
+				(RuleVerb.Ignore, false, "get text #log")
+			);
 		rules[1].Target.Select(t => t.Value).Should().Equal("link", "What's new");
 		rules[3].Target.Select(t => t.Raw).Should().Equal("heading", "[level=1]");
 		rules[3].Old!.Matches("Elastic Docs").Should().BeTrue();
@@ -122,7 +127,12 @@ public class RuleFileTests
 
 	[Test]
 	public void AnIncludeAfterASectionIsAnError() =>
-		Errors(Repo(("j/shop.differences", "## s\ninclude x.differences\n"))).Should().ContainSingle().Which.Should().Contain("goes before the first '##' section");
+		Errors(Repo(("j/shop.differences", "## s\ninclude x.differences\n")))
+			.Should()
+			.ContainSingle()
+			.Which
+			.Should()
+			.Contain("goes before the first '##' section");
 
 	[Test]
 	public void NoSidecarMeansNoRules()
@@ -139,7 +149,8 @@ public class RuleFileTests
 		var fs = Repo(
 			("j/shop.differences", "include shared/nav.differences\nignore url\n"),
 			("j/shared/nav.differences", "include ../common.differences\n## s\nadded link x\n"),
-			("j/common.differences", "ignore text\n"));
+			("j/common.differences", "ignore text\n")
+		);
 
 		var rules = Load(fs);
 
@@ -152,9 +163,7 @@ public class RuleFileTests
 	[Test]
 	public void ADoubleSlashIsTheGitRoot()
 	{
-		var fs = Repo(
-			("deep/er/j/shop.differences", "include //tests/shared/nav.differences\n"),
-			("tests/shared/nav.differences", "## s\nadded link x\n"));
+		var fs = Repo(("deep/er/j/shop.differences", "include //tests/shared/nav.differences\n"), ("tests/shared/nav.differences", "## s\nadded link x\n"));
 
 		var rules = RuleLoader.Load(fs, Root, P(fs, "deep/er/j/shop.differences"));
 
@@ -167,7 +176,14 @@ public class RuleFileTests
 		var required = Repo(("j/shop.differences", "include gone.differences\n"));
 		var optional = Repo(("j/shop.differences", "include? gone.differences\n## s\nignore url\n"));
 
-		Errors(required).Should().ContainSingle().Which.Should().Contain("does not exist; use 'include?'").And.StartWith($"{P(required, "j/shop.differences")}:1:");
+		Errors(required)
+			.Should()
+			.ContainSingle()
+			.Which
+			.Should()
+			.Contain("does not exist; use 'include?'")
+			.And
+			.StartWith($"{P(required, "j/shop.differences")}:1:");
 		var rules = Load(optional);
 		rules.Rules.Should().ContainSingle();
 		rules.Files.Should().Contain(f => f.Origin == RuleOrigin.Optional && !f.Exists && f.IncludedFrom!.Line == 1);
@@ -218,7 +234,8 @@ public class RuleFileTests
 		var fs = Repo(
 			("j/shop.differences", "include a.differences\n"),
 			("j/a.differences", "include b.differences\n"),
-			("j/b.differences", "include a.differences\n"));
+			("j/b.differences", "include a.differences\n")
+		);
 
 		Errors(fs).Should().ContainSingle().Which.Should().Contain("includes loop").And.Contain(" -> ");
 	}
@@ -231,7 +248,8 @@ public class RuleFileTests
 			("a/.differences", "## s\nadded link a\n"),
 			("a/j/.differences", "## s\nadded link j\n"),
 			("a/j/shop.differences", "## s\nadded link shop\n"),
-			("a/other/.differences", "## s\nadded link other\n"));
+			("a/other/.differences", "## s\nadded link other\n")
+		);
 
 		var rules = RuleLoader.Load(fs, Root, P(fs, "a/j/shop.differences"));
 
@@ -243,9 +261,7 @@ public class RuleFileTests
 	[Test]
 	public void AFolderFileCanIncludeAndItsOptionalIncludeIsEphemeral()
 	{
-		var fs = Repo(
-			("a/.differences", "include? known.differences\n"),
-			("a/known.differences", "## s\nadded link x\n"));
+		var fs = Repo(("a/.differences", "include? known.differences\n"), ("a/known.differences", "## s\nadded link x\n"));
 
 		var rules = RuleLoader.Load(fs, Root, P(fs, "a/j/shop.differences"));
 
@@ -267,6 +283,5 @@ public class RuleFileTests
 	}
 
 	[Test]
-	public void TheSidecarIsNextToTheFile() =>
-		RuleLoader.SidecarPath(P(new MockFileSystem(), "journeys/shop.journey")).Should().EndWith("shop.differences");
+	public void TheSidecarIsNextToTheFile() => RuleLoader.SidecarPath(P(new MockFileSystem(), "journeys/shop.journey")).Should().EndWith("shop.differences");
 }

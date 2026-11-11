@@ -12,16 +12,14 @@ public class ExpectTests
 		return HttpFile.Load(path);
 	}
 
-	private static HttpFileRunOptions Host(TestServer server, bool readOnly = false) => new()
-	{
-		Variables = new Dictionary<string, string> { ["host"] = server.BaseAddress.ToString().TrimEnd('/') },
-		ReadOnly = readOnly,
-	};
+	private static HttpFileRunOptions Host(TestServer server, bool readOnly = false) =>
+		new() { Variables = new Dictionary<string, string> { ["host"] = server.BaseAddress.ToString().TrimEnd('/') }, ReadOnly = readOnly, };
 
 	[Test]
 	public void ExpectationsAndReadonlyAreParsedWithTheirLines()
 	{
-		var file = HttpFile.Parse("""
+		var file = HttpFile.Parse(
+			"""
 			# @readonly
 			# @expect status 2xx
 			# @expect header content-type ~ "application/json"
@@ -30,16 +28,22 @@ public class ExpectTests
 			POST https://example.com/rpc
 
 			{}
-			""");
+			"""
+		);
 
 		var directives = file.Requests.Single().Directives;
 
 		directives.ReadOnly.Should().BeTrue();
-		directives.Expectations.Select(e => (e.Line, e.Text)).Should().Equal(
-			(2, "@expect status 2xx"),
-			(3, "@expect header content-type ~ \"application/json\""),
-			(4, "@expect json $.result.tools[*].name contains \"search_docs\""),
-			(5, "@expect json $[\"a b\"].c equals 12"));
+		directives
+			.Expectations
+			.Select(e => (e.Line, e.Text))
+			.Should()
+			.Equal(
+				(2, "@expect status 2xx"),
+				(3, "@expect header content-type ~ \"application/json\""),
+				(4, "@expect json $.result.tools[*].name contains \"search_docs\""),
+				(5, "@expect json $[\"a b\"].c equals 12")
+			);
 	}
 
 	[Test]
@@ -61,14 +65,14 @@ public class ExpectTests
 	[Arguments("# @expect json $.a equals \"open\nGET https://example.com", "api.http:1: '@expect json $.a equals \"open' needs a JSONPath, 'equals' or 'contains', and a value: '@expect json $.items[*].name contains \"lamp\"'")]
 	[Arguments("# @expect json a.b equals 1\nGET https://example.com", "api.http:1: '@expect json a.b equals 1': a JSONPath starts with '$'")]
 	[Arguments("# @expect status 200\n", "api.http:1: per-request directives are not followed by a request")]
-	public void ReportsABadExpectationWithItsLine(string text, string expected) =>
-		ParserTests.Errors(text).Should().Equal(expected);
+	public void ReportsABadExpectationWithItsLine(string text, string expected) => ParserTests.Errors(text).Should().Equal(expected);
 
 	[Test]
 	public async Task ExpectationsThatHoldLetTheRunFinish()
 	{
 		await using var server = new TestServer();
-		var file = Write("""
+		var file = Write(
+			"""
 			# @expect status 200
 			# @expect status 2xx
 			# @expect header content-type ~ JSON
@@ -84,7 +88,8 @@ public class ExpectTests
 			###
 			# @expect status 4xx
 			GET {{host}}/secure
-			""");
+			"""
+		);
 
 		var result = await HttpFileRunner.RunAsync(file, options: Host(server));
 
@@ -96,14 +101,16 @@ public class ExpectTests
 	public async Task AnUnmetStatusStopsTheRunAtTheDirectiveAndKeepsTheResponse()
 	{
 		await using var server = new TestServer();
-		var file = Write("""
+		var file = Write(
+			"""
 			# @name secure
 			# @expect status 200
 			GET {{host}}/secure
 
 			###
 			GET {{host}}/target
-			""");
+			"""
+		);
 
 		var result = await HttpFileRunner.RunAsync(file, options: Host(server));
 
@@ -111,19 +118,28 @@ public class ExpectTests
 		result.Failure!.Line.Should().Be(2);
 		result.Failure.Message.Should().Be("@expect status 200 failed: the response was 401 Unauthorized");
 		result.Failure.Request.Name.Should().Be("secure");
-		result.Exchanges.Should().ContainSingle("the response that missed the expectation stays in the run, and the next request is not sent")
-			.Which.Response.StatusCode.Should().Be(401);
+		result
+			.Exchanges
+			.Should()
+			.ContainSingle("the response that missed the expectation stays in the run, and the next request is not sent")
+			.Which
+			.Response
+			.StatusCode
+			.Should()
+			.Be(401);
 	}
 
 	[Test]
 	public async Task AnUnmetHeaderNamesTheHeaderAndItsValue()
 	{
 		await using var server = new TestServer();
-		var file = Write("""
+		var file = Write(
+			"""
 			# @expect header content-type ~ xml
 			# @expect header x-missing ~ a
 			GET {{host}}/secure
-			""");
+			"""
+		);
 
 		var result = await HttpFileRunner.RunAsync(file, options: Host(server));
 
@@ -153,7 +169,8 @@ public class ExpectTests
 	public async Task AReadOnlyRunRefusesAWriteWithoutSendingIt()
 	{
 		await using var server = new TestServer();
-		var file = Write("""
+		var file = Write(
+			"""
 			GET {{host}}/target
 
 			###
@@ -165,13 +182,18 @@ public class ExpectTests
 
 			###
 			GET {{host}}/target
-			""");
+			"""
+		);
 
 		var result = await HttpFileRunner.RunAsync(file, options: Host(server, readOnly: true));
 
 		result.Failure.Should().NotBeNull();
 		result.Failure!.Line.Should().Be(5);
-		result.Failure.Message.Should().Be("not sent: a read-only run sends only GET, HEAD and OPTIONS requests, and this is POST. Put '# @readonly' before the request if it only reads");
+		result
+			.Failure
+			.Message
+			.Should()
+			.Be("not sent: a read-only run sends only GET, HEAD and OPTIONS requests, and this is POST. Put '# @readonly' before the request if it only reads");
 		result.Exchanges.Should().ContainSingle("the GET before it ran, and nothing after the refusal did");
 	}
 

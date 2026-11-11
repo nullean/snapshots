@@ -54,15 +54,18 @@ public sealed class ImageSnapshotFormat : BinarySnapshotFormat
 		if (result.DifferentPixels <= allowed)
 			return BinarySnapshotComparison.Match;
 
-		var summary = $"{N(result.DifferentPixels)} of {N(expected.PixelCount)} pixels differ ({Percent(result.DifferentPixels, expected.PixelCount)}), {N(allowed)} allowed";
+		var summary =
+			$"{N(result.DifferentPixels)} of {N(expected.PixelCount)} pixels differ ({Percent(result.DifferentPixels, expected.PixelCount)}), {N(allowed)} allowed";
 		if (result.AntiAliasedPixels > 0)
 			summary += $"; {N(result.AntiAliasedPixels)} anti-aliased pixel(s) left out";
-		var differences = result.Regions
+		var differences = result
+			.Regions
 			.Select(r => (IReadOnlyList<string>)[$"x {r.Left}-{r.Right}, y {r.Top}-{r.Bottom} ({r.Width}x{r.Height}): {N(r.Pixels)} pixel(s)"])
 			.ToList();
 		return new BinarySnapshotComparison(
 			new SnapshotComparison(false, differences, Summary: summary),
-			[new SnapshotAttachment("Diff", DiffSuffix, Png.Encode(result.Diff!))]);
+			[new SnapshotAttachment("Diff", DiffSuffix, Png.Encode(result.Diff!))]
+		);
 	}
 
 	private static BinarySnapshotComparison Failed(string? summary, IReadOnlyList<string> difference) =>

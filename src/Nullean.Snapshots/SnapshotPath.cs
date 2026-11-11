@@ -54,10 +54,9 @@ internal static class SnapshotPath
 		else
 		{
 			var full = Segments(fs.Path.GetFullPath(callerFilePath));
-			fileSegments = full.Length > projectSegments.Length
-				&& full.Take(projectSegments.Length).SequenceEqual(projectSegments, PathComparer)
-					? full[projectSegments.Length..]
-					: [];
+			fileSegments = full.Length > projectSegments.Length && full.Take(projectSegments.Length).SequenceEqual(projectSegments, PathComparer)
+				? full[projectSegments.Length..]
+				: [];
 		}
 
 		return fileSegments.Length <= 1 ? string.Empty : string.Join('/', fileSegments[..^1]);
@@ -96,10 +95,8 @@ internal static class SnapshotPath
 		if (at <= 0)
 			return false;
 		var prefix = string.Concat(receivedName.AsSpan(0, at), AttachmentInfix);
-		return fileName.Length > prefix.Length
-			&& fileName.StartsWith(prefix, StringComparison.Ordinal)
-			&& !fileName.Contains(ReceivedInfix, StringComparison.Ordinal)
-			&& !fileName.EndsWith(".tmp", StringComparison.Ordinal);
+		return fileName.Length > prefix.Length && fileName.StartsWith(prefix, StringComparison.Ordinal) &&
+			!fileName.Contains(ReceivedInfix, StringComparison.Ordinal) && !fileName.EndsWith(".tmp", StringComparison.Ordinal);
 	}
 
 	/// <summary>
@@ -146,8 +143,7 @@ internal static class SnapshotPath
 	}
 
 	/// <summary>True when <paramref name="name"/> can be used as a snapshot name as given.</summary>
-	public static bool IsValidName(string name) =>
-		name.Length > 0 && name.Trim('.').Length == name.Length && Sanitize(name) == name;
+	public static bool IsValidName(string name) => name.Length > 0 && name.Trim('.').Length == name.Length && Sanitize(name) == name;
 
 	/// <summary>
 	/// An eight hex digit FNV-1a hash of the arguments' invariant text, stable across runs, machines and .NET versions.
@@ -199,9 +195,7 @@ internal static class SnapshotPath
 		}
 	}
 
-	internal static StringComparer PathComparer { get; } =
-		OperatingSystem.IsLinux() ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+	internal static StringComparer PathComparer { get; } = OperatingSystem.IsLinux() ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
 
-	private static string[] Segments(string path) =>
-		path.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries);
+	private static string[] Segments(string path) => path.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries);
 }

@@ -170,9 +170,7 @@ public static class ExpectedDifferences
 		var values = string.Empty;
 		if (verb == "changed" && facts.OldText is { } old && facts.NewText is { } @new)
 		{
-			values = IsShort(old) && IsShort(@new)
-				? $" {RuleFileParser.Quote(old)} -> {RuleFileParser.Quote(@new)}"
-				: $"  # {Shorten(old)} -> {Shorten(@new)}";
+			values = IsShort(old) && IsShort(@new) ? $" {RuleFileParser.Quote(old)} -> {RuleFileParser.Quote(@new)}" : $"  # {Shorten(old)} -> {Shorten(@new)}";
 		}
 
 		return [.. texts.Select(t => verb + (t.Length > 0 ? " " + t : string.Empty) + values)];
@@ -202,7 +200,8 @@ public static class ExpectedDifferences
 		if (!rules.Files.Any(f => f.Origin == RuleOrigin.Optional && RuleLoader.Comparer.Equals(f.Path, full)))
 		{
 			throw new InvalidOperationException(
-				$"{file} is not an 'include?' of the rules, so nothing would read what is recorded there. Add 'include? <path>' to the rules file next to the journey or .http file first.");
+				$"{file} is not an 'include?' of the rules, so nothing would read what is recorded there. Add 'include? <path>' to the rules file next to the journey or .http file first."
+			);
 		}
 
 		var text = new StringBuilder();
@@ -261,6 +260,7 @@ public static class ExpectedDifferences
 		}
 
 		DropIfEmpty();
+
 		void DropIfEmpty()
 		{
 			if (header >= 0 && rulesInSection == 0)

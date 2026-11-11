@@ -34,13 +34,23 @@ public static class HttpAssertions
 		var chain = assertions.CurrentAssertionChain;
 		if (assertions.Subject is not HttpResponseMessage response)
 		{
-			SnapshotAssertions.FailUnless(chain, false,
-				$"Expected an HttpResponseMessage, but found {(assertions.Subject is null ? "<null>" : assertions.Subject.GetType().Name)}.");
+			SnapshotAssertions.FailUnless(
+				chain,
+				false,
+				$"Expected an HttpResponseMessage, but found {(assertions.Subject is null ? "<null>" : assertions.Subject.GetType().Name)}."
+			);
 			return new AndConstraint<ObjectAssertions>(assertions);
 		}
 
 		var text = await HttpSnapshot.RenderAsync(response, http).ConfigureAwait(false);
-		var result = Snapshot.Match(text, HttpSnapshot.Format, new SnapshotCallSite(callerFilePath, callerMemberName, callerLineNumber), name, options, because);
+		var result = Snapshot.Match(
+			text,
+			HttpSnapshot.Format,
+			new SnapshotCallSite(callerFilePath, callerMemberName, callerLineNumber),
+			name,
+			options,
+			because
+		);
 		SnapshotAssertions.FailUnless(chain, result.Passed, result.FailureMessage ?? string.Empty);
 		return new AndConstraint<ObjectAssertions>(assertions);
 	}
@@ -96,8 +106,11 @@ public static class HttpAssertions
 		ArgumentNullException.ThrowIfNull(assertions);
 		if (assertions.Subject is not HttpTranscript transcript)
 		{
-			SnapshotAssertions.FailUnless(assertions.CurrentAssertionChain, false,
-				$"Expected a transcript from HttpFileSnapshot.RunAsync, but found {(assertions.Subject is null ? "<null>" : assertions.Subject.GetType().Name)}.");
+			SnapshotAssertions.FailUnless(
+				assertions.CurrentAssertionChain,
+				false,
+				$"Expected a transcript from HttpFileSnapshot.RunAsync, but found {(assertions.Subject is null ? "<null>" : assertions.Subject.GetType().Name)}."
+			);
 			return new AndConstraint<ObjectAssertions>(assertions);
 		}
 

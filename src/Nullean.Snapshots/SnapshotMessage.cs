@@ -47,8 +47,15 @@ internal sealed record SnapshotFailure(
 		{
 			if (Comparison is null)
 			{
-				message.Append(FormatName).Append(" inline snapshot is new").Append(because).Append(": ").Append(inline.Method)
-					.Append("() at ").Append(inline.Location).Append(" has no expected value\n");
+				message
+					.Append(FormatName)
+					.Append(" inline snapshot is new")
+					.Append(because)
+					.Append(": ")
+					.Append(inline.Method)
+					.Append("() at ")
+					.Append(inline.Location)
+					.Append(" has no expected value\n");
 			}
 			else
 			{
@@ -75,13 +82,22 @@ internal sealed record SnapshotFailure(
 		message.Append("Accept:   snap accept ").Append(Key).Append("   (or: dnx Nullean.Snapshots.Cli accept ").Append(Key).Append(")\n");
 		if (TreeNodeFilter is not null)
 		{
-			message.Append("   or:    ").Append(SnapshotEnvironment.AcceptVariable).Append("=1 dotnet test --project ").Append(ProjectPath)
-				.Append(" --treenode-filter \"").Append(TreeNodeFilter).Append("\"\n");
+			message
+				.Append("   or:    ")
+				.Append(SnapshotEnvironment.AcceptVariable)
+				.Append("=1 dotnet test --project ")
+				.Append(ProjectPath)
+				.Append(" --treenode-filter \"")
+				.Append(TreeNodeFilter)
+				.Append("\"\n");
 		}
 
 		if (AcceptIgnoredInCi)
 		{
-			message.Append(SnapshotEnvironment.AcceptVariable).Append(" is ignored because ").Append(SnapshotEnvironment.CiVariable)
+			message
+				.Append(SnapshotEnvironment.AcceptVariable)
+				.Append(" is ignored because ")
+				.Append(SnapshotEnvironment.CiVariable)
 				.Append(" is set: snapshots are never accepted in CI.\n");
 		}
 

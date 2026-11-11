@@ -168,8 +168,7 @@ public static class NodePath
 	public static string KeyText(ScalarNode key) => key.Canonical;
 
 	/// <summary>True when <paramref name="pattern"/> (with wildcards) matches the whole of <paramref name="path"/>.</summary>
-	public static bool Matches(IReadOnlyList<PathSegment> pattern, IReadOnlyList<PathSegment> path) =>
-		Matches(pattern, 0, path, 0);
+	public static bool Matches(IReadOnlyList<PathSegment> pattern, IReadOnlyList<PathSegment> path) => Matches(pattern, 0, path, 0);
 
 	private static bool Matches(IReadOnlyList<PathSegment> pattern, int p, IReadOnlyList<PathSegment> path, int s)
 	{
@@ -280,7 +279,12 @@ public static class NodePath
 				case 't':
 					value.Append('\t');
 					break;
-				case 'u' when i + 4 < literal.Length - 1 && int.TryParse(literal.AsSpan(i + 1, 4), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var code):
+				case 'u' when i + 4 < literal.Length - 1 && int.TryParse(
+					literal.AsSpan(i + 1, 4),
+					NumberStyles.HexNumber,
+					CultureInfo.InvariantCulture,
+					out var code
+				):
 					value.Append((char)code);
 					i += 4;
 					break;

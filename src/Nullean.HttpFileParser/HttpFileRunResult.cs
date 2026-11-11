@@ -50,8 +50,16 @@ public sealed class HttpFileSentRequest
 public sealed class HttpFileResponse
 {
 	internal HttpFileResponse(
-		int statusCode, string? reasonPhrase, Version version, IReadOnlyList<HttpHeaderField> headers, IReadOnlyList<HttpHeaderField> contentHeaders,
-		byte[] body, string? mediaType, string? charSet, string? contentEncoding)
+		int statusCode,
+		string? reasonPhrase,
+		Version version,
+		IReadOnlyList<HttpHeaderField> headers,
+		IReadOnlyList<HttpHeaderField> contentHeaders,
+		byte[] body,
+		string? mediaType,
+		string? charSet,
+		string? contentEncoding
+	)
 	{
 		StatusCode = statusCode;
 		ReasonPhrase = reasonPhrase;
@@ -187,7 +195,12 @@ public sealed class HttpFileRunResult
 {
 	private readonly List<HttpSensitiveValue> _byLength;
 
-	internal HttpFileRunResult(HttpFile file, IReadOnlyList<HttpFileExchange> exchanges, HttpFileRunFailure? failure, IReadOnlyList<HttpSensitiveValue> sensitive)
+	internal HttpFileRunResult(
+		HttpFile file,
+		IReadOnlyList<HttpFileExchange> exchanges,
+		HttpFileRunFailure? failure,
+		IReadOnlyList<HttpSensitiveValue> sensitive
+	)
 	{
 		File = file;
 		Exchanges = exchanges;
@@ -236,9 +249,16 @@ public sealed class HttpFileRunResult
 		var response = exchange.Response;
 		var redactedSent = new HttpFileSentRequest(sent.Method, RedactUri(sent.Uri), sent.Version, RedactHeaders(sent.Headers), RedactBody(sent.Body));
 		var redactedResponse = new HttpFileResponse(
-			response.StatusCode, response.ReasonPhrase is null ? null : Redact(response.ReasonPhrase), response.Version,
-			RedactHeaders(response.Headers), RedactHeaders(response.ContentHeaders), RedactBody(response.Body)!,
-			response.MediaType, response.CharSet, response.ContentEncoding);
+			response.StatusCode,
+			response.ReasonPhrase is null ? null : Redact(response.ReasonPhrase),
+			response.Version,
+			RedactHeaders(response.Headers),
+			RedactHeaders(response.ContentHeaders),
+			RedactBody(response.Body)!,
+			response.MediaType,
+			response.CharSet,
+			response.ContentEncoding
+		);
 		var redirects = exchange.Redirects.Select(r => r with { Location = RedactUri(r.Location) }).ToList();
 		return new HttpFileExchange(exchange.Request, redactedSent, redactedResponse, redirects);
 	}
@@ -249,8 +269,7 @@ public sealed class HttpFileRunResult
 		return text == uri.OriginalString ? uri : new Uri(text, UriKind.RelativeOrAbsolute);
 	}
 
-	private List<HttpHeaderField> RedactHeaders(IReadOnlyList<HttpHeaderField> headers) =>
-		[.. headers.Select(h => h with { Value = Redact(h.Value) })];
+	private List<HttpHeaderField> RedactHeaders(IReadOnlyList<HttpHeaderField> headers) => [.. headers.Select(h => h with { Value = Redact(h.Value) })];
 
 	private static readonly UTF8Encoding StrictUtf8 = new(false, true);
 
