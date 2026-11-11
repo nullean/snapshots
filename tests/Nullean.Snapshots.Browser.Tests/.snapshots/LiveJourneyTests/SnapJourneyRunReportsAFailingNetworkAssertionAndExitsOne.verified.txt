@@ -2,7 +2,7 @@ FAILED  cli-journeys/telemetry-fails
 
 Journey stopped at {project}/cli-journeys/telemetry-fails.journey:6: expect --timeout 300 request **/_api/v1/o/l --body-contains no-such-text
 Timed out after 0.3s waiting for the requests to include a request matching "**/_api/v1/o/l" --body-contains "no-such-text": received 1 with that URL, none matching the other filters: POST {origin}/_api/v1/o/l (Fetch) 200.
-Last open: {origin}/
+Page:       {origin}/
 Rerun:     snap journey run cli-journeys/telemetry-fails.journey --base-url {origin}/
 
 0 passed, 1 failed, 0 skipped in <t>s, against {origin}/

@@ -78,6 +78,13 @@ public sealed class JourneySnapshotOptions
 	/// <summary>Request headers every page of the run sends. A journey's own <c>set headers</c> adds to them.</summary>
 	public IReadOnlyDictionary<string, string> Headers { get; init; } = new Dictionary<string, string>();
 
+	/// <summary>
+	/// Take a screenshot of the viewport when a step fails, into <c>JourneyFailure.Screenshot</c> of the transcript. Off unless asked
+	/// for, because a page can show private data. A journey that fails also writes <c>failure.png</c> into its artifacts folder, which
+	/// a test then gets, so the failure message names the file.
+	/// </summary>
+	public bool ScreenshotOnFailure { get; init; }
+
 	/// <summary>Called before each step runs, for a progress display. Steps inside a <c>feature</c> block the run does not meet are not reported.</summary>
 	public Action<JourneyStep>? OnStep { get; init; }
 
@@ -146,7 +153,7 @@ public static class JourneySnapshot
 		var file = Path.IsPathRooted(journeyFile) ? journeyFile : Path.Combine(ProjectDirectory(callerFilePath), journeyFile);
 		options ??= new JourneySnapshotOptions();
 		// Only journeys that write files get a folder, so the rest leave nothing behind.
-		if (options.ArtifactsDirectory is null && WritesFiles(file))
+		if (options.ArtifactsDirectory is null && (options.ScreenshotOnFailure || WritesFiles(file)))
 			options = With(options, Snapshot.ArtifactsDirectory(file));
 		var browser = await SharedBrowser.Value.ConfigureAwait(false);
 		return await RunAsync(file, browser, options, cancellationToken).ConfigureAwait(false);
@@ -178,6 +185,7 @@ public static class JourneySnapshot
 			UserAgent = options.UserAgent,
 			Headers = options.Headers,
 			OnStep = options.OnStep,
+			ScreenshotOnFailure = options.ScreenshotOnFailure,
 		}, cancellationToken).ConfigureAwait(false);
 		return new JourneyTranscript(full, JourneyTranscript.Render(result, options.BaseUrl), result.Failure)
 		{
@@ -210,6 +218,7 @@ public static class JourneySnapshot
 		UserAgent = options.UserAgent,
 		Headers = options.Headers,
 		OnStep = options.OnStep,
+		ScreenshotOnFailure = options.ScreenshotOnFailure,
 	};
 
 	/// <summary>

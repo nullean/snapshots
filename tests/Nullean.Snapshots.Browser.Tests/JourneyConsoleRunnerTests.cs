@@ -3,6 +3,8 @@ using AwesomeAssertions;
 using Nullean.Cdp;
 using Nullean.Cdp.Journeys;
 using Nullean.Snapshots.Browser.Console;
+using Nullean.TerminalImages;
+using Nullean.TerminalImages.Png;
 
 namespace Nullean.Snapshots.Browser.Tests;
 
@@ -143,6 +145,8 @@ public partial class JourneyConsoleRunnerTests
 
 		strict.Exit.Should().Be(JourneyExitCode.Failed);
 		lenient.Exit.Should().Be(JourneyExitCode.Ok);
+		strict.Output.Should().EndWith("Every selected journey was skipped, so nothing was checked.\n");
+		lenient.Output.Should().EndWith("Every selected journey was skipped; none applies to this site.\n");
 	}
 
 	[Test]
@@ -295,5 +299,78 @@ public partial class JourneyConsoleRunnerTests
 		var blocked = Path.Combine(folder.Path, "blocked");
 		Directory.CreateDirectory(blocked);
 		(await RunAsync(new JourneyRunOptions { Files = files, StepSummaryPath = blocked })).Exit.Should().Be(JourneyExitCode.Ok);
+	}
+
+	private static byte[] Png() =>
+		PngEncoder.Encode(new RgbaImage(4, 4, Enumerable.Range(0, 16).SelectMany(_ => new byte[] { 200, 40, 40, 255 }).ToArray()));
+
+	private static JourneyTranscript Failed(string file, bool withScreenshot) => new(file, "", new JourneyFailure(3, "click #pay", "Timed out after 5s waiting for css #pay to be visible: no element matches.")
+	{
+		Url = "https://shop.test/pay",
+		Screenshot = withScreenshot ? Png() : null,
+		ScreenshotPath = withScreenshot ? "/tmp/art/failure.png" : null,
+	});
+
+	[Test]
+	public async Task TheScreenshotOptionReachesTheJourneyRun()
+	{
+		using var folder = new Folder();
+		var files = new[] { folder.Add("a/pay", "open /") };
+		var seen = new List<bool>();
+
+		await RunAsync(new JourneyRunOptions { Files = files, ScreenshotOnFailure = true }, (file, o) =>
+		{
+			seen.Add(o.ScreenshotOnFailure);
+			return new JourneyTranscript(file, "", null);
+		});
+		await RunAsync(new JourneyRunOptions { Files = files }, (file, o) =>
+		{
+			seen.Add(o.ScreenshotOnFailure);
+			return new JourneyTranscript(file, "", null);
+		});
+
+		seen.Should().Equal(true, false);
+	}
+
+	[Test]
+	public async Task APlainFailureNamesThePageAndTheScreenshotFileAndNothingIsDrawn()
+	{
+		using var folder = new Folder();
+		var files = new[] { folder.Add("a/pay", "open /\nclick #pay") };
+
+		var (_, output, _) = await RunAsync(new JourneyRunOptions { Files = files, BaseUrl = new Uri("https://shop.test/"), ScreenshotOnFailure = true }, (file, _) => Failed(file, withScreenshot: true));
+
+		output.Should().Contain("Page:       https://shop.test/pay").And.Contain("Screenshot: /tmp/art/failure.png")
+			.And.NotContain("Last open:").And.NotContain("\u2580");
+	}
+
+	[Test]
+	public async Task AnInteractiveFailureDrawsTheScreenshotUnderTheErrorAndBeforeThePage()
+	{
+		using var folder = new Folder();
+		var files = new[] { folder.Add("a/pay", "open /\nclick #pay") };
+		var options = new JourneyRunOptions { Files = files, BaseUrl = new Uri("https://shop.test/"), ScreenshotOnFailure = true, Rerun = "snap journey run {id}.journey" };
+
+		var (_, output, _) = await RunAsync(options, (file, _) => Failed(file, withScreenshot: true), interactive: true);
+
+		var plain = Ansis().Replace(output, "");
+		var error = plain.IndexOf("no element matches.", StringComparison.Ordinal);
+		var image = plain.IndexOf('\u2580', StringComparison.Ordinal);
+		var page = plain.IndexOf("https://shop.test/pay", StringComparison.Ordinal);
+		error.Should().BeGreaterThan(0);
+		image.Should().BeGreaterThan(error, "the image comes after the error");
+		page.Should().BeGreaterThan(image, "and before the page and rerun rows");
+		plain.Should().Contain("screenshot").And.Contain("/tmp/art/failure.png").And.Contain("snap journey run a/pay.journey");
+	}
+
+	[Test]
+	public async Task NoScreenshotIsDrawnWhenItWasNotAskedFor()
+	{
+		using var folder = new Folder();
+		var files = new[] { folder.Add("a/pay", "open /\nclick #pay") };
+
+		var (_, output, _) = await RunAsync(new JourneyRunOptions { Files = files, BaseUrl = new Uri("https://shop.test/") }, (file, _) => Failed(file, withScreenshot: true), interactive: true);
+
+		output.Should().NotContain("\u2580");
 	}
 }

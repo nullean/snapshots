@@ -95,7 +95,7 @@ internal sealed class JourneyCli(
 			// As in a test: a journey that writes files gets its own folder next to its received transcript.
 			ArtifactsFor = f => artifacts is not null
 				? fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, artifacts))
-				: WritesFiles(f.Path) ? engine.ArtifactsDirectory(f.Path) : null,
+				: WritesFiles(f.Path) || args.ScreenshotOnFailure ? engine.ArtifactsDirectory(f.Path) : null,
 			Compare = mode == TranscriptMode.Off
 				? null
 				: (f, recorded) => engine.MatchFile(recorded.Text, JourneySnapshot.Format, f.Path, null, null, variant),
@@ -113,6 +113,7 @@ internal sealed class JourneyCli(
 			Tags = new HashSet<string>(args.Tags, StringComparer.Ordinal),
 			Parallel = args.Parallel,
 			AllowAllSkipped = args.AllowAllSkipped,
+			ScreenshotOnFailure = args.ScreenshotOnFailure,
 			Verbose = args.Verbose,
 			JUnitPath = args.JUnit,
 			Rerun = RerunCommand(baseUrl, variant, transcript, args),
@@ -176,6 +177,8 @@ internal sealed class JourneyCli(
 		Add("--viewport", args.Viewport);
 		if (args.AllowMutations)
 			parts.Add("--allow-mutations");
+		if (args.ScreenshotOnFailure)
+			parts.Add("--screenshot-on-failure");
 		return string.Join(' ', parts);
 	}
 
@@ -334,6 +337,7 @@ internal sealed record JourneyRunArgs
 	public string? JUnit { get; init; }
 	public bool Verbose { get; init; }
 	public bool AllowAllSkipped { get; init; }
+	public bool ScreenshotOnFailure { get; init; }
 
 	/// <summary>Colour, icons and the status line; decided from the terminal when <c>null</c>.</summary>
 	public bool? Interactive { get; init; }
@@ -381,6 +385,7 @@ internal sealed class JourneyCommands
 	/// <param name="junit">Write a JUnit XML report here.</param>
 	/// <param name="verbose">-v, List every skipped journey instead of collapsing a reason that many share.</param>
 	/// <param name="allowAllSkipped">Exit with 0 when every selected journey was skipped. Otherwise a run that checked nothing exits with 1.</param>
+	/// <param name="screenshotOnFailure">Take a screenshot when a step fails: written to failure.png in the journey's artifacts folder, and drawn under the failure on a terminal that can show images. Off unless asked for, because a page can show private data.</param>
 	public static async Task<int> Run(
 		[Argument] string[] files,
 		string? baseUrl = null,
@@ -403,7 +408,8 @@ internal sealed class JourneyCommands
 		string[]? tag = null,
 		string? junit = null,
 		bool verbose = false,
-		bool allowAllSkipped = false
+		bool allowAllSkipped = false,
+		bool screenshotOnFailure = false
 	)
 	{
 		var browser = new Lazy<Task<Cdp.Browser>>(() => Cdp.Browser.LaunchAsync(), LazyThreadSafetyMode.ExecutionAndPublication);
@@ -434,6 +440,7 @@ internal sealed class JourneyCommands
 				JUnit = junit,
 				Verbose = verbose,
 				AllowAllSkipped = allowAllSkipped,
+				ScreenshotOnFailure = screenshotOnFailure,
 			};
 			return await cli.RunAsync(files, baseUrl, CancellationToken.None, allow, fileRoot, artifacts, variant, transcript, args).ConfigureAwait(false);
 		}

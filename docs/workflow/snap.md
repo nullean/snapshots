@@ -71,6 +71,11 @@ GET, HEAD or OPTIONS, skips journeys marked `# @mutates` (`--allow-mutations` ru
 (repeatable) set what every page of the run sends. `--parallel <n>` (default 4) sets how many journeys run at once in one
 Chrome, `--junit <file>` writes a JUnit report, and `--allow-all-skipped` exits with 0 when every journey was skipped.
 
+`--screenshot-on-failure` takes a screenshot of the page when a step fails. It is written to `failure.png` in the journey's
+artifacts folder, named in the failure, and on a terminal that can show images (Kitty, Ghostty, iTerm2, WezTerm, Sixel, with
+half blocks as the fallback) drawn under the error. It is off unless asked for, because a page can show private data;
+`NULLEAN_TERMINAL_IMAGES=none` keeps the image out of the terminal.
+
 It prints each journey as it finishes, collapses a skip reason that many journeys share (`--verbose` lists them), and
 repeats the failures at the end with the totals. On a terminal that adds a status line, icons, colour, and the journey's
 lines around a failing one; in CI, in a pipe, or with `NO_COLOR` the output is plain lines.

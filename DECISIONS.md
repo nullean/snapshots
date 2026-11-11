@@ -648,6 +648,14 @@ image or a transcript is not something to read in a source file.
   A transcript that differs after every step passed shows the comparison's own message as written, never reflowed.
 - **The exit code for a journey that cannot be parsed is an option.** `snap` documents 2 for it and docs-builder documents 1.
 
+## Failure screenshots
+
+- **Off unless asked for.** A screenshot can show private data, so `ScreenshotOnFailure` and `--screenshot-on-failure` are opt-in,
+  as in Nullean.Cdp. A failure always names the page it stopped on.
+- **Drawn with Nullean.TerminalImages, only on a terminal.** The console reporter draws the image under the error with the best
+  protocol the terminal has, and draws nothing in CI, in a pipe, or when detection says the terminal cannot show images. A
+  failure to draw never fails a run. The file is written by Nullean.Cdp into the journey's artifacts folder.
+
 ## `snap journey run` and usage text
 
 - **Words that look like options are one error, not one per word.** `[--variant plain]` copied from usage text reaches the
