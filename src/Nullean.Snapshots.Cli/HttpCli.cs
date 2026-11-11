@@ -200,8 +200,14 @@ internal sealed class HttpCli(
 			() => null,
 			(site, _) => JourneyCli.WithArtifactsReceived(fileSystem, projects.FromCallerFile(site.FilePath))
 		);
-		var recordFile = record is null ? null : fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, record));
-		var pruneFile = prune is null ? null : fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, prune));
+		// `{name}` in --record and --prune is the file's name, so each .http file keeps its own file of differences.
+		string? RulesFile(string? path, string httpFile) =>
+			path is null
+				? null
+				: fileSystem.Path.GetFullPath(
+					fileSystem.Path.Combine(_root, path.Replace("{name}", fileSystem.Path.GetFileNameWithoutExtension(httpFile), StringComparison.Ordinal))
+				);
+
 		var exit = ExitCode.Ok;
 		foreach (var file in files)
 		{
@@ -220,8 +226,8 @@ internal sealed class HttpCli(
 				HostVariable = hostVariable,
 				Values = values,
 				ReuseBaseline = reuseBaseline,
-				Record = recordFile,
-				Prune = pruneFile,
+				Record = RulesFile(record, file),
+				Prune = RulesFile(prune, file),
 				Run = new HttpFileSnapshotOptions { Variables = shared, Headers = headers ?? [], ReadOnly = readOnly },
 			};
 			SiteComparisonResult result;
@@ -244,7 +250,7 @@ internal sealed class HttpCli(
 
 			if (result.Recorded.Count > 0)
 				output.WriteLine(
-					$"Recorded {result.Recorded.Count} rule(s) for {display} in {fileSystem.Path.GetRelativePath(_root, recordFile!).Replace('\\', '/')}."
+					$"Recorded {result.Recorded.Count} rule(s) for {display} in {fileSystem.Path.GetRelativePath(_root, RulesFile(record, file)!).Replace('\\', '/')}."
 				);
 			if (result.Passed)
 				output.WriteLine($"ok   {display} ({result.Application.Explained.Count} expected difference(s))");
@@ -355,7 +361,7 @@ internal sealed class HttpCommands
 	/// <param name="hostVariable">The variable that holds each site's URL. Default: host.</param>
 	/// <param name="values">Compare values as well as properties, instead of shapes.</param>
 	/// <param name="reuseBaseline">Use the baselines of an earlier run, and send to the baseline site only for files that have none.</param>
-	/// <param name="record">Append a rule for every unexpected difference to this file, which the file's rules must include? , instead of failing.</param>
+	/// <param name="record">Append a rule for every unexpected difference to this file, which the file's rules must include? , instead of failing. {name} stands for the file's name: known/{name}.differences.</param>
 	/// <param name="prune">Remove the stale rules of this file (a rules file that is an include?), instead of failing for them.</param>
 	/// <param name="root">The folder files and globs are relative to. Defaults to the current folder.</param>
 	/// <param name="readOnly">Refuse any request that is not GET, HEAD or OPTIONS unless it carries '# @readonly'. Use it against a live site.</param>

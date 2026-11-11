@@ -88,6 +88,13 @@ public interface IRuleTarget
 {
 	/// <summary>Whether the target selects the difference. <paramref name="verb"/> lets <see cref="RuleVerb.Ignore"/> reach below the node it names.</summary>
 	bool Matches(DifferenceFacts facts, RuleVerb verb);
+
+	/// <summary>
+	/// Whether the target selects a single <paramref name="line"/> that was added to (<see cref="RuleVerb.Added"/>) or removed from
+	/// (<see cref="RuleVerb.Removed"/>) a multi-line text, for a rule like <c>added text "GET /x 404"</c>. Only called for a text the
+	/// format names in <see cref="RuleTargets.IsText"/>. Targets that do not read lines say no.
+	/// </summary>
+	bool MatchesLine(DifferenceFacts facts, RuleVerb verb, string line) => false;
 }
 
 /// <summary>
@@ -108,6 +115,12 @@ public abstract class RuleTargets
 	/// removed. Never called for a difference of a whole section, which needs no target.
 	/// </summary>
 	public abstract IReadOnlyList<string> Suggest(DifferenceFacts facts);
+
+	/// <summary>
+	/// Whether <paramref name="facts"/> is a change of a text whose lines rules can name: a read's text, a response's text body. For
+	/// such a change a rule can excuse each added and removed line (<c>added text "line"</c>), and a suggestion says so line by line.
+	/// </summary>
+	public virtual bool IsText(DifferenceFacts facts) => false;
 
 	/// <summary><paramref name="value"/> as a <c>"quoted"</c> word a rule reads back as the same text.</summary>
 	protected static string Quote(string value) => RuleFileParser.Quote(value);

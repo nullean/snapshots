@@ -50,6 +50,99 @@ public class SnapCliTests : IDisposable
 
 	private string Received(params string[] parts) => P([".artifacts", ".snapshots", "received", "Acme.Tests", .. parts]);
 
+	// A received file an earlier run left behind: older than the start of its project's latest test run.
+
+	private static readonly DateTime RunStart = new(2026, 11, 11, 12, 0, 0, DateTimeKind.Utc);
+
+	/// <summary>The latest run started at <see cref="RunStart"/>; RendersTable's received file is from an hour before it, RendersList's is from during it.</summary>
+	private void AddRunWithOneStaleFile()
+	{
+		_fs.AddFile(Received(RunManifest.FileName), new(RunManifest.Header(new DateTimeOffset(RunStart))));
+		_fs.File.SetLastWriteTimeUtc(Received("Rendering", "HtmlTests", "RendersTable.received.txt"), RunStart.AddHours(-1));
+		_fs.File.SetLastWriteTimeUtc(Received("Rendering", "HtmlTests", "RendersList.a1b2c3d4.received.txt"), RunStart.AddMinutes(3));
+	}
+
+	[Test]
+	public void StatusMarksAReceivedFileThatIsOlderThanTheLatestRunAsStale()
+	{
+		AddRunWithOneStaleFile();
+
+		Cli().Status(json: false).Should().Be(ExitCode.Pending);
+
+		var text = _out.ToString();
+		text.Should().Contain("RendersTable").And.Contain(".txt  (stale)");
+		text.Split('\n').Single(l => l.Contains("RendersList", StringComparison.Ordinal)).Should().NotContain("stale");
+		text.Should().Contain("1 received file(s) are older than the latest test run of their project");
+	}
+
+	[Test]
+	public void StatusJsonMarksOnlyTheStaleOnes()
+	{
+		AddRunWithOneStaleFile();
+
+		Cli().Status(json: true);
+
+		using var document = JsonDocument.Parse(_out.ToString());
+		var byKey = document.RootElement.EnumerateArray().ToDictionary(e => e.GetProperty("key").GetString()!);
+		byKey[Changed].GetProperty("stale").GetBoolean().Should().BeTrue();
+		byKey[New].TryGetProperty("stale", out _).Should().BeFalse();
+	}
+
+	[Test]
+	public void WithoutARunManifestNothingIsStale()
+	{
+		Cli().Status(json: false);
+
+		_out.ToString().Should().NotContain("stale");
+	}
+
+	[Test]
+	public void AcceptAllLeavesAStaleFileAloneAndSaysHowToTakeIt()
+	{
+		AddRunWithOneStaleFile();
+
+		Cli().Accept([], all: true).Should().Be(ExitCode.Pending);
+
+		_fs.File.ReadAllText(Verified("Rendering", "HtmlTests", "RendersTable.verified.txt")).Should().Be("a\nb\nc\n", "the stale output was not accepted");
+		_fs.File.Exists(Received("Rendering", "HtmlTests", "RendersTable.received.txt")).Should().BeTrue("it is still pending");
+		_fs.File.ReadAllText(Verified("Rendering", "HtmlTests", "RendersList.a1b2c3d4.verified.txt")).Should().Be("new {x}\n", "the fresh one was");
+		_out.ToString().Should().Contain("Left 1 stale received file(s) alone").And.Contain(Changed).And.Contain("--include-stale");
+	}
+
+	[Test]
+	public void AcceptAllWithIncludeStaleTakesThemToo()
+	{
+		AddRunWithOneStaleFile();
+
+		Cli().Accept([], all: true, includeStale: true).Should().Be(ExitCode.Ok);
+
+		_fs.File.ReadAllText(Verified("Rendering", "HtmlTests", "RendersTable.verified.txt")).Should().Be("a\nB\nc\n");
+		_out.ToString().Should().NotContain("Left");
+	}
+
+	[Test]
+	public void AcceptingAStaleFileByKeyWorksAndSaysItWasStale()
+	{
+		AddRunWithOneStaleFile();
+
+		Cli().Accept(["HtmlTests/RendersTable"], all: false).Should().Be(ExitCode.Ok);
+
+		_fs.File.ReadAllText(Verified("Rendering", "HtmlTests", "RendersTable.verified.txt")).Should().Be("a\nB\nc\n");
+		_out.ToString().Should().Contain("1 received file(s) are older than the latest test run");
+	}
+
+	[Test]
+	public void DiffAndReviewSayWhenAFileIsStale()
+	{
+		AddRunWithOneStaleFile();
+
+		Cli().Diff("RendersTable");
+		Cli().Review(new ScriptedPrompt('s', 's'), color: false);
+
+		var text = _out.ToString();
+		text.Should().Contain("1 received file(s) are older than the latest test run").And.Contain(".txt  (stale: older than the latest test run)");
+	}
+
 	[Test]
 	public void SiteComparisonFilesAreNeverPending()
 	{
