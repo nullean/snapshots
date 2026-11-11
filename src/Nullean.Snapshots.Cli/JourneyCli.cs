@@ -239,12 +239,6 @@ internal sealed class JourneyCli(
 		return usageErrors > 0 ? Math.Max(exit, ExitCode.Usage) : exit;
 	}
 
-	/// <summary>The box, in terminal cells, a zoom is enlarged to fill: big enough to read a few words, small enough to leave the report on screen.</summary>
-	private const int ZoomColumns = 60;
-
-	/// <inheritdoc cref="ZoomColumns" />
-	private const int ZoomRows = 12;
-
 	/// <summary>The screenshots that differ between the two sites, each with its diff image, drawn when the terminal can show one.</summary>
 	private void ReportScreenshots(List<(JourneyRunFile File, IReadOnlyList<ImageDifference> Pictures)> screenshots, bool failing, bool draw)
 	{
@@ -269,7 +263,7 @@ internal sealed class JourneyCli(
 				if (draw && fileSystem.File.Exists(shown)
 					&& (picture.ZoomPath is null
 						? TerminalPicture.TryDraw(output, fileSystem.File.ReadAllBytes(shown))
-						: TerminalPicture.TryDraw(output, fileSystem.File.ReadAllBytes(shown), enlarge: true, maxColumns: ZoomColumns, maxRows: ZoomRows)))
+						: TerminalPicture.TryDrawZoom(output, fileSystem.File.ReadAllBytes(shown))))
 					output.WriteLine();
 			}
 		}

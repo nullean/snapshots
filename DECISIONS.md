@@ -205,7 +205,9 @@ its verified file by the prefix swap. Half-written `*.tmp` files are ignored.
   Unknown answers are asked again; the end of input means quit. On a terminal it reads single keys; with redirected
   input one answer per line, so it can be scripted and is smoke-tested in CI. It exits 1 while anything is left
   pending.
-- **Colour** only in `snap review`, only when stdout is a terminal, `NO_COLOR` is unset and `TERM` is not `dumb`.
+- **Colour and pictures** only in `snap review`, only when stdout is a terminal, `NO_COLOR` is unset and `TERM` is not `dumb`. A pending PNG
+  is drawn there (its diff's zoom, else its diff, else the received image; `TerminalPicture`, shared with `snap journey compare`): the same
+  places where colour is already allowed, so test failure messages, `snap diff` and every other command stay plain text.
   Failure messages and every other command stay plain.
 - **No locks.** `SnapshotDefaults.AddScrubber` is a copy-on-write compare-and-swap loop; reads are a volatile read.
 

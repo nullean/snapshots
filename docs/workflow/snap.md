@@ -43,6 +43,11 @@ $ snap
 On a terminal it reads single keys and colours the diff (not with `NO_COLOR` set). With its input redirected it reads
 one answer per line, so `printf 'a\nr\n' | snap review` works in scripts.
 
+A pending PNG snapshot is **drawn** on a terminal that can show images (Kitty, Ghostty, iTerm2, WezTerm, Sixel, with half
+blocks as the fallback): the zoom of its diff if the test asked for one (`ZoomOnChanges`), else the diff image, with the changed
+pixels in red; for a new snapshot, or when the sizes differ, the received picture itself. The paths are listed as before, so
+nothing changes when the terminal cannot show images, or with its output redirected.
+
 ## Orphans
 
 Each test run writes a manifest of the verified files it used, in the project's received folder. `snap orphans` lists

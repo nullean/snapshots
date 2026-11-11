@@ -314,6 +314,83 @@ public class SnapCliTests : IDisposable
 		_fs.AddFile(Received("Rendering", "ChartTests", "Draws.received-diff.png"), new(Png));
 	}
 
+	// Drawing: a PNG snapshot's picture in `snap review`, where the terminal can show one.
+
+	private static readonly byte[] DiffPng = [.. Png, 1];
+	private static readonly byte[] ZoomPng = [.. Png, 2];
+	private static readonly byte[] Blob = [1, 0, 2, 0, 3];
+
+	private List<(byte[] Png, bool Zoom)> ReviewDrawing(bool drawn = true, char[]? answers = null)
+	{
+		var calls = new List<(byte[] Png, bool Zoom)>();
+		Cli().Review(new ScriptedPrompt(answers ?? ['s', 's', 's', 's']), color: true, (png, zoom) =>
+		{
+			calls.Add((png, zoom));
+			return drawn;
+		});
+		return calls;
+	}
+
+	[Test]
+	public void ReviewDrawsTheDiffImageOfAChangedPicture()
+	{
+		AddBinary();
+		_fs.AddFile(Received("Rendering", "ChartTests", "Draws.received-diff.png"), new(DiffPng));
+
+		var calls = ReviewDrawing();
+
+		var call = calls.Should().ContainSingle().Subject;
+		call.Png.Should().Equal(DiffPng);
+		call.Zoom.Should().BeFalse();
+	}
+
+	[Test]
+	public void ReviewDrawsTheZoomRatherThanTheDiffWhenThereIsOne()
+	{
+		AddBinary();
+		_fs.AddFile(Received("Rendering", "ChartTests", "Draws.received-diff.png"), new(DiffPng));
+		_fs.AddFile(Received("Rendering", "ChartTests", "Draws.received-zoom.png"), new(ZoomPng));
+
+		var calls = ReviewDrawing();
+
+		var call = calls.Should().ContainSingle().Subject;
+		call.Png.Should().Equal(ZoomPng);
+		call.Zoom.Should().BeTrue();
+	}
+
+	[Test]
+	public void ReviewDrawsTheReceivedPictureOfANewSnapshotAndOfOneWithNoDiff()
+	{
+		AddBinary(withVerified: false);
+		_fs.File.Delete(Received("Rendering", "ChartTests", "Draws.received-diff.png"));
+
+		var calls = ReviewDrawing();
+
+		var call = calls.Should().ContainSingle().Subject;
+		call.Png.Should().Equal(Png);
+		call.Zoom.Should().BeFalse();
+	}
+
+	[Test]
+	public void ReviewDrawsNothingForBinaryThatIsNotAPngOrForText()
+	{
+		_fs.AddFile(Received("Rendering", "ChartTests", "Blob.received.bin"), new(Blob));
+
+		ReviewDrawing().Should().BeEmpty("the pending text and object snapshots and a blob that is not a PNG are not pictures");
+	}
+
+	[Test]
+	public void ReviewWithoutAHookOrWhenDrawingFailsStillShowsThePathsAndAsksTheSame()
+	{
+		AddBinary();
+
+		Cli().Review(new ScriptedPrompt('s', 's', 's', 's'), color: true, draw: null).Should().Be(ExitCode.Pending);
+		var failed = ReviewDrawing(drawn: false);
+
+		failed.Should().ContainSingle();
+		_out.ToString().Should().Contain("Binary snapshot: no line diff, open the files to compare.").And.Contain("Draws.received-diff.png");
+	}
+
 	[Test]
 	public void AcceptCopiesBinarySnapshotsByteForByteAndRemovesAttachments()
 	{
