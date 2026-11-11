@@ -272,8 +272,8 @@ public class HttpRuleTests
 		return Gen.Frequency((3, scalar), (2, map), (2, inner.Array[0, 3].Select(items => (Node)new SeqNode(items))));
 	});
 
-	private static Node Section(string heading, Node body) =>
-		new MapNode([
+	private static MapNode Section(string heading, Node body) =>
+		new([
 			new(ScalarNode.String("request"), ScalarNode.String(heading)),
 			new(ScalarNode.String("status"), ScalarNode.String("200 OK")),
 			new(ScalarNode.String("body"), body),

@@ -3,7 +3,7 @@ using CsCheck;
 
 namespace Nullean.Snapshots.Tests;
 
-public class ScrubberTests
+public partial class ScrubberTests
 {
 	private static readonly Gen<string> Volatile = Gen.OneOf(
 		Gen.Guid.Select(g => g.ToString()),
@@ -22,8 +22,10 @@ public class ScrubberTests
 
 	[Test]
 	public void ScrubbedTextHasNoGuidsLeft() =>
-		Text.Sample(t => !System.Text.RegularExpressions.Regex.IsMatch(
-			Scrubbers.Guids(t), "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"));
+		Text.Sample(t => !AGuid().IsMatch(Scrubbers.Guids(t)));
+
+	[System.Text.RegularExpressions.GeneratedRegex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")]
+	private static partial System.Text.RegularExpressions.Regex AGuid();
 
 	[Test]
 	public void SameValueGetsTheSameNumber()

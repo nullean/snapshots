@@ -195,8 +195,8 @@ public class JourneyRuleTests
 		});
 	});
 
-	private static Node Page(Node[] roots) =>
-		new SeqNode([new MapNode([
+	private static SeqNode Page(Node[] roots) =>
+		new([new MapNode([
 			new(ScalarNode.String("step"), ScalarNode.String("snapshot")),
 			new(ScalarNode.String("url"), ScalarNode.String("{origin}/")),
 			new(ScalarNode.String("tree"), new SeqNode(roots)),

@@ -8,7 +8,7 @@ internal sealed class TestProject
 	public static string Root { get; } = OperatingSystem.IsWindows() ? @"C:\repo" : "/repo";
 
 	public MockFileSystem Fs { get; } = new();
-	public Dictionary<string, string?> Environment { get; } = new(StringComparer.Ordinal);
+	public Dictionary<string, string?> Environment { get; } = [with(StringComparer.Ordinal)];
 	public SnapshotTestIdentity? Identity { get; set; }
 	public SnapshotProject Project { get; }
 	public SnapshotEngine Engine { get; }
