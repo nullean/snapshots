@@ -10,6 +10,9 @@ using var stream = File.OpenRead(path);
 stream.Should().MatchImageSnapshot(new ImageSnapshotOptions { MaxDifferentRatio = 0.001 });
 ```
 
+`MatchImageSnapshot` is in `Nullean.Snapshots.Images.Assertions`; `Nullean.Snapshots.Images` holds the format, the PNG codec and
+the comparison, with no AwesomeAssertions, so the browser package and the native `snap` tool can compare screenshots.
+
 Image snapshots are PNG files, stored exactly as given and compared **by their pixels**, so they hold up when the
 same picture is rendered on another machine:
 

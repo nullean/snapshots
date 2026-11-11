@@ -23,7 +23,7 @@ public class JourneyCompareTests
 
 		public Run()
 		{
-			P.Fs.AddFile(Journey, new MockFileData("open index.html\nsnapshot -c -s nav\n"));
+			P.Fs.AddFile(Journey, new MockFileData("open index.html\nsnapshot -c -s nav\nscreenshot nav.png\n"));
 			P.Fs.AddDirectory(P.Project.ReceivedDirectory);
 			Prod = file => new JourneyTranscript(file, ProdNav, null);
 			Preview = file => new JourneyTranscript(file, PreviewNav, null);
@@ -33,16 +33,32 @@ public class JourneyCompareTests
 
 		public string Rules => P.Fs.Path.Combine(P.Project.Directory, "journeys", "shop.differences");
 
+		/// <summary>The screenshots each site's run writes, by host: <c>nav.png</c> and its bytes.</summary>
+		public Dictionary<string, (string Name, byte[] Png)[]> Pictures { get; } = [];
+
+		public List<(string Host, string? Artifacts, bool ScreenshotOnFailure)> Runs { get; } = [];
+
 		public Task<int> Compare(
 			string? baseline = "http://prod.test/", string? target = "http://preview.test/", bool reuse = false, string? record = null, string? prune = null,
 			params string[] patterns
+		) => CompareWith(baseline, target, reuse, record, prune, "report", false, patterns);
+
+		public Task<int> CompareWith(
+			string? baseline, string? target, bool reuse, string? record, string? prune, string imageDiff, bool screenshotOnFailure, params string[] patterns
 		) =>
 			new JourneyCli(P.Fs, P.Project.Directory, Out, Err, (file, options, _) =>
 			{
 				Ran.Add(options.BaseUrl!.Host);
+				Runs.Add((options.BaseUrl.Host, options.ArtifactsDirectory, options.ScreenshotOnFailure));
+				if (options.ArtifactsDirectory is { } folder && Pictures.TryGetValue(options.BaseUrl.Host, out var pictures))
+				{
+					foreach (var (name, png) in pictures)
+						P.Fs.AddFile(P.Fs.Path.Combine(folder, name), new MockFileData(png));
+				}
+
 				return Task.FromResult((options.BaseUrl.Host == "prod.test" ? Prod! : Preview!)(file));
 			}, _ => null).CompareAsync(patterns.Length == 0 ? ["journeys/shop.journey"] : patterns, baseline, target, CancellationToken.None,
-				reuseBaseline: reuse, record: record, prune: prune, more: new JourneyRunArgs { Interactive = false });
+				reuseBaseline: reuse, record: record, prune: prune, more: new JourneyRunArgs { Interactive = false, ScreenshotOnFailure = screenshotOnFailure }, imageDiff: imageDiff);
 
 		public string Output => Out.ToString().Replace("\r\n", "\n", StringComparison.Ordinal);
 
@@ -198,5 +214,137 @@ public class JourneyCompareTests
 
 		result.Passed.Should().BeFalse();
 		result.FailureMessage.Should().Contain("nav-stale.differences:3: removed link \"Basket\"");
+	}
+	// Screenshots: one folder per site, a diff image for each picture that differs
+
+	private static byte[] Picture(bool dot)
+	{
+		var pixels = new byte[16 * 8 * 4];
+		for (var i = 0; i < pixels.Length; i += 4)
+		{
+			pixels[i] = pixels[i + 1] = pixels[i + 2] = 200;
+			pixels[i + 3] = 255;
+		}
+
+		if (dot)
+		{
+			pixels[(((3 * 16) + 5) * 4) + 1] = 0;
+			pixels[(((3 * 16) + 5) * 4) + 2] = 0;
+		}
+
+		return Images.Png.Encode(new Images.RgbaImage(16, 8, pixels));
+	}
+
+	private static Run WithRule(Run run)
+	{
+		run.P.Fs.AddFile(run.Rules, new MockFileData("## snapshot*\nadded link \"What's new\"\n"));
+		run.Pictures["prod.test"] = [("nav.png", Picture(false))];
+		run.Pictures["preview.test"] = [("nav.png", Picture(true))];
+		return run;
+	}
+
+	[Test]
+	public async Task EachSiteGetsItsOwnArtifactsFolderSoTheSecondRunDoesNotEmptyTheFirst()
+	{
+		var run = WithRule(new Run());
+
+		(await run.Compare()).Should().Be(0);
+
+		run.Runs.Select(r => Path.GetFileName(r.Artifacts)).Should().Equal("shop.baseline.artifacts", "shop.target.artifacts");
+		run.P.Fs.AllFiles.Should().Contain(f => f.EndsWith("shop.baseline.artifacts" + Path.DirectorySeparatorChar + "nav.png", StringComparison.Ordinal))
+			.And.Contain(f => f.EndsWith("shop.target.artifacts" + Path.DirectorySeparatorChar + "nav.png", StringComparison.Ordinal));
+	}
+
+	[Test]
+	public async Task ADifferingScreenshotIsReportedWithItsDiffImageAndIsNotAFailure()
+	{
+		var run = WithRule(new Run());
+
+		(await run.Compare()).Should().Be(0);
+
+		run.Output.Should().Contain("1 screenshot(s) differ between the baseline and the target (not a failure: --image-diff fail makes it one):")
+			.And.Contain("journeys/shop  nav.png: 1 of 128 pixels differ")
+			.And.Contain("x 5-5, y 3-3 (1x1): 1 pixel(s)")
+			.And.Contain("shop.target.artifacts/nav.diff.png");
+		run.P.Fs.AllFiles.Should().Contain(f => f.EndsWith("shop.target.artifacts" + Path.DirectorySeparatorChar + "nav.diff.png", StringComparison.Ordinal));
+	}
+
+	[Test]
+	public async Task ImageDiffFailMakesADifferingScreenshotAFailure()
+	{
+		var run = WithRule(new Run());
+
+		(await run.CompareWith("http://prod.test/", "http://preview.test/", false, null, null, "fail", false)).Should().Be(1);
+
+		run.Output.Should().Contain("1 screenshot(s) differ: nav.png");
+	}
+
+	[Test]
+	public async Task ImageDiffOffComparesNoPictures()
+	{
+		var run = WithRule(new Run());
+
+		(await run.CompareWith("http://prod.test/", "http://preview.test/", false, null, null, "off", false)).Should().Be(0);
+
+		run.Output.Should().NotContain("screenshot(s) differ");
+		run.P.Fs.AllFiles.Should().NotContain(f => f.EndsWith(".diff.png", StringComparison.Ordinal));
+	}
+
+	[Test]
+	public async Task IdenticalScreenshotsSayNothing()
+	{
+		var run = WithRule(new Run());
+		run.Pictures["preview.test"] = [("nav.png", Picture(false))];
+
+		(await run.Compare()).Should().Be(0);
+
+		run.Output.Should().NotContain("screenshot(s) differ");
+	}
+
+	[Test]
+	public async Task AReusedBaselineKeepsItsScreenshotsForTheNextComparison()
+	{
+		var run = WithRule(new Run());
+		await run.Compare();
+
+		(await run.Compare(reuse: true)).Should().Be(0);
+
+		run.Ran.Should().Equal("prod.test", "preview.test", "preview.test");
+		run.Output.Split("screenshot(s) differ between").Length.Should().Be(3, "the reused baseline's picture is still there to compare with, so both runs report it");
+	}
+
+	[Test]
+	public async Task ScreenshotOnFailureReachesBothSites()
+	{
+		var run = WithRule(new Run());
+
+		await run.CompareWith("http://prod.test/", "http://preview.test/", false, null, null, "report", true);
+
+		run.Runs.Select(r => r.ScreenshotOnFailure).Should().Equal(true, true);
+	}
+
+	[Test]
+	public async Task ABadImageDiffExitsTwo()
+	{
+		var run = new Run();
+
+		(await run.CompareWith("http://prod.test/", "http://preview.test/", false, null, null, "loud", false)).Should().Be(2);
+
+		run.Error.Should().Contain("--image-diff 'loud' is not 'report', 'fail' or 'off'");
+		run.Ran.Should().BeEmpty();
+	}
+
+	// Chrome, with a screenshot step on pages that differ by one link
+
+	[Test]
+	public async Task TheScreenshotsOfTwoRealSitesDifferWhereThePreviewHasItsExtraLink()
+	{
+		var result = await Real("shot");
+
+		result.Passed.Should().BeTrue(result.FailureMessage);
+		var difference = JourneySnapshot.CompareScreenshots("compare-journeys/shot.journey").Should().ContainSingle().Subject;
+		difference.Name.Should().Be("nav.png");
+		difference.DiffPath.Should().NotBeNull();
+		File.Exists(difference.DiffPath).Should().BeTrue();
 	}
 }

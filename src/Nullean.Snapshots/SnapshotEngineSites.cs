@@ -38,6 +38,28 @@ internal sealed partial class SnapshotEngine
 		return path;
 	}
 
+	/// <summary>
+	/// The folder a run against one site of a comparison writes its screenshots and HAR files into:
+	/// <c>{received}/{folder}/{name}.{role}.artifacts</c>. A comparison needs one per site, so the second run does not empty
+	/// the first's. <paramref name="clean"/> empties it first, as a run does; a reused baseline leaves it alone.
+	/// </summary>
+	public string SiteArtifactsDirectory(string sourceFile, string role, bool clean)
+	{
+		var (project, _, dir, name, _) = SiteFile(sourceFile, null);
+		var parts = dir.Length == 0 ? [] : dir.Split('/');
+		var folder = fileSystem.Path.Combine([project.ReceivedDirectory, .. parts, name + "." + role + ArtifactsSuffix]);
+		if (!clean)
+			return folder;
+		var fs = ScopeFor(project);
+		fs.Directory.CreateDirectory(project.ReceivedDirectory);
+		if (_markers.TryAdd(project, 0))
+			ReceivedMarker.For(fileSystem, project).EnsureWritten(fs, project.ReceivedDirectory);
+		if (fs.Directory.Exists(folder))
+			fs.Directory.Delete(folder, true);
+		fs.Directory.CreateDirectory(folder);
+		return folder;
+	}
+
 	public string? ReadBaseline(string extension, string sourceFile, string? variant)
 	{
 		var (project, _, dir, name, _) = SiteFile(sourceFile, variant);

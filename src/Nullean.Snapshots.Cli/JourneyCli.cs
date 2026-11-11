@@ -118,12 +118,19 @@ internal sealed class JourneyCli(
 		bool reuseBaseline = false,
 		string? record = null,
 		string? prune = null,
-		JourneyRunArgs? more = null
+		JourneyRunArgs? more = null,
+		string imageDiff = "report"
 	)
 	{
 		if (patterns.Count == 0)
 		{
 			error.WriteLine("Error: name the journeys to compare: files or globs such as 'journeys/**/*.journey'.");
+			return ExitCode.Usage;
+		}
+
+		if (imageDiff is not ("report" or "fail" or "off"))
+		{
+			error.WriteLine($"Error: --image-diff '{imageDiff}' is not 'report', 'fail' or 'off'.");
 			return ExitCode.Usage;
 		}
 
@@ -170,7 +177,7 @@ internal sealed class JourneyCli(
 					if (recorded.Failure is null)
 						_ = engine.SeedBaseline(recorded.Text, JourneySnapshot.Format.Extension, f.Path, null);
 					return new SnapshotResult(true, null, string.Empty, string.Empty, string.Empty);
-				}, string.Empty, seeding: true);
+				}, string.Empty, seeding: true, role: "baseline");
 			var seeded = await JourneyConsoleRunner
 				.RunAsync(seedOptions, captured, error, executor, new ConsoleJourneyReporter(captured, seedOptions, false), cancellationToken)
 				.ConfigureAwait(false);
@@ -184,6 +191,7 @@ internal sealed class JourneyCli(
 
 		// Pass two: the target, compared with what pass one wrote.
 		var usageErrors = 0;
+		var screenshots = new List<(JourneyRunFile File, IReadOnlyList<ImageDifference> Pictures)>();
 		SnapshotResult CompareOne(JourneyRunFile f, JourneyTranscript recorded)
 		{
 			try
@@ -192,7 +200,21 @@ internal sealed class JourneyCli(
 					new SiteComparisonOptions { Record = recordFile, Prune = pruneFile, Note = $"recorded against {targetUri}" });
 				if (result.Recorded.Count > 0)
 					output.WriteLine($"Recorded {result.Recorded.Count} rule(s) for {f.Id} in {fileSystem.Path.GetRelativePath(_root, recordFile!).Replace('\\', '/')}.");
-				return new SnapshotResult(result.Passed, result.FailureMessage, string.Empty, result.BaselinePath, result.TargetPath ?? string.Empty);
+				var passed = result.Passed;
+				var message = result.FailureMessage;
+				if (imageDiff != "off" && artifacts is null
+					&& SiteImages.Compare(fileSystem, engine.SiteArtifactsDirectory(f.Path, "baseline", clean: false), engine.SiteArtifactsDirectory(f.Path, "target", clean: false)) is { Count: > 0 } pictures)
+				{
+					lock (screenshots)
+						screenshots.Add((f, pictures));
+					if (imageDiff == "fail")
+					{
+						passed = false;
+						message = (message is null ? string.Empty : message + "\n") + $"{pictures.Count} screenshot(s) differ: " + string.Join(", ", pictures.Select(p => p.Name));
+					}
+				}
+
+				return new SnapshotResult(passed, message, string.Empty, result.BaselinePath, result.TargetPath ?? string.Empty);
 			}
 			catch (Exception e) when (e is ExpectedDifferencesException or InvalidOperationException)
 			{
@@ -202,7 +224,7 @@ internal sealed class JourneyCli(
 		}
 
 		var options = BuildOptions(runFiles, targetUri, allow, fileRoot, artifacts, null, args, engine, viewport, headers, CompareOne,
-			$"snap journey compare {{id}}.journey --baseline {baselineUri} --target {targetUri} --reuse-baseline");
+			$"snap journey compare {{id}}.journey --baseline {baselineUri} --target {targetUri} --reuse-baseline", role: "target");
 		if (interactive)
 		{
 			output.WriteLine(ConsoleJourneyReporter.ContextBlock($"snap {Version}".TrimEnd(), [new ContextRow("Baseline", baselineUri.ToString()), new ContextRow("Target", targetUri.ToString())]));
@@ -212,7 +234,31 @@ internal sealed class JourneyCli(
 		var exit = await JourneyConsoleRunner
 			.RunAsync(options, output, error, executor, new ConsoleJourneyReporter(output, options, interactive), cancellationToken)
 			.ConfigureAwait(false);
+		if (screenshots.Count > 0)
+			ReportScreenshots(screenshots, imageDiff == "fail", interactive);
 		return usageErrors > 0 ? Math.Max(exit, ExitCode.Usage) : exit;
+	}
+
+	/// <summary>The screenshots that differ between the two sites, each with its diff image, drawn when the terminal can show one.</summary>
+	private void ReportScreenshots(List<(JourneyRunFile File, IReadOnlyList<ImageDifference> Pictures)> screenshots, bool failing, bool draw)
+	{
+		var count = screenshots.Sum(s => s.Pictures.Count);
+		output.WriteLine();
+		output.WriteLine($"{count} screenshot(s) differ between the baseline and the target{(failing ? string.Empty : " (not a failure: --image-diff fail makes it one)")}:");
+		foreach (var (file, pictures) in screenshots.OrderBy(s => s.File.Id, StringComparer.Ordinal))
+		{
+			foreach (var picture in pictures)
+			{
+				output.WriteLine($"  {file.Id}  {picture.Name}: {picture.Summary}");
+				foreach (var region in picture.Regions)
+					output.WriteLine($"      {region}");
+				if (picture.DiffPath is not { } diff)
+					continue;
+				output.WriteLine($"      diff: {fileSystem.Path.GetRelativePath(_root, diff).Replace('\\', '/')}");
+				if (draw && fileSystem.File.Exists(diff) && TerminalPicture.TryDraw(output, fileSystem.File.ReadAllBytes(diff)))
+					output.WriteLine();
+			}
+		}
 	}
 
 	/// <summary>Reads a required <c>--baseline</c> or <c>--target</c>: an absolute http, https or file URL.</summary>
@@ -239,7 +285,7 @@ internal sealed class JourneyCli(
 	private JourneyRunOptions BuildOptions(
 		IReadOnlyList<JourneyRunFile> files, Uri? baseUri, IReadOnlyList<string>? allow, string? fileRoot, string? artifacts, string? variant,
 		JourneyRunArgs args, SnapshotEngine engine, JourneyViewport? viewport, IReadOnlyDictionary<string, string> headers,
-		Func<JourneyRunFile, JourneyTranscript, SnapshotResult>? compare, string rerun, bool seeding = false
+		Func<JourneyRunFile, JourneyTranscript, SnapshotResult>? compare, string rerun, bool seeding = false, string? role = null
 	) => new()
 	{
 		Files = files,
@@ -247,9 +293,10 @@ internal sealed class JourneyCli(
 		AllowedHosts = allow ?? [],
 		FileRoot = fileRoot is null ? null : fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, fileRoot)),
 		// As in a test: a journey that writes files gets its own folder next to its received transcript.
+		// A comparison keeps a folder per site, so the second run does not empty the first's screenshots.
 		ArtifactsFor = f => artifacts is not null
-			? fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, artifacts))
-			: WritesFiles(f.Path) || args.ScreenshotOnFailure ? engine.ArtifactsDirectory(f.Path) : null,
+			? fileSystem.Path.GetFullPath(role is null ? fileSystem.Path.Combine(_root, artifacts) : fileSystem.Path.Combine(_root, artifacts, role))
+			: WritesFiles(f.Path) || args.ScreenshotOnFailure ? (role is null ? engine.ArtifactsDirectory(f.Path) : engine.SiteArtifactsDirectory(f.Path, role, clean: true)) : null,
 		Compare = compare,
 		Variant = variant,
 		Load = path => Journey.Parse(fileSystem.File.ReadAllText(path), path),
@@ -632,6 +679,8 @@ internal sealed class JourneyCommands
 	/// <param name="junit">Write a JUnit XML report of the comparison here.</param>
 	/// <param name="verbose">-v, List every skipped journey instead of collapsing a reason that many share.</param>
 	/// <param name="allowAllSkipped">Exit with 0 when every selected journey was skipped. Otherwise a run that checked nothing exits with 1.</param>
+	/// <param name="imageDiff">What a screenshot that differs between the sites means: report (the default: list it with its diff image), fail, or off. Screenshots come from the journey's 'screenshot' steps, one folder per site.</param>
+	/// <param name="screenshotOnFailure">Take a screenshot when a step fails, on either site: written to failure.png in that site's artifacts folder, and drawn under the failure on a terminal that can show images. Off unless asked for, because a page can show private data.</param>
 	public static async Task<int> Compare(
 		[Argument] string[] files,
 		string? baseline = null,
@@ -656,7 +705,9 @@ internal sealed class JourneyCommands
 		string[]? tag = null,
 		string? junit = null,
 		bool verbose = false,
-		bool allowAllSkipped = false
+		bool allowAllSkipped = false,
+		string imageDiff = "report",
+		bool screenshotOnFailure = false
 	)
 	{
 		var browser = new Lazy<Task<Cdp.Browser>>(() => Cdp.Browser.LaunchAsync(), LazyThreadSafetyMode.ExecutionAndPublication);
@@ -687,8 +738,9 @@ internal sealed class JourneyCommands
 				JUnit = junit,
 				Verbose = verbose,
 				AllowAllSkipped = allowAllSkipped,
+				ScreenshotOnFailure = screenshotOnFailure,
 			};
-			return await cli.CompareAsync(files, baseline, target, CancellationToken.None, allow, fileRoot, artifacts, reuseBaseline, record, prune, args).ConfigureAwait(false);
+			return await cli.CompareAsync(files, baseline, target, CancellationToken.None, allow, fileRoot, artifacts, reuseBaseline, record, prune, args, imageDiff).ConfigureAwait(false);
 		}
 		finally
 		{

@@ -9,6 +9,7 @@
     <Project Path="src/Nullean.Snapshots.Browser.Console/Nullean.Snapshots.Browser.Console.csproj" />
     <Project Path="src/Nullean.Snapshots.Html/Nullean.Snapshots.Html.csproj" />
     <Project Path="src/Nullean.Snapshots.Images/Nullean.Snapshots.Images.csproj" />
+    <Project Path="src/Nullean.Snapshots.Images.Assertions/Nullean.Snapshots.Images.Assertions.csproj" />
     <Project Path="src/Nullean.Snapshots.Json/Nullean.Snapshots.Json.csproj" />
     <Project Path="src/Nullean.Snapshots.Yaml/Nullean.Snapshots.Yaml.csproj" />
     <Project Path="src/Nullean.HttpFileParser/Nullean.HttpFileParser.csproj" />

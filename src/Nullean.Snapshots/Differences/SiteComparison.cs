@@ -50,6 +50,13 @@ public static class SiteComparison
 	public static string SeedBaseline(string text, SnapshotFormat format, string sourceFile, string? variant = null) =>
 		Snapshot.Current.SeedBaseline(text, format.Extension, sourceFile, variant);
 
+	/// <summary>
+	/// The folder a run against one site writes its screenshots and HAR files into, <c>{name}.{role}.artifacts</c> in the
+	/// received tree (<paramref name="role"/> is <c>baseline</c> or <c>target</c>). <paramref name="clean"/> empties it first.
+	/// </summary>
+	public static string ArtifactsDirectory(string sourceFile, string role, bool clean = true) =>
+		Snapshot.Current.SiteArtifactsDirectory(sourceFile, role, clean);
+
 	/// <summary>The seeded baseline, or <see langword="null"/> when there is none.</summary>
 	public static string? ReadBaseline(SnapshotFormat format, string sourceFile, string? variant = null) =>
 		Snapshot.Current.ReadBaseline(format.Extension, sourceFile, variant);

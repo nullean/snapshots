@@ -766,3 +766,26 @@ two sites. This change is the rules and what reads them; running the two sites i
   the CLI's goes through the runner so it is not a second runner.
 - **Tested** with the CLI on a mock file system and a fake browser or server, with two real HTTP servers (one a "preview" with an extra
   property and other values) and with Chrome on two folders of pages, and by mutating the origin scrub and the removal of a stale target file.
+
+## Screenshots in a comparison
+
+- **The journey takes them; the comparison compares them.** A journey's own `screenshot` step writes PNGs, which Nullean.Cdp already does,
+  so a comparison needs no new capability and no end-of-run hook: what to photograph and how (`--full`, an element) is the journey's
+  call, and a journey without such a step has nothing to compare. A step failure's screenshot (`--screenshot-on-failure`) is separate and
+  is passed through.
+- **A folder per site.** `{name}.baseline.artifacts` and `{name}.target.artifacts` in the received tree, because a run empties its artifacts
+  folder first and the second run would otherwise erase the first's pictures. A reused baseline's folder is left alone, so
+  `--reuse-baseline` still has pictures to compare. With `--artifacts` the two sites write to subfolders of the folder given, which every
+  journey shares, so pairs cannot be told apart and nothing is compared.
+- **Pairs by name; the comparison is image snapshots'.** `SiteImages` pairs the PNGs of the two folders by their path in them and compares
+  each pair with `ImageSnapshotFormat` (pixelmatch's perceptual distance, anti-aliasing left out), so a screenshot of two sites is
+  compared the way a screenshot snapshot is. A different size, a picture only one side took and a PNG that does not decode are differences
+  too. The diff image is `{name}.diff.png` next to the target's picture and never counts as a screenshot on a later run.
+- **A differing screenshot is reported, not a failure, unless asked.** A page that says something else looks different, so on a live site
+  a pixel difference is expected and the transcript rules are what judge a run; `--image-diff fail` is for pages that should be identical,
+  and `off` skips the comparison. The report is printed after the run rather than between journeys, so the status line is not disturbed
+  and the diff can be drawn where the terminal supports it (`TerminalPicture`, the reporter's drawing, now shared).
+- **`Nullean.Snapshots.Images` is split from its assertions**, as `.Browser`/`.Browser.Assertions` and `.Http`/`.Http.Assertions` are:
+  `MatchImageSnapshot` moved to `Nullean.Snapshots.Images.Assertions` (same namespace, so only the package reference changes). The format,
+  the PNG codec and the comparison stay in `Images`, which no longer carries AwesomeAssertions, so `Nullean.Snapshots.Browser` and the
+  native `snap` tool can reference it. Both are pre-1.0.
