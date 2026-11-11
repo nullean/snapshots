@@ -24,8 +24,12 @@ internal sealed class TestServer : IAsyncDisposable
 	private readonly CancellationTokenSource _stop = new();
 	private readonly Task _loop;
 
-	public TestServer()
+	/// <summary>The preview of a site: <c>/api/catalog</c> has another value, and an extra property.</summary>
+	private readonly bool _preview;
+
+	public TestServer(bool preview = false)
 	{
+		_preview = preview;
 		// FreePort releases the port again, so another test's server can take it before this one binds it: pick again.
 		for (var attempt = 1; ; attempt++)
 		{
@@ -99,7 +103,7 @@ internal sealed class TestServer : IAsyncDisposable
 		}
 	}
 
-	private static void Handle(HttpListenerContext context)
+	private void Handle(HttpListenerContext context)
 	{
 		var request = context.Request;
 		var response = context.Response;
@@ -117,6 +121,12 @@ internal sealed class TestServer : IAsyncDisposable
 						Json(response, 200, /*lang=json,strict*/ """{"orders":[{"id":1,"total":12.5},{"id":2,"total":3}]}""");
 					else
 						Json(response, 401, /*lang=json,strict*/ """{"error":"unauthorized"}""");
+					break;
+				case "/api/catalog":
+					// "self" holds this server's own address, as a page that links to itself does: only the origin scrub makes two sites equal.
+					Json(response, 200, _preview
+						? $$"""{"items":[{"sku":"a","price":2.5,"badge":"new"},{"sku":"b","price":4}],"home":"http://preview.test/catalog","self":"{{Host}}/api/catalog"}"""
+						: $$"""{"items":[{"sku":"a","price":1.5},{"sku":"b","price":3}],"home":"http://prod.test/catalog","self":"{{Host}}/api/catalog"}""");
 					break;
 				case "/api/whoami":
 					Json(response, 200, $$"""{"user":"{{request.QueryString["user"]}}"}""");

@@ -96,7 +96,7 @@ public sealed class JourneySnapshotOptions
 /// Runs journeys (<c>*.journey</c> files of agent-browser commands) in Chrome and snapshots their transcripts. The
 /// snapshot belongs to the journey file, so a test and <c>snap journey run</c> compare against the same verified file.
 /// </summary>
-public static class JourneySnapshot
+public static partial class JourneySnapshot
 {
 	/// <summary>The transcript format.</summary>
 	public static JourneySnapshotFormat Format { get; } = new();
@@ -200,14 +200,14 @@ public static class JourneySnapshot
 	internal static bool WritesFiles(string journeyFile) =>
 		Journey.Load(journeyFile).Steps.Any(s => s.Command is ScreenshotCommand or HarCommand { Action: "stop" });
 
-	internal static JourneySnapshotOptions With(JourneySnapshotOptions options, string artifactsDirectory) => new()
+	internal static JourneySnapshotOptions With(JourneySnapshotOptions options, string? artifactsDirectory = null, Uri? baseUrl = null) => new()
 	{
-		BaseUrl = options.BaseUrl,
+		BaseUrl = baseUrl ?? options.BaseUrl,
 		ActionTimeout = options.ActionTimeout,
 		NavigationTimeout = options.NavigationTimeout,
 		AllowedHosts = options.AllowedHosts,
 		FileRoot = options.FileRoot,
-		ArtifactsDirectory = artifactsDirectory,
+		ArtifactsDirectory = artifactsDirectory ?? options.ArtifactsDirectory,
 		Secrets = options.Secrets,
 		Transcript = options.Transcript,
 		Variant = options.Variant,

@@ -724,3 +724,32 @@ two sites. This change is the rules and what reads them; running the two sites i
 - Tested by CsCheck properties (idempotent; changing values but not kinds changes nothing; key order changes nothing; one
   added root property is exactly one difference), and by mutating the projection (no map merge, strings keeping their value),
   which fails them.
+
+## Comparing two sites
+
+- **The baseline is a received-tree file, not a snapshot.** `{name}.baseline.{ext}` and, when a comparison fails, `{name}.target.{ext}` sit
+  next to where a received snapshot would. Neither holds `.received.`, so discovery, `snap status`, `review` and `reject` never see them
+  (a test pins it), they claim no key and write no manifest line, and `snap orphans` has nothing to say about them. Re-running the
+  target against a kept baseline is `--reuse-baseline`: the baseline site is only run for files that have none.
+- **The CLI runs two passes of the console runner, not a new runner.** Pass one runs the baseline site and its compare function seeds the
+  transcript; pass two runs the target and its compare function is the comparison. `@requires`, `@mutates`, read-only runs, parallelism,
+  JUnit and the step summary all come from the runner. Pass one reports to a buffer that is only shown when it did not finish (a baseline
+  that stopped at a step is never seeded: a partial baseline would excuse nothing and report everything), always allows an all-skipped
+  run (pass two decides that), and writes no JUnit or step summary. A journey is skipped the same way in both, since `@requires` is judged
+  against one set of flags, not against each site.
+- **Shape is the default for `.http` compare, values on request.** Two sites rarely agree on values; the properties are the point. Each side's
+  origin is replaced by `{origin}` (`HttpFileSnapshotOptions.BaseUrl`), because a `location` header or a body that links to itself would
+  differ on every run. Journeys already scrubbed their base URL; the transcripts are never shaped, since an accessibility tree's text is its content.
+- **Each site's URL is a variable, `host` by default.** `.http` files already write `{{host}}`, and the transcript headings keep it
+  unresolved, so a heading is the same on both sites. A `/`-relative URL needs a client with a base address, which the runner's own
+  client does not have; compare is for files that use the variable.
+- **`--record` and `--prune` take the file explicitly.** Recording is the only thing that writes outside the received tree, so it is named
+  on the command line, must be an `include?` of the run's rules, and writes nothing else (see "Expected differences"). A recorded difference
+  does not fail the run: the agent's loop is compare, record, read the lines, compare again.
+- **A suggestion is printed with every failure.** The `Rules that would explain them` block is the rule lines under their headings, so a
+  person can paste them into a rules file and an agent can paste them into the `include?` file, without a flag.
+- **Library and CLI share one orchestration for `.http`** (`HttpFileSnapshot.CompareCoreAsync` with a `SiteStore`), differing only in where
+  the baseline lives: the library's engine for a test, the CLI's own for `snap`. A journey's library compare runs the two sites in order;
+  the CLI's goes through the runner so it is not a second runner.
+- **Tested** with the CLI on a mock file system and a fake browser or server, with two real HTTP servers (one a "preview" with an extra
+  property and other values) and with Chrome on two folders of pages, and by mutating the origin scrub and the removal of a stale target file.

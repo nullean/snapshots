@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Fixture shop</title></head>
+<body>
+<nav aria-label="Main"><a href="index.html">Home</a> <a href="basket.html">Basket</a> <a href="news.html">What's new</a></nav>
+<main>
+  <h1>Fixture shop</h1>
+  <label for="q">Search</label>
+  <input id="q" placeholder="Find a product">
+  <button type="button" onclick="document.getElementById('results').hidden = false">Search</button>
+  <ul id="results" hidden>
+    <li>Red lamp <button type="button" onclick="add('Red lamp')">Add red lamp</button></li>
+    <li>Blue lamp <button type="button" onclick="add('Blue lamp')">Add blue lamp</button></li>
+  </ul>
+  <p>Basket: <span id="count">0</span> items</p>
+</main>
+<script>
+  let count = 0;
+  function add(name) { count++; document.getElementById('count').textContent = String(count); }
+</script>
+</body>
+</html>
