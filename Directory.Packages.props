@@ -14,7 +14,7 @@
     <PackageVersion Include="Nullean.ScopedFileSystem" Version="0.5.0" />
     <PackageVersion Include="Nullean.Argh" Version="0.21.0" />
     <!-- The lowest version that works, so consumers are not forced to upgrade: docs-builder pins 1.7.2. -->
-    <PackageVersion Include="AngleSharp" Version="1.7.2" />
+    <PackageVersion Include="AngleSharp" Version="1.9.1" />
     <PackageVersion Include="AngleSharp.Diffing" Version="1.1.1" />
     <PackageVersion Include="SharpYaml" Version="3.16.0" />
     <!-- The browser for journeys. 0.x and unpublished while this is a draft; see DECISIONS.md, "Browser". -->
@@ -22,12 +22,12 @@
     <PackageVersion Include="Nullean.Cdp.Journeys" Version="0.10.0" />
     <PackageVersion Include="Nullean.TerminalImages" Version="0.1.0" />
     <!-- Adapters build against the latest stable release, which is also their minimum. -->
-    <PackageVersion Include="TUnit.Core" Version="1.78.0" />
+    <PackageVersion Include="TUnit.Core" Version="1.80.0" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- Test dependencies. TUnit and AwesomeAssertions track the latest stable release only. -->
-    <PackageVersion Include="TUnit" Version="1.78.0" />
+    <PackageVersion Include="TUnit" Version="1.80.0" />
     <PackageVersion Include="AwesomeAssertions" Version="9.6.0" />
     <PackageVersion Include="CsCheck" Version="5.0.1" />
     <PackageVersion Include="TestableIO.System.IO.Abstractions.TestingHelpers" Version="22.3.0" />
@@ -36,10 +36,10 @@
     <!-- The PNG oracle for the decoder's tests (a C# port of stb_image). Test-only, never a runtime dependency. -->
     <!-- The oracle for the inline snapshot rewriter's tests: Roslyn must parse what it writes back to the same value.
          Test-only, never a runtime dependency; the CLI lexes C# itself to stay small and AOT. -->
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
-    <PackageVersion Include="StbImageSharp" Version="2.30.15" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
+    <PackageVersion Include="StbImageSharp" Version="2.30.16" />
     <!-- ASP.NET Core's in-memory server, for the HTTP tests' WebApplicationFactory-style case. Test-only; the lowest
          net10 release. -->
-    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.14" />
   </ItemGroup>
 </Project>
