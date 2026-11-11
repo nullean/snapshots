@@ -60,10 +60,10 @@ public class ZoomTests
 	{
 		var small = TestImages.Solid(20, 10, 255, 255, 255);
 
-		Compare(small, small.With(5, 4, 0, 0, 0), zoom: true).Attachments.Select(a => a.Suffix).Should().Equal(new[] { ImageSnapshotFormat.DiffSuffix }, "the padded crop is the whole image");
+		Compare(small, small.With(5, 4, 0, 0, 0), zoom: true).Attachments.Select(a => a.Suffix).Should().ContainSingle().Which.Should().Be(ImageSnapshotFormat.DiffSuffix, "the padded crop is the whole image");
 		var wide = TestImages.Solid(400, 100, 255, 255, 255);
 		Compare(wide, wide.With(5, 5, 0, 0, 0).With(395, 95, 0, 0, 0), zoom: true).Attachments.Select(a => a.Suffix).Should()
-			.Equal(new[] { ImageSnapshotFormat.DiffSuffix }, "two places in opposite corners make the crop the whole picture");
+			.ContainSingle().Which.Should().Be(ImageSnapshotFormat.DiffSuffix, "two places in opposite corners make the crop the whole picture");
 
 		// Area is what counts: two places far apart on one line are a thin strip, which is cropped (the strip's whole width).
 		var tall = TestImages.Solid(1000, 400, 255, 255, 255);
