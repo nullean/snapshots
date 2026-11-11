@@ -813,3 +813,11 @@ two sites. This change is the rules and what reads them; running the two sites i
   it, a specialised Diffing comparer compares text in the subtree ordinally, and the failure message prints a node the same way. The serializer's rule that content which starts with a newline
   gets an extra one after the start tag is the plain serializer's, so a print and a reparse are stable (a property test generates `pre` and `textarea` with newlines).
 - **No option to collapse it again.** It is HTML semantics, and the issue asked for it by default. Verified files with a `<pre>` change once and need accepting.
+
+## HTML: `Select` keeps every match (#37)
+
+- **`Select(selector)` prints all matching elements, `SelectFirst(selector)` the first.** `Select` silently used `QuerySelector`, so `.Select(".card")` over four cards verified one and a regression in the
+  other three passed. Printing every match is what the word says; the old behaviour stays one call away. This changes verified files for any selector that matched more than once (they gain the
+  other matches and need accepting), so the PR is labelled `breaking`.
+- A match inside another match is skipped: its text is already part of the outer match's content. Removals, attribute removals and transforms run per matched element. A selector that
+  matches nothing still throws.

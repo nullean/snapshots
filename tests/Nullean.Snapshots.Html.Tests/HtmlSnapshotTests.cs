@@ -107,6 +107,31 @@ public class HtmlSnapshotTests
 		HtmlSnapshot.Pretty("<header>x</header><main id=c><p>kept</p></main>", new HtmlSnapshotOptions().Select("main#c")).Should().Be("<p>kept</p>\n");
 
 	[Test]
+	public void SelectPrintsEveryMatchInDocumentOrder() =>
+		HtmlSnapshot
+			.Pretty("<div class=card>a</div><p>x</p><div class=card><b>b</b></div>", new HtmlSnapshotOptions().Select(".card"))
+			.Should()
+			.Be("a\n<b>b</b>\n");
+
+	[Test]
+	public void SelectFirstPrintsOnlyTheFirstMatch() =>
+		HtmlSnapshot.Pretty("<div class=card>a</div><div class=card>b</div>", new HtmlSnapshotOptions().SelectFirst(".card")).Should().Be("a\n");
+
+	[Test]
+	public void AMatchInsideAnotherMatchIsNotPrintedTwice() =>
+		HtmlSnapshot
+			.Pretty("<div class=c><p>outer</p><div class=c>inner</div></div>", new HtmlSnapshotOptions().Select(".c"))
+			.Should()
+			.Be("<p>outer</p>\n<div class=\"c\">inner</div>\n");
+
+	[Test]
+	public void RemovalsApplyToEveryMatch() =>
+		HtmlSnapshot
+			.Pretty("<div class=c>a<i>1</i></div><div class=c>b<i>2</i></div>", new HtmlSnapshotOptions().Select(".c").Remove("i"))
+			.Should()
+			.Be("a\nb\n");
+
+	[Test]
 	public void SelectorThatMatchesNothingThrows()
 	{
 		var act = () => HtmlSnapshot.Pretty("<p>x</p>", new HtmlSnapshotOptions().Select("main"));
