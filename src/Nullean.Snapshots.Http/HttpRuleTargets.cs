@@ -27,6 +27,16 @@ public sealed class HttpRuleTargets : RuleTargets
 		{
 			case "status" or "text" or "binary" or "request" when target.Count == 1:
 				return new KeyTarget(first);
+			// `text "a line"`: a line of a text body that was added or removed.
+			case "text" when target.Count == 2 && target[1].Kind != RuleTokenKind.Word:
+				try
+				{
+					return new KeyTarget("text", new RuleValue(target[1]));
+				}
+				catch (ArgumentException e)
+				{
+					throw new FormatException($"{target[1].Raw} is not a regular expression: {e.Message}", e);
+				}
 			case "header" when target.Count == 2 && target[1].Kind != RuleTokenKind.Regex:
 				return new HeaderTarget(target[1].Value.ToLowerInvariant());
 			case "body" when target.Count <= 2 && (target.Count == 1 || target[1].Kind != RuleTokenKind.Regex):
@@ -73,10 +83,23 @@ public sealed class HttpRuleTargets : RuleTargets
 		}
 	}
 
-	private sealed class KeyTarget(string key) : IRuleTarget
+	/// <inheritdoc />
+	public override bool IsText(DifferenceFacts facts)
 	{
+		ArgumentNullException.ThrowIfNull(facts);
+		return facts.Path is [{ Kind: PathSegmentKind.Key, Key: "text" }];
+	}
+
+	private sealed class KeyTarget(string key, RuleValue? line = null) : IRuleTarget
+	{
+		public bool MatchesLine(DifferenceFacts facts, RuleVerb verb, string text) =>
+			line is not null && facts.Path is [{ Kind: PathSegmentKind.Key, Key: "text" }] && line.Matches(text);
+
 		public bool Matches(DifferenceFacts facts, RuleVerb verb)
 		{
+			// A rule with a line applies to lines of a changed text, never to the whole of a text that came or went.
+			if (line is not null)
+				return false;
 			var actual = facts.Path[0].Key;
 			if (key == "text")
 				return actual is "text" or "text-type" && (facts.Path.Count == 1 || verb == RuleVerb.Ignore);

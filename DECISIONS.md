@@ -812,3 +812,18 @@ two sites. This change is the rules and what reads them; running the two sites i
   element type, and TUnit still takes the display name (`Run(basket/empty)`) and the `@tags` categories from the row (checked with a consumer project at default
   severity, and by filtering on a category). Our own tests had hidden it behind `dotnet_diagnostic.TUnit0001.severity = none`; that is gone, so with
   `TreatWarningsAsErrors` this repository's tests fail to build if the analyzer ever objects again. The skills no longer tell users to suppress it.
+
+## Shared rules and line rules (#77)
+
+- **A shared `include?` file's rules are stale only where they could have applied.** `--record` writes the rules of every journey into one file, and
+  every journey includes it, so each journey saw the others' rules as stale. A rule in an `include?` file is now checked only when its `## heading`
+  matches a section of this run; under a heading that matches and explaining nothing it is stale as before. The file's own rules stay strict (a
+  heading that matches nothing is a renamed or misspelt step, which is what staleness is for), and `include` and folder files are never stale.
+  `--prune` follows: it removes only what is stale for the run, so pruning one journey no longer deletes another's rules from a shared file.
+- **A changed text is excused line by line.** A read's `text` (or a response's text body) that gained a line was a `changed text` of the whole value, which
+  no rule could name, and its suggestion was a truncated pair of first lines. A change of a multi-line text is now compared by lines (the line differ's
+  removed and added lines); `added text "line"` and `removed text "line"` (a quoted glob or a regex, `ignore text "..."` for either) name them, every
+  changed line must be named or the change is unexplained, and the rules are marked used only then. The suggestion names the lines. A line rule never
+  excuses a whole text that came or went, and `text "name"` in a journey is still an accessibility node: the two never meet, one is under `tree` and the
+  other is the `text` key.
+- **`{name}` in `--record` and `--prune`** is the file's name, so each journey can keep its own file of differences.
