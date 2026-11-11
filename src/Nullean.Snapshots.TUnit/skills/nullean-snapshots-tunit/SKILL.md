@@ -51,6 +51,7 @@ public static void Setup() => TUnitTestIdentity.Register();
   data-driven test shares one verified file.
 - The hash is of each argument's invariant text, `ToString()` for objects. A class without a `ToString()` override
   hashes the same for every case and throws `InvalidOperationException` ("pass a name"). Use records or primitives.
+  Line endings (CRLF, CR) in the text are read as LF, so a Windows checkout of the test file names the same files.
 - A fixture from `[ClassDataSource<T>]` stays out of the hash when it is the only data source.
 - The folder is the runtime class: `[InheritsTests]` classes get their own snapshots, nested classes `Outer.Inner`.
 - TUnit's analyzer rejects `[SnapshotFiles]` with error `TUnit0001` (`TestDataRow<SnapshotFile>` against a
