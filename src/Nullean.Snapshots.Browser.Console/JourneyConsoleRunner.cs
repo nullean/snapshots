@@ -77,7 +77,7 @@ public static class JourneyConsoleRunner
 		if (options.JUnitPath is { } junit)
 			JUnitReport.Write(junit, options.Site?.Host ?? options.BaseUrl?.Host ?? "journeys", outcomes);
 		if (options.StepSummary)
-			Browser.Console.StepSummary.Write(options.StepSummaryPath ?? Environment.GetEnvironmentVariable("GITHUB_STEP_SUMMARY"), options.Site ?? options.BaseUrl, outcomes);
+			Browser.Console.StepSummary.Write(options.StepSummaryPath ?? Environment.GetEnvironmentVariable("GITHUB_STEP_SUMMARY"), options.Site ?? options.BaseUrl, outcomes, options.Rerun);
 		return ExitCodeOf(outcomes, options);
 	}
 

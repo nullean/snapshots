@@ -280,6 +280,13 @@ var options = new JourneyRunOptions
 return await JourneyConsoleRunner.RunAsync(options, Console.Out, Console.Error);
 ```
 
+In a GitHub Actions job (`GITHUB_ACTIONS=true`, or `JourneyRunOptions.GitHubActions`) a run also reports to GitHub. Each failed
+journey gets an error annotation on its file and failing step, which shows on the pull request; at most ten, then one warning
+counts the rest. A skipped journey gets none. When more than three journeys failed, each failure is folded into a log group. The
+step summary has one line of totals, one line for what was skipped (by name when three or fewer, otherwise counted per reason),
+the journeys that ran (all of them when ten or fewer, otherwise only the failures), and for each failure its step, error, page,
+screenshot file and rerun command.
+
 `Compare` decides whether transcripts are compared: leave it out to check only that every step and `expect` line passes, or
 pass a function that compares the transcript with the verified one (`snap` does). The exit code is a `JourneyExitCode`.
 `ConsoleJourneyReporter.ContextBlock` prints the facts a run starts from, one per line, for a tool that wants a header.

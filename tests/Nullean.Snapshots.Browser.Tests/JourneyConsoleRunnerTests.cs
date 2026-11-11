@@ -373,4 +373,121 @@ public partial class JourneyConsoleRunnerTests
 
 		output.Should().NotContain("\u2580");
 	}
+
+	private static JourneyTranscript Broken(string file, int line = 3) => new(file, "", new JourneyFailure(line, "click #pay", "Timed out after 5s: no element matches.\nsecond line")
+	{
+		Url = "https://shop.test/pay",
+	});
+
+	[Test]
+	public void WorkflowCommandDataAndPropertiesAreEscaped()
+	{
+		GitHubActions.Escape("100%\r\nnext").Should().Be("100%25%0D%0Anext");
+		GitHubActions.EscapeProperty("a: b, c").Should().Be("a%3A b%2C c");
+	}
+
+	[Test]
+	public async Task AFailedJourneyGetsAnErrorAnnotationAtItsStepAndASkippedOneGetsNone()
+	{
+		using var folder = new Folder();
+		var files = new[]
+		{
+			folder.Add("a/pay", "open /\nclick #pay"),
+			folder.Add("a/ok", "open /"),
+			folder.Add("a/other", "# @requires env:prod\nopen /"),
+		};
+
+		var (_, output, _) = await RunAsync(new JourneyRunOptions { Files = files, GitHubActions = true, Env = "demo" }, (file, _) => file.EndsWith("pay.journey", StringComparison.Ordinal) ? Broken(file) : new JourneyTranscript(file, "", null));
+
+		var annotations = output.Split('\n').Where(l => l.StartsWith("::", StringComparison.Ordinal)).ToList();
+		annotations.Should().Equal("::error file=journeys/a/pay.journey,line=3,title=Journey failed%3A a/pay::click #pay%0ATimed out after 5s: no element matches.%0Asecond line%0APage: https://shop.test/pay");
+		output.Should().NotContain("::group::", "a few failures stay expanded");
+	}
+
+	[Test]
+	public async Task AnnotationsStopAtTheLimitAndFailuresFoldIntoGroupsWhenThereAreSeveral()
+	{
+		using var folder = new Folder();
+		var files = Enumerable.Range(0, 12).Select(i => folder.Add($"a/f{i:00}", "open /")).ToList();
+
+		var (_, output, _) = await RunAsync(new JourneyRunOptions { Files = files, GitHubActions = true }, (file, _) => Broken(file));
+
+		var lines = output.Split('\n');
+		lines.Count(l => l.StartsWith("::error ", StringComparison.Ordinal)).Should().Be(10);
+		lines.Should().Contain("::warning title=Journeys::2 more failed journeys have no annotation: see the step summary.");
+		lines.Count(l => l.StartsWith("::group::FAILED  a/f", StringComparison.Ordinal)).Should().Be(12);
+		lines.Count(l => l == "::endgroup::").Should().Be(12);
+	}
+
+	[Test]
+	public async Task NothingIsPrintedForGitHubWhenItIsOff()
+	{
+		using var folder = new Folder();
+		var files = new[] { folder.Add("a/pay", "open /") };
+
+		var (_, output, _) = await RunAsync(new JourneyRunOptions { Files = files, GitHubActions = false }, (file, _) => Broken(file));
+
+		output.Should().NotContain("::");
+	}
+
+	[Test]
+	public async Task TheSummaryHasOneLineOfTotalsOneForSkipsAndAFailureSection()
+	{
+		using var folder = new Folder();
+		var files = new[]
+		{
+			folder.Add("a/pay", "open /\nclick #pay"),
+			folder.Add("a/ok", "open /"),
+			folder.Add("a/needs0", "# @requires env:prod\nopen /"),
+			folder.Add("a/needs1", "# @requires env:prod\nopen /"),
+		};
+		var summary = Path.Combine(folder.Path, "summary.md");
+
+		await RunAsync(
+			new JourneyRunOptions { Files = files, Env = "demo", BaseUrl = new Uri("https://shop.test/"), StepSummaryPath = summary, Rerun = "snap journey run {id}.journey" },
+			(file, _) => file.EndsWith("pay.journey", StringComparison.Ordinal) ? Broken(file) : new JourneyTranscript(file, "", null));
+
+		Normalise(File.ReadAllText(summary)).Should().MatchInlineSnapshot("""
+			### Journeys against https://shop.test/
+
+			✅ **1 passed** · ❌ **1 failed** · ⊘ 2 skipped
+
+			⊘ Skipped `a/needs0` (requires env:prod), `a/needs1` (requires env:prod)
+
+			| Journey | Result | Time |
+			|---|---|---|
+			| `a/pay` | **failed** | <t>s |
+			| `a/ok` | passed | <t>s |
+
+			#### ❌ a/pay
+
+			`journeys/a/pay.journey:3`: `click #pay`
+
+			```text
+			Timed out after 5s: no element matches.
+			second line
+			```
+
+			Page: https://shop.test/pay · Rerun: `snap journey run a/pay.journey`
+			""");
+	}
+
+	[Test]
+	public async Task AManyJourneyRunListsOnlyTheFailuresAndCountsTheSkipsPerReason()
+	{
+		using var folder = new Folder();
+		var files = Enumerable.Range(0, 12).Select(i => folder.Add($"a/ok{i:00}", "open /"))
+			.Append(folder.Add("a/pay", "open /\nclick #pay"))
+			.Concat(Enumerable.Range(0, 4).Select(i => folder.Add($"b/skip{i}", "# @requires env:prod\nopen /")))
+			.Append(folder.Add("b/codex", "# @requires build-type:codex\nopen /")).ToList();
+		var summary = Path.Combine(folder.Path, "summary.md");
+
+		await RunAsync(
+			new JourneyRunOptions { Files = files, Env = "demo", StepSummaryPath = summary },
+			(file, _) => file.EndsWith("pay.journey", StringComparison.Ordinal) ? Broken(file) : new JourneyTranscript(file, "", null));
+		var text = File.ReadAllText(summary);
+
+		text.Should().Contain("⊘ Skipped 5: requires env:prod (4), requires build-type:codex (1)");
+		text.Should().NotContain("`a/ok00`", "a long run lists the failures, not every journey");
+	}
 }
