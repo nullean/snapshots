@@ -22,16 +22,24 @@
     <Authors>Nullean and contributors</Authors>
     <Copyright>Nullean</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/nullean/snapshots</PackageProjectUrl>
+    <PackageProjectUrl>https://snapshots.nullean.net</PackageProjectUrl>
+    <PackageReleaseNotes>https://github.com/nullean/snapshots/releases</PackageReleaseNotes>
     <RepositoryUrl>https://github.com/nullean/snapshots</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>nuget-icon.png</PackageIcon>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
   <ItemGroup Condition="$(MSBuildProjectDirectory.Replace('\','/').Contains('/src/'))">
     <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="README.md" Visible="false" />
     <None Include="$(MSBuildThisFileDirectory)nuget-icon.png" Pack="true" PackagePath="nuget-icon.png" Visible="false" />
+    <!-- An agent skill per package, skills/<name>/SKILL.md:
+         https://devblogs.microsoft.com/dotnet/delivering-skills-in-nuget-packages/ -->
+    <None Include="$(MSBuildProjectDirectory)/skills/**/*" Pack="true" PackagePath="skills/" Visible="false" />
   </ItemGroup>
 
   <!-- tests/ projects -->

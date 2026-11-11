@@ -52,3 +52,5 @@ CLI end to end on a throwaway fixture.
 - Never accept snapshots automatically, and never in CI.
 - Never publish packages or push tags without the owner's approval.
 - Record non-obvious choices in DECISIONS.md in the same change.
+- Every package ships an agent skill, `src/<Project>/skills/<name>/SKILL.md`. Change it with the public API, and
+  compile its snippets against the package before committing.
