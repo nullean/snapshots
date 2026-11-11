@@ -83,6 +83,28 @@ public class SiteImagesTests
 	}
 
 	[Test]
+	public void ABigPictureWithASmallChangeGetsAZoomNextToItsDiff()
+	{
+		var fs = Folders(("baseline", "nav.png", Solid(200, 100, 200)), ("target", "nav.png", Solid(200, 100, 200, (100, 50))));
+
+		var difference = SiteImages.Compare(fs, Baseline, Target).Single();
+
+		difference.ZoomPath.Should().Be(Path.Combine(Target, "nav.zoom.png"));
+		var zoom = Png.Decode(fs.File.ReadAllBytes(difference.ZoomPath!));
+		(zoom.Width, zoom.Height).Should().Be((264, 264));
+		SiteImages.Compare(fs, Baseline, Target).Select(d => d.Name).Should().Equal(new[] { "nav.png" }, "neither the diff nor the zoom of an earlier run is a screenshot");
+	}
+
+	[Test]
+	public void ASmallPictureNeedsNoZoom()
+	{
+		var fs = Folders(("baseline", "nav.png", Solid(20, 10, 200)), ("target", "nav.png", Solid(20, 10, 200, (5, 4))));
+
+		SiteImages.Compare(fs, Baseline, Target).Single().ZoomPath.Should().BeNull();
+		fs.AllFiles.Should().NotContain(f => f.EndsWith(".zoom.png", StringComparison.Ordinal));
+	}
+
+	[Test]
 	public void DifferentSizesAreADifferenceWithoutADiffImage()
 	{
 		var fs = Folders(("baseline", "nav.png", Solid(20, 10, 200)), ("target", "nav.png", Solid(20, 12, 200)));

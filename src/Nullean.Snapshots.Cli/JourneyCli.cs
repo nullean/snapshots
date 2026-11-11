@@ -255,7 +255,11 @@ internal sealed class JourneyCli(
 				if (picture.DiffPath is not { } diff)
 					continue;
 				output.WriteLine($"      diff: {fileSystem.Path.GetRelativePath(_root, diff).Replace('\\', '/')}");
-				if (draw && fileSystem.File.Exists(diff) && TerminalPicture.TryDraw(output, fileSystem.File.ReadAllBytes(diff)))
+				if (picture.ZoomPath is { } zoom)
+					output.WriteLine($"      zoom: {fileSystem.Path.GetRelativePath(_root, zoom).Replace('\\', '/')}");
+				// The zoom, when there is one, is the closer look; the diff is the whole picture.
+				var shown = picture.ZoomPath ?? diff;
+				if (draw && fileSystem.File.Exists(shown) && TerminalPicture.TryDraw(output, fileSystem.File.ReadAllBytes(shown)))
 					output.WriteLine();
 			}
 		}

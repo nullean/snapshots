@@ -794,3 +794,8 @@ two sites. This change is the rules and what reads them; running the two sites i
   snapshots' diff images do not change, and on for a site comparison, whose pages differ in a few places among many that do not. Blue, because the
   diff image already uses red for a difference and yellow for anti-aliasing. The boxes change nothing but the picture: the summary, regions and
   match are those of the plain comparison.
+- **A zoom on the changes, for the terminal.** A diff image of a whole page draws small in a terminal, with the change a few cells wide.
+  `ImageSnapshotOptions.ZoomOnChanges` (off by default, on for a comparison) writes `{name}.zoom.png`: the diff cropped to the union of the changed
+  regions plus 16 pixels, enlarged by a whole number towards 800 pixels wide (at most 8x, nearest neighbour so a pixel stays a pixel and the
+  boxes stay crisp, never past 4096 on a side). One crop, not one per region: a second place far from the first would make the crop most of the
+  page, and then there is no zoom (more than half the image: the diff already shows it). The report names both files and draws the zoom.

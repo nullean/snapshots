@@ -8,7 +8,8 @@ namespace Nullean.Snapshots.Browser;
 /// <param name="Summary">What differs, such as <c>1,234 of 1,024,000 pixels differ (0.12%), 0 allowed</c>.</param>
 /// <param name="Regions">Where the pixels differ, as <c>x 10-80, y 4-20 (71x17): 300 pixel(s)</c>, the first few.</param>
 /// <param name="DiffPath">The diff image, written next to the target's screenshot as <c>{name}.diff.png</c>; <see langword="null"/> when the images cannot be diffed (a different size, or one side missing).</param>
-public sealed record ImageDifference(string Name, string Summary, IReadOnlyList<string> Regions, string? DiffPath);
+/// <param name="ZoomPath">The diff cropped to the changed places and enlarged, <c>{name}.zoom.png</c>; <see langword="null"/> when the changes already cover most of the picture.</param>
+public sealed record ImageDifference(string Name, string Summary, IReadOnlyList<string> Regions, string? DiffPath, string? ZoomPath = null);
 
 /// <summary>
 /// Compares the screenshots a journey wrote against two sites. A journey's <c>screenshot</c> steps write PNGs into its
@@ -31,7 +32,7 @@ public static class SiteImages
 		if (!fileSystem.Directory.Exists(baselineDirectory) || !fileSystem.Directory.Exists(targetDirectory))
 			return [];
 		// Two whole pages differ in a few places among many that do not: box the places.
-		var format = new ImageSnapshotFormat(options ?? new ImageSnapshotOptions { OutlineRegions = true });
+		var format = new ImageSnapshotFormat(options ?? new ImageSnapshotOptions { OutlineRegions = true, ZoomOnChanges = true });
 		var baseline = Pictures(fileSystem, baselineDirectory);
 		var target = Pictures(fileSystem, targetDirectory);
 		var differences = new List<ImageDifference>();
@@ -77,15 +78,22 @@ public static class SiteImages
 			fs.File.WriteAllBytes(diffPath, diff.Content.ToArray());
 		}
 
+		string? zoomPath = null;
+		if (comparison.Attachments.FirstOrDefault(a => a.Suffix == ImageSnapshotFormat.ZoomSuffix) is { } zoom)
+		{
+			zoomPath = Path.ChangeExtension(targetPath, null) + "." + ImageSnapshotFormat.ZoomSuffix;
+			fs.File.WriteAllBytes(zoomPath, zoom.Content.ToArray());
+		}
+
 		// A different size has no summary of its own: its one difference line says so.
 		var regions = comparison.Comparison.Differences.Select(d => string.Join(' ', d)).ToList();
 		var summary = comparison.Comparison.Summary ?? (regions.Count > 0 ? regions[0] : "the pictures differ");
-		return new ImageDifference(name, summary, comparison.Comparison.Summary is null ? [] : [.. regions.Take(MaxRegions)], diffPath);
+		return new ImageDifference(name, summary, comparison.Comparison.Summary is null ? [] : [.. regions.Take(MaxRegions)], diffPath, zoomPath);
 	}
 
 	/// <summary>The PNGs under a folder by their path in it, leaving out diff images.</summary>
 	private static Dictionary<string, string> Pictures(IFileSystem fs, string directory) =>
 		fs.Directory.EnumerateFiles(directory, "*.png", SearchOption.AllDirectories)
-			.Where(f => !f.EndsWith("." + ImageSnapshotFormat.DiffSuffix, StringComparison.OrdinalIgnoreCase))
+			.Where(f => !f.EndsWith("." + ImageSnapshotFormat.DiffSuffix, StringComparison.OrdinalIgnoreCase) && !f.EndsWith("." + ImageSnapshotFormat.ZoomSuffix, StringComparison.OrdinalIgnoreCase))
 			.ToDictionary(f => fs.Path.GetRelativePath(directory, f).Replace('\\', '/'), f => f, StringComparer.Ordinal);
 }
