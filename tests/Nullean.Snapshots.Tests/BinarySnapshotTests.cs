@@ -166,6 +166,6 @@ public class BinarySnapshotTests
 		public override BinarySnapshotComparison Compare(ReadOnlySpan<byte> verified, ReadOnlySpan<byte> actual) =>
 			verified.SequenceEqual(actual)
 				? BinarySnapshotComparison.Match
-				: new(new SnapshotComparison(false, [["bytes differ"]]), [new SnapshotAttachment("Diff", undeclared ? "oops.bin" : "diff.bin", new byte[] { 9, 9 })]);
+				: new(new SnapshotComparison(false, [["bytes differ"]]), [new SnapshotAttachment("Diff", undeclared ? "oops.bin" : "diff.bin", "\t\t"u8.ToArray())]);
 	}
 }

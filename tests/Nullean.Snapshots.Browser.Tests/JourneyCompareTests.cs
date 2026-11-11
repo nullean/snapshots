@@ -194,7 +194,7 @@ public class JourneyCompareTests
 	{
 		var result = await Real("nav");
 
-		result.Passed.Should().BeTrue(result.FailureMessage);
+		result.Passed.Should().BeTrue("{0}", result.FailureMessage);
 		result.Application.Explained.Should().ContainSingle();
 	}
 
@@ -341,7 +341,7 @@ public class JourneyCompareTests
 	{
 		var result = await Real("shot");
 
-		result.Passed.Should().BeTrue(result.FailureMessage);
+		result.Passed.Should().BeTrue("{0}", result.FailureMessage);
 		var difference = JourneySnapshot.CompareScreenshots("compare-journeys/shot.journey").Should().ContainSingle().Subject;
 		difference.Name.Should().Be("nav.png");
 		difference.DiffPath.Should().NotBeNull();
