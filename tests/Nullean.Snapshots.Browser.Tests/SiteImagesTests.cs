@@ -63,7 +63,7 @@ public class SiteImagesTests
 		difference.Summary.Should().StartWith("1 of 200 pixels differ (0.5");
 		difference.Regions.Should().ContainSingle().Which.Should().Be("x 5-5, y 4-4 (1x1): 1 pixel(s)");
 		difference.DiffPath.Should().Be(Path.Combine(Target, "nav.diff.png"));
-		var diff = Png.Decode(fs.File.ReadAllBytes(difference.DiffPath!));
+		var diff = Png.Decode(fs.File.ReadAllBytes(difference.DiffPath));
 		(diff.Width, diff.Height).Should().Be((20, 10));
 	}
 

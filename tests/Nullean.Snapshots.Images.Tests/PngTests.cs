@@ -117,7 +117,7 @@ public class PngTests
 		}
 
 		var (start, len) = chunks[(int)(at % (uint)chunks.Count)];
-		var offset = start + 4 + (int)((at / (uint)chunks.Count) % (uint)(4 + len));
+		var offset = start + 4 + (int)(at / (uint)chunks.Count % (uint)(4 + len));
 		copy[offset] = value;
 		BinaryPrimitives.WriteUInt32BigEndian(copy.AsSpan(start + 8 + len), Png.Crc32.Compute(copy.AsSpan(start + 4, 4 + len)));
 		return copy;

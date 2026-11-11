@@ -28,7 +28,7 @@ public class SnapshotEngineTests
 		p.Match("x");
 		var marker = ReceivedMarker.Parse(p.Read(p.Fs.Path.Combine(p.Project.ReceivedDirectory, ReceivedMarker.FileName)));
 		marker.Should().NotBeNull();
-		marker!.Project.Should().Be("Acme.Tests");
+		marker.Project.Should().Be("Acme.Tests");
 		marker.ResolveVerified(p.Fs, p.Project.ReceivedDirectory).Should().Be(p.Project.SnapshotsDirectory);
 	}
 

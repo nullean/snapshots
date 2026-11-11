@@ -8,7 +8,7 @@ using Nullean.Snapshots.Trees;
 namespace Nullean.Snapshots.Json.Tests;
 
 /// <summary>The tree differ's properties, numbered as in ROADMAP.md.</summary>
-public class TreeDifferProperties
+public partial class TreeDifferProperties
 {
 	private static readonly TreeDiffer Differ = TreeDiffer.Instance;
 
@@ -45,7 +45,9 @@ public class TreeDifferProperties
 			var forward = Diff(p.A, p.B);
 			var backward = Diff(p.B, p.A);
 			int Count(IReadOnlyList<TreeDifference> d, DifferenceKind k) => d.Count(x => x.Kind == k);
-			return (forward.Count == 0) == (backward.Count == 0)
+			var forwardEmpty = forward.Count == 0;
+			var backwardEmpty = backward.Count == 0;
+			return forwardEmpty == backwardEmpty
 				&& Count(forward, DifferenceKind.Missing) - Count(forward, DifferenceKind.Unexpected)
 					== Count(backward, DifferenceKind.Unexpected) - Count(backward, DifferenceKind.Missing);
 		});
@@ -251,7 +253,10 @@ public class TreeDifferProperties
 
 	// Positions differ between a hand-built tree and a parsed one; the rest of the message must not.
 	private static string Strip(string message) =>
-		System.Text.RegularExpressions.Regex.Replace(message, @"   \(verified\.json:\d+:\d+\)", "");
+		Position().Replace(message, "");
+
+	[System.Text.RegularExpressions.GeneratedRegex(@"   \(verified\.json:\d+:\d+\)")]
+	private static partial System.Text.RegularExpressions.Regex Position();
 
 	private static bool HasHugeNumbers(Node node) => node switch
 	{

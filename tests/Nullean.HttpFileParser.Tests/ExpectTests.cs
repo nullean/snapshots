@@ -108,7 +108,7 @@ public class ExpectTests
 		var result = await HttpFileRunner.RunAsync(file, options: Host(server));
 
 		result.Failure.Should().NotBeNull();
-		result.Failure!.Line.Should().Be(2);
+		result.Failure.Line.Should().Be(2);
 		result.Failure.Message.Should().Be("@expect status 200 failed: the response was 401 Unauthorized");
 		result.Failure.Request.Name.Should().Be("secure");
 		result.Exchanges.Should().ContainSingle("the response that missed the expectation stays in the run, and the next request is not sent")
@@ -170,7 +170,7 @@ public class ExpectTests
 		var result = await HttpFileRunner.RunAsync(file, options: Host(server, readOnly: true));
 
 		result.Failure.Should().NotBeNull();
-		result.Failure!.Line.Should().Be(5);
+		result.Failure.Line.Should().Be(5);
 		result.Failure.Message.Should().Be("not sent: a read-only run sends only GET, HEAD and OPTIONS requests, and this is POST. Put '# @readonly' before the request if it only reads");
 		result.Exchanges.Should().ContainSingle("the GET before it ran, and nothing after the refusal did");
 	}
