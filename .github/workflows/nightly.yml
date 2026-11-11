@@ -20,16 +20,19 @@ jobs:
     name: Properties x10000 (${{ matrix.os }})
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - run: git fetch --prune --tags
         shell: bash
 
-      - uses: actions/setup-dotnet@v5
+      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
-          global-json-file: global.json
+          cache: false # never restore a cache a pull request could have written
+        env:
+          MISE_JOBS: "1" # dotnet versions share one DOTNET_ROOT; installing them in parallel races
 
       - run: dotnet build -c Release
 

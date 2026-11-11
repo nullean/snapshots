@@ -121,6 +121,12 @@ public sealed class JourneyRunOptions
 	/// <summary>The file the table is appended to; the one <c>GITHUB_STEP_SUMMARY</c> names when unset, and none when that is not set either.</summary>
 	public string? StepSummaryPath { get; init; }
 
+	/// <summary>
+	/// Report to GitHub Actions: an error annotation on each failed journey, log groups when several failed, and a fuller step
+	/// summary. Skipped journeys get no annotation. On when the process runs in a GitHub Actions job.
+	/// </summary>
+	public bool GitHubActions { get; init; } = Browser.Console.GitHubActions.Detected;
+
 	/// <summary>The command that reruns one journey, with <c>{id}</c> standing for it. No rerun line when unset.</summary>
 	public string? Rerun { get; init; }
 

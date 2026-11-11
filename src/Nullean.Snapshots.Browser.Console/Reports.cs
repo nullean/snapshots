@@ -62,24 +62,14 @@ internal static class JUnitReport
 
 internal static class StepSummary
 {
-	/// <summary>Appends a table of the outcomes to <paramref name="path"/>, when there is one.</summary>
-	public static void Write(string? path, Uri? site, IReadOnlyList<JourneyOutcome> outcomes)
+	/// <summary>Appends the summary of the run to <paramref name="path"/>, when there is one.</summary>
+	public static void Write(string? path, Uri? site, IReadOnlyList<JourneyOutcome> outcomes, string? rerun)
 	{
 		if (path is not { Length: > 0 })
 			return;
-		var text = new StringBuilder()
-			.AppendLine(site is null ? "### Journeys" : $"### Journeys against {site}")
-			.AppendLine()
-			.AppendLine("| Journey | Result |")
-			.AppendLine("|---|---|");
-		foreach (var outcome in outcomes)
-			_ = text.AppendLine(
-				CultureInfo.InvariantCulture,
-				$"| `{outcome.File.Id}` | {(outcome.Skipped ? $"skipped: {outcome.SkipReason}" : outcome.Passed ? "passed" : "**failed**")} |"
-			);
 		try
 		{
-			File.AppendAllText(path, text.ToString());
+			File.AppendAllText(path, GitHubActions.Summary(site, outcomes, rerun));
 		}
 		catch (Exception e) when (e is IOException or UnauthorizedAccessException)
 		{

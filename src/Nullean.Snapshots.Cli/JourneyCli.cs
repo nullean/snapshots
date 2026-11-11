@@ -348,7 +348,7 @@ internal sealed class JourneyCli(
 	internal static bool TryParseHeaders(IReadOnlyList<string> values, out Dictionary<string, string> headers, out string problem)
 	{
 		problem = string.Empty;
-		headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+		headers = [with(StringComparer.OrdinalIgnoreCase)];
 		foreach (var value in values)
 		{
 			var colon = value.IndexOf(':', StringComparison.Ordinal);
