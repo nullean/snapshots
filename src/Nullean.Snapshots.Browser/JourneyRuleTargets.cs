@@ -28,6 +28,9 @@ public sealed class JourneyRuleTargets : RuleTargets
 		ArgumentNullException.ThrowIfNull(target);
 		if (target is [{ Kind: RuleTokenKind.Word, Value: "url" or "text" } field])
 			return new FieldTarget(field.Value);
+		// `text "a line"`: a line of a read's text that was added or removed. Also still `text "name"`, an accessibility node of that role.
+		if (target is [{ Kind: RuleTokenKind.Word, Value: "text" }, { Kind: not RuleTokenKind.Word } line])
+			return new TextLineTarget(ValueOf(line), new AriaTarget([new Term(new RuleValue(target[0]), ValueOf(line), [])]));
 		var terms = new List<Term>();
 		foreach (var token in target)
 		{
@@ -139,6 +142,21 @@ public sealed class JourneyRuleTargets : RuleTargets
 	}
 
 	private sealed record Term(RuleValue Role, RuleValue? Name, IReadOnlyList<(string Name, RuleValue? Value)> Attributes);
+
+	/// <inheritdoc />
+	public override bool IsText(DifferenceFacts facts)
+	{
+		ArgumentNullException.ThrowIfNull(facts);
+		return facts.Path is [{ Kind: PathSegmentKind.Key, Key: "text" }];
+	}
+
+	private sealed class TextLineTarget(RuleValue line, IRuleTarget aria) : IRuleTarget
+	{
+		public bool Matches(DifferenceFacts facts, RuleVerb verb) => aria.Matches(facts, verb);
+
+		public bool MatchesLine(DifferenceFacts facts, RuleVerb verb, string text) =>
+			facts.Path is [{ Kind: PathSegmentKind.Key, Key: "text" }] && line.Matches(text);
+	}
 
 	private sealed class FieldTarget(string field) : IRuleTarget
 	{
