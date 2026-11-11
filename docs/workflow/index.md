@@ -11,3 +11,4 @@ and the failure says so.
 - [The snap CLI](snap.md)
 - [Snapshots in CI](ci.md)
 - [Working with coding agents](agents.md)
+- [Expected differences](expected-differences.md)

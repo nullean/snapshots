@@ -31,6 +31,7 @@ toc:
       - file: snap.md
       - file: ci.md
       - file: agents.md
+      - file: expected-differences.md
   - folder: reference
     children:
       - file: index.md
