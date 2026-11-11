@@ -6,13 +6,29 @@ named.
 
 ## Build and test
 
+[mise](https://mise.jdx.dev) installs the toolchain (`mise.toml`: the SDK from `global.json`, the .NET 10 runtime the
+projects target, `gh`, `zizmor`) and runs the same task names as every nullean repository:
+
+```sh
+mise install       # once, and after the SDK in global.json changes
+mise run build     # dotnet build -c Release
+mise run test      # build, then every test project one at a time, as CI does
+mise run pack      # build, then pack the libraries into .artifacts/package-output
+mise run ci        # what CI's build job runs: build, test, pack
+mise run check     # zizmor on the workflows
+mise run docs      # scripts/docs.sh: build and serve the docs (needs docs-builder)
+```
+
+The plain `dotnet` commands work too:
+
 ```sh
 dotnet build -c Release
 dotnet test -c Release
 dotnet test -c Release --project tests/Nullean.Snapshots.Tests --treenode-filter "/*/*/SnapshotTextTests/*"
 ```
 
-Requires the .NET 10 SDK (pinned in `global.json`). Tests run on Microsoft.Testing.Platform with TUnit.
+Requires the .NET 11 SDK (pinned in `global.json`) and the .NET 10 runtime. Tests run on Microsoft.Testing.Platform
+with TUnit.
 
 This repository's own failure messages and CLI output are snapshots under `tests/*/.snapshots/`. When one fails, the
 message says where the received file is. Read the diff, then accept with the command the message prints

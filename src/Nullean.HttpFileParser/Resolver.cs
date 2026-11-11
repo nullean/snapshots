@@ -20,12 +20,12 @@ internal sealed class Resolver
 	private readonly HttpEnvironment _environment;
 	private readonly HttpFileRunOptions _options;
 	private readonly Random _random;
-	private readonly Dictionary<string, HttpFileExchange> _exchanges = new(StringComparer.Ordinal);
-	private readonly Dictionary<string, HttpSensitiveValue> _sensitive = new(StringComparer.Ordinal);
+	private readonly Dictionary<string, HttpFileExchange> _exchanges = [with(StringComparer.Ordinal)];
+	private readonly Dictionary<string, HttpSensitiveValue> _sensitive = [with(StringComparer.Ordinal)];
 	private readonly List<HttpSensitiveValue> _sensitiveInOrder = [];
 	private Dictionary<string, string>? _userSecrets;
 	private string? _userSecretsSource;
-	private readonly Dictionary<string, Dictionary<string, string>?> _dotEnv = new(StringComparer.Ordinal);
+	private readonly Dictionary<string, Dictionary<string, string>?> _dotEnv = [with(StringComparer.Ordinal)];
 
 	public Resolver(HttpFile file, HttpEnvironment environment, HttpFileRunOptions options)
 	{
@@ -109,7 +109,7 @@ internal sealed class Resolver
 			var id = UserSecrets.FindId(_options, _file.Directory);
 			if (id is null)
 			{
-				_userSecrets = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+				_userSecrets = [with(StringComparer.OrdinalIgnoreCase)];
 				return null;
 			}
 			var root = _options.UserSecretsRoot ?? UserSecrets.DefaultRoot();
