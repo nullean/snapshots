@@ -799,4 +799,5 @@ two sites. This change is the rules and what reads them; running the two sites i
   regions plus 32 pixels, at its own size. A first version enlarged the crop up to 8x; it showed the change big, but blown-up pixels hide what a
   screenshot shows and say nothing the crop does not, so pixels stay 1:1. One crop, not one per region: a second place far from the first would make
   the crop most of the page, and then there is no zoom (more than half the image's area: the diff already shows it). The report names both files
-  and draws the zoom.
+  and draws the zoom, **enlarged smoothly in the terminal only**: a 1:1 crop of a few dozen pixels draws tiny on a screen with small pixels,
+  so the terminal drawing fills a 60 by 12 cell box (bilinear, `AllowUpscale`), while the file on disk stays a plain crop.
