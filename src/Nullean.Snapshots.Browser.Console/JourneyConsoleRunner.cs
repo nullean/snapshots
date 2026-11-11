@@ -21,8 +21,14 @@ public static class JourneyConsoleRunner
 		ArgumentNullException.ThrowIfNull(output);
 		ArgumentNullException.ThrowIfNull(error);
 		await using var chrome = new SharedChrome();
-		return await RunAsync(options, output, error, chrome, new ConsoleJourneyReporter(output, options, ConsoleJourneyReporter.UseInteractive), cancellationToken)
-			.ConfigureAwait(false);
+		return await RunAsync(
+			options,
+			output,
+			error,
+			chrome,
+			new ConsoleJourneyReporter(output, options, ConsoleJourneyReporter.UseInteractive),
+			cancellationToken
+		).ConfigureAwait(false);
 	}
 
 	/// <summary>How a journey is run: a real browser, or a fake in tests.</summary>
@@ -77,7 +83,15 @@ public static class JourneyConsoleRunner
 		if (options.JUnitPath is { } junit)
 			JUnitReport.Write(junit, options.Site?.Host ?? options.BaseUrl?.Host ?? "journeys", outcomes);
 		if (options.StepSummary)
-			Browser.Console.StepSummary.Write(options.StepSummaryPath ?? Environment.GetEnvironmentVariable("GITHUB_STEP_SUMMARY"), options.Site ?? options.BaseUrl, outcomes, options.Rerun);
+			Browser
+				.Console
+				.StepSummary
+				.Write(
+					options.StepSummaryPath ?? Environment.GetEnvironmentVariable("GITHUB_STEP_SUMMARY"),
+					options.Site ?? options.BaseUrl,
+					outcomes,
+					options.Rerun
+				);
 		return ExitCodeOf(outcomes, options);
 	}
 
@@ -186,33 +200,31 @@ public static class JourneyConsoleRunner
 		}
 	}
 
-	private static JourneySnapshotOptions ToRunOptions(JourneyRunFile file, JourneyRunOptions options, Action<JourneyStep> onStep) => new()
-	{
-		Transcript = options.Compare is null ? TranscriptMode.Off : TranscriptMode.Compare,
-		Variant = options.Variant,
-		BaseUrl = options.BaseUrl,
-		AllowedHosts = options.AllowedHosts,
-		FileRoot = options.FileRoot,
-		ArtifactsDirectory = options.ArtifactsFor?.Invoke(file),
-		Features = options.Features,
-		BuildType = options.BuildType,
-		Env = options.Env,
-		ReadOnly = options.ReadOnly,
-		WritableUrls = options.WritableUrls,
-		Viewport = options.Viewport,
-		UserAgent = options.UserAgent,
-		Headers = options.Headers,
-		OnStep = onStep,
-		ScreenshotOnFailure = options.ScreenshotOnFailure,
-	};
+	private static JourneySnapshotOptions ToRunOptions(JourneyRunFile file, JourneyRunOptions options, Action<JourneyStep> onStep) =>
+		new()
+		{
+			Transcript = options.Compare is null ? TranscriptMode.Off : TranscriptMode.Compare,
+			Variant = options.Variant,
+			BaseUrl = options.BaseUrl,
+			AllowedHosts = options.AllowedHosts,
+			FileRoot = options.FileRoot,
+			ArtifactsDirectory = options.ArtifactsFor?.Invoke(file),
+			Features = options.Features,
+			BuildType = options.BuildType,
+			Env = options.Env,
+			ReadOnly = options.ReadOnly,
+			WritableUrls = options.WritableUrls,
+			Viewport = options.Viewport,
+			UserAgent = options.UserAgent,
+			Headers = options.Headers,
+			OnStep = onStep,
+			ScreenshotOnFailure = options.ScreenshotOnFailure,
+		};
 
 	/// <summary>One Chrome for the whole run, started when the first journey needs it.</summary>
 	private sealed class SharedChrome : IJourneyExecutor, IAsyncDisposable
 	{
-		private readonly Lazy<Task<Cdp.Browser>> _browser = new(
-			() => Cdp.Browser.LaunchAsync(),
-			LazyThreadSafetyMode.ExecutionAndPublication
-		);
+		private readonly Lazy<Task<Cdp.Browser>> _browser = new(() => Cdp.Browser.LaunchAsync(), LazyThreadSafetyMode.ExecutionAndPublication);
 
 		public Task EnsureReadyAsync(CancellationToken cancellationToken) => _browser.Value;
 

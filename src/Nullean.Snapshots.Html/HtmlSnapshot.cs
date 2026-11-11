@@ -27,9 +27,7 @@ public static class HtmlSnapshot
 		IElement? root = options?.Selector is { } selector ? document.QuerySelector(selector) : document.Body;
 		if (root is null)
 		{
-			throw new InvalidOperationException(options?.Selector is { } s
-				? $"The HTML has no element matching '{s}'."
-				: "The HTML has no body.");
+			throw new InvalidOperationException(options?.Selector is { } s ? $"The HTML has no element matching '{s}'." : "The HTML has no body.");
 		}
 
 		if (options is not null)
@@ -59,9 +57,7 @@ public static class HtmlSnapshot
 		ArgumentNullException.ThrowIfNull(expected);
 		ArgumentNullException.ThrowIfNull(actual);
 		var diffs = DiffBuilder.Compare(expected).WithTest(actual).Build().ToList();
-		return diffs.Count == 0
-			? SnapshotComparison.Match
-			: new SnapshotComparison(false, [.. diffs.Select(Describe)], LineDiff.Hunks(expected, actual));
+		return diffs.Count == 0 ? SnapshotComparison.Match : new SnapshotComparison(false, [.. diffs.Select(Describe)], LineDiff.Hunks(expected, actual));
 	}
 
 	private static void Apply(IElement root, HtmlSnapshotOptions options)
@@ -117,14 +113,11 @@ public static class HtmlSnapshot
 	{
 		var label = diff switch
 		{
-			NodeDiff nd when nd.Target == DiffTarget.Text && nd.Control.Path == nd.Test.Path =>
-				$"The text in {nd.Control.Path} is different.",
+			NodeDiff nd when nd.Target == DiffTarget.Text && nd.Control.Path == nd.Test.Path => $"The text in {nd.Control.Path} is different.",
 			NodeDiff nd when nd.Target == DiffTarget.Text =>
 				$"The expected {Kind(nd.Control)} at {nd.Control.Path} and the actual {Kind(nd.Test)} at {nd.Test.Path} are different.",
-			NodeDiff nd when nd.Control.Path == nd.Test.Path =>
-				$"The {Kind(nd.Control)}s at {nd.Control.Path} are different.",
-			NodeDiff nd =>
-				$"The expected {Kind(nd.Control)} at {nd.Control.Path} and the actual {Kind(nd.Test)} at {nd.Test.Path} are different.",
+			NodeDiff nd when nd.Control.Path == nd.Test.Path => $"The {Kind(nd.Control)}s at {nd.Control.Path} are different.",
+			NodeDiff nd => $"The expected {Kind(nd.Control)} at {nd.Control.Path} and the actual {Kind(nd.Test)} at {nd.Test.Path} are different.",
 			AttrDiff ad when ad.Control.Path == ad.Test.Path => $"The values of the attribute at {ad.Control.Path} are different.",
 			AttrDiff ad => $"The expected attribute at {ad.Control.Path} and the actual attribute at {ad.Test.Path} are different.",
 			MissingNodeDiff md => $"The {Kind(md.Control)} at {md.Control.Path} is missing.",

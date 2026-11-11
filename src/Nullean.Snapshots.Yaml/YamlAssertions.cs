@@ -89,7 +89,11 @@ public static class YamlAssertions
 			return new AndConstraint<StringAssertions>(assertions);
 		}
 
-		var site = new InlineSnapshotCallSite(new SnapshotCallSite(callerFilePath, callerMemberName, callerLineNumber), nameof(MatchInlineYamlSnapshot), expectedExpression);
+		var site = new InlineSnapshotCallSite(
+			new SnapshotCallSite(callerFilePath, callerMemberName, callerLineNumber),
+			nameof(MatchInlineYamlSnapshot),
+			expectedExpression
+		);
 		return SnapshotAssertions.MatchInline(assertions, assertions.Subject, expected, YamlSnapshot.FormatWith(diff), site, options, because);
 	}
 
@@ -98,7 +102,12 @@ public static class YamlAssertions
 	/// <param name="expected">The expected YAML.</param>
 	/// <param name="diff">How trees are compared.</param>
 	/// <param name="because">An optional reason, shown in the failure message.</param>
-	public static AndConstraint<StringAssertions> BeYaml(this StringAssertions assertions, [StringSyntax("yaml")] string expected, TreeDiffOptions? diff = null, string because = "")
+	public static AndConstraint<StringAssertions> BeYaml(
+		this StringAssertions assertions,
+		[StringSyntax("yaml")] string expected,
+		TreeDiffOptions? diff = null,
+		string because = ""
+	)
 	{
 		ArgumentNullException.ThrowIfNull(assertions);
 		ArgumentNullException.ThrowIfNull(expected);
@@ -118,9 +127,7 @@ public static class YamlAssertions
 			return new AndConstraint<StringAssertions>(assertions);
 		}
 
-		var message = comparison.IsMatch
-			? string.Empty
-			: $"YAML did not match the expected YAML{Because(because)}:\n{SnapshotMessages.Describe(comparison)}";
+		var message = comparison.IsMatch ? string.Empty : $"YAML did not match the expected YAML{Because(because)}:\n{SnapshotMessages.Describe(comparison)}";
 		SnapshotAssertions.FailUnless(assertions.CurrentAssertionChain, comparison.IsMatch, message);
 		return new AndConstraint<StringAssertions>(assertions);
 	}

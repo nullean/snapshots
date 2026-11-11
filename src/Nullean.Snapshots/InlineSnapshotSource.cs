@@ -46,7 +46,8 @@ internal static class InlineSnapshotSource
 				if (!SameValue(current, edits[i].Expected))
 				{
 					throw new InlineSnapshotException(
-						$"the snapshot at line {edits[i].Line} no longer holds the value the test ran with; the source changed since. Run the tests again.");
+						$"the snapshot at line {edits[i].Line} no longer holds the value the test ran with; the source changed since. Run the tests again."
+					);
 				}
 
 				targets[i] = target;
@@ -65,12 +66,14 @@ internal static class InlineSnapshotSource
 				continue;
 			foreach (var i in group)
 			{
-				errors[i] = $"{group.Count()} test cases write different values to the snapshot at line {edits[i].Line}; use MatchSnapshot for values that differ per case.";
+				errors[i] =
+					$"{group.Count()} test cases write different values to the snapshot at line {edits[i].Line}; use MatchSnapshot for values that differ per case.";
 				targets[i] = null;
 			}
 		}
 
-		var applied = Enumerable.Range(0, edits.Count)
+		var applied = Enumerable
+			.Range(0, edits.Count)
 			.Where(i => targets[i] is not null)
 			.GroupBy(i => targets[i]!.Start)
 			.Select(g => g.First())
@@ -115,14 +118,16 @@ internal static class InlineSnapshotSource
 	/// Identifies a source file's content, lower case hex. A record carries the hash of the file as the test saw it, so
 	/// an edit never lands in a file that changed since: lines shift when an earlier literal grows.
 	/// </summary>
-	public static string Hash(byte[] bytes) =>
-		Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)).ToLowerInvariant();
+	public static string Hash(byte[] bytes) => Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)).ToLowerInvariant();
 
 	/// <summary>Whether a literal's value and a recorded one are the same snapshot: equal once both are normalised.</summary>
 	public static bool SameValue(string? current, string? expected) =>
-		(current is null && expected is null)
-		|| (current is not null && expected is not null
-			&& string.Equals(SnapshotText.Normalize(current), SnapshotText.Normalize(expected), StringComparison.Ordinal));
+		(current is null && expected is null) ||
+			(current is not null && expected is not null && string.Equals(
+				SnapshotText.Normalize(current),
+				SnapshotText.Normalize(expected),
+				StringComparison.Ordinal
+			));
 
 	// ---- encoding ---------------------------------------------------------------------------------------------
 
@@ -418,9 +423,10 @@ internal static class InlineSnapshotSource
 		var calls = new List<Call>();
 		for (var i = 0; i < tokens.Count; i++)
 		{
-			if (tokens[i].Kind == TokenKind.Identifier
-				&& string.Equals(Text(source, tokens[i]), edit.MethodName, StringComparison.Ordinal)
-				&& ParseCall(source, lexed, i) is { } call)
+			if (
+				tokens[i].Kind == TokenKind.Identifier && string.Equals(Text(source, tokens[i]), edit.MethodName, StringComparison.Ordinal) &&
+				ParseCall(source, lexed, i) is { } call
+			)
 			{
 				calls.Add(call);
 			}
@@ -460,11 +466,11 @@ internal static class InlineSnapshotSource
 		}
 
 		throw new InlineSnapshotException(
-			$"the expected value at line {edit.Line} is not a plain string literal ({Canonical(ArgText(source, tokens, arg))}); write it as a literal so snap can update it.");
+			$"the expected value at line {edit.Line} is not a plain string literal ({Canonical(ArgText(source, tokens, arg))}); write it as a literal so snap can update it."
+		);
 	}
 
-	private static string ArgText(string source, List<Token> tokens, Arg arg) =>
-		source[tokens[arg.ValueFirst].Start..tokens[arg.Last].End];
+	private static string ArgText(string source, List<Token> tokens, Arg arg) => source[tokens[arg.ValueFirst].Start..tokens[arg.Last].End];
 
 	private static string Canonical(string text) => text.Replace("\r\n", "\n", StringComparison.Ordinal).Trim();
 
@@ -548,10 +554,8 @@ internal static class InlineSnapshotSource
 
 	private static Arg MakeArg(string source, List<Token> tokens, int first, int last)
 	{
-		var named = last > first
-			&& tokens[first].Kind == TokenKind.Identifier
-			&& IsPunct(source, tokens[first + 1], ':')
-			&& !(first + 2 <= last && IsPunct(source, tokens[first + 2], ':'));
+		var named = last > first && tokens[first].Kind == TokenKind.Identifier && IsPunct(source, tokens[first + 1], ':') &&
+			!(first + 2 <= last && IsPunct(source, tokens[first + 2], ':'));
 		return new Arg(named ? first + 2 : first, last);
 	}
 
@@ -582,9 +586,21 @@ internal static class InlineSnapshotSource
 
 	// ---- lexing -----------------------------------------------------------------------------------------------
 
-	private enum TokenKind { Identifier, Punctuation, String, Other }
+	private enum TokenKind
+	{
+		Identifier,
+		Punctuation,
+		String,
+		Other
+	}
 
-	private enum StringKind { Regular, Verbatim, Raw, Interpolated }
+	private enum StringKind
+	{
+		Regular,
+		Verbatim,
+		Raw,
+		Interpolated
+	}
 
 	private readonly record struct Token(TokenKind Kind, int Start, int End, StringKind StringKind = default);
 

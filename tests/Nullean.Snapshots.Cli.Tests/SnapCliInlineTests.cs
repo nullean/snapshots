@@ -50,7 +50,8 @@ public sealed class SnapCliInlineTests : IDisposable
 			"../../../../tests/Acme.Tests/Rendering/HtmlTests.cs",
 			"Text",
 			new InlineEdit("MatchInlineSnapshot", line, expression, expected, value),
-			hash is null ? null : sourceHash ?? InlineSnapshotSource.Hash(_fs.File.ReadAllBytes(SourcePath)));
+			hash is null ? null : sourceHash ?? InlineSnapshotSource.Hash(_fs.File.ReadAllBytes(SourcePath))
+		);
 		_fs.AddFile(ReceivedFile(name), new MockFileData(json));
 	}
 
@@ -102,7 +103,9 @@ public sealed class SnapCliInlineTests : IDisposable
 	{
 		Cli().Accept(["B.L4"], all: false).Should().Be(ExitCode.Ok);
 
-		Read().Should().Be("class HtmlTests\n{\n    void A() => x.Should().MatchInlineSnapshot(\"one\");\n    void B() => y.Should().MatchInlineSnapshot(\"2\");\n}\n");
+		Read()
+			.Should()
+			.Be("class HtmlTests\n{\n    void A() => x.Should().MatchInlineSnapshot(\"one\");\n    void B() => y.Should().MatchInlineSnapshot(\"2\");\n}\n");
 		_fs.File.Exists(ReceivedFile("B.L4")).Should().BeFalse();
 		_fs.File.Exists(ReceivedFile("A.L3")).Should().BeTrue();
 		Out().Should().Be("accepted  Acme.Tests/Rendering/HtmlTests/B.L4  -> tests/Acme.Tests/Rendering/HtmlTests.cs:4\n");
@@ -113,8 +116,11 @@ public sealed class SnapCliInlineTests : IDisposable
 	{
 		Cli().Accept([], all: true).Should().Be(ExitCode.Ok);
 
-		Read().Should().Be(
-			"class HtmlTests\n{\n    void A() => x.Should().MatchInlineSnapshot(\"\"\"\n        1\n        2\n        \"\"\");\n    void B() => y.Should().MatchInlineSnapshot(\"2\");\n}\n");
+		Read()
+			.Should()
+			.Be(
+				"class HtmlTests\n{\n    void A() => x.Should().MatchInlineSnapshot(\"\"\"\n        1\n        2\n        \"\"\");\n    void B() => y.Should().MatchInlineSnapshot(\"2\");\n}\n"
+			);
 		_fs.AllFiles.Should().NotContain(f => f.EndsWith(".received.inline", StringComparison.Ordinal));
 	}
 
@@ -240,7 +246,12 @@ public sealed class SnapCliInlineTests : IDisposable
 	{
 		var other = P("tests", "Acme.Tests", "notes.txt");
 		_fs.AddFile(other, new("MatchInlineSnapshot(\"one\")"));
-		var record = InlineRecord.Render("../../../../tests/Acme.Tests/notes.txt", "Text", new InlineEdit("MatchInlineSnapshot", 1, "\"one\"", "one", "x\n"), null);
+		var record = InlineRecord.Render(
+			"../../../../tests/Acme.Tests/notes.txt",
+			"Text",
+			new InlineEdit("MatchInlineSnapshot", 1, "\"one\"", "one", "x\n"),
+			null
+		);
 		_fs.AddFile(ReceivedFile("N.L1"), new MockFileData(record));
 
 		Cli().Accept(["N.L1"], all: false).Should().Be(ExitCode.Pending);

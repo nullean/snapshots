@@ -6,20 +6,22 @@ namespace Nullean.Snapshots.Tests;
 
 public class SnapshotMessageTests
 {
-	private static readonly Gen<IReadOnlyList<IReadOnlyList<string>>> Differences =
-		Gen.String[Gen.Char["xyz{}\"\\ "], 0, 6].Array[1, 12]
-			.Select(lines => (IReadOnlyList<string>)[.. lines.Select(l => "~" + l)])
-			.Array[0, 45]
-			.Select(d => (IReadOnlyList<IReadOnlyList<string>>)d);
+	private static readonly Gen<IReadOnlyList<IReadOnlyList<string>>> Differences = Gen
+		.String[Gen.Char["xyz{}\"\\ "], 0, 6]
+		.Array[1, 12]
+		.Select(lines => (IReadOnlyList<string>)[.. lines.Select(l => "~" + l)])
+		.Array[0, 45]
+		.Select(d => (IReadOnlyList<IReadOnlyList<string>>)d);
 
 	[Test]
 	public void ASummaryComesBeforeTheDifferences() =>
-		SnapshotMessages.Describe(new SnapshotComparison(false, [["x 1-2, y 3-4"]], Summary: "5 of 100 pixels differ"))
-			.Should().Be("5 of 100 pixels differ\n1 difference(s):\nx 1-2, y 3-4");
+		SnapshotMessages
+			.Describe(new SnapshotComparison(false, [["x 1-2, y 3-4"]], Summary: "5 of 100 pixels differ"))
+			.Should()
+			.Be("5 of 100 pixels differ\n1 difference(s):\nx 1-2, y 3-4");
 
 	[Test]
-	public void NoSummaryLeavesTheMessageAsItWas() =>
-		SnapshotMessages.Describe(new SnapshotComparison(false, [["a"]])).Should().Be("1 difference(s):\na");
+	public void NoSummaryLeavesTheMessageAsItWas() => SnapshotMessages.Describe(new SnapshotComparison(false, [["a"]])).Should().Be("1 difference(s):\na");
 
 	[Test]
 	public void CapsAreRespectedAndTheRestIsCounted() =>
@@ -34,10 +36,9 @@ public class SnapshotMessageTests
 			var more = lines.LastOrDefault(l => l.StartsWith("(+", StringComparison.Ordinal));
 			var expectedMore = differences.Count - shown;
 
-			return lines[0] == $"{differences.Count} difference(s):"
-				&& body.Count <= SnapshotMessageLimits.MaxLines
-				&& shown <= SnapshotMessageLimits.MaxDifferences
-				&& (expectedMore == 0 ? more is null : more == $"(+{expectedMore} more, see received)");
+			return lines[0] ==
+				$"{differences.Count} difference(s):" && body.Count <= SnapshotMessageLimits.MaxLines && shown <= SnapshotMessageLimits.MaxDifferences &&
+				(expectedMore == 0 ? more is null : more == $"(+{expectedMore} more, see received)");
 		});
 
 	// Regression: a difference cut off by the 80-line cap was counted as shown, so "+N more" was one short.
@@ -96,17 +97,18 @@ public class SnapshotMessageTests
 		{
 			var rendered = Failure(new SnapshotComparison(false, differences)).Render();
 			var lines = rendered.Split('\n');
-			return !rendered.Contains('\u001b', StringComparison.Ordinal)
-				&& !rendered.Contains('\r', StringComparison.Ordinal)
-				&& lines.Count(l => l.StartsWith("Accept:   snap accept Acme.Tests/Rendering/HtmlTests/RendersTable", StringComparison.Ordinal)) == 1
-				&& lines.Length <= SnapshotMessageLimits.MaxLines + 7;
+			return !rendered.Contains('\u001b', StringComparison.Ordinal) && !rendered.Contains('\r', StringComparison.Ordinal) && lines.Count(
+				l => l.StartsWith("Accept:   snap accept Acme.Tests/Rendering/HtmlTests/RendersTable", StringComparison.Ordinal)
+			) == 1 && lines.Length <= SnapshotMessageLimits.MaxLines + 7;
 		});
 
 	[Test]
 	public void CiNoteOnlyWhenAcceptWasIgnored()
 	{
 		Failure(null).Render().Should().NotContain("ignored");
-		(Failure(null) with { AcceptIgnoredInCi = true }).Render().Should()
+		(Failure(null) with { AcceptIgnoredInCi = true })
+			.Render()
+			.Should()
 			.EndWith("SNAPSHOT_ACCEPT is ignored because CI is set: snapshots are never accepted in CI.");
 	}
 
@@ -132,14 +134,16 @@ public class SnapshotMessageTests
 		return shown;
 	}
 
-	internal static SnapshotFailure Failure(SnapshotComparison? comparison) => new(
-		"Text",
-		"tests/Acme.Tests/.snapshots/Rendering/HtmlTests/RendersTable.verified.txt",
-		".artifacts/.snapshots/received/Acme.Tests/Rendering/HtmlTests/RendersTable.received.txt",
-		"Acme.Tests/Rendering/HtmlTests/RendersTable",
-		comparison,
-		null,
-		"tests/Acme.Tests",
-		"/Acme.Tests/Acme.Tests.Rendering/HtmlTests/RendersTable",
-		false);
+	internal static SnapshotFailure Failure(SnapshotComparison? comparison) =>
+		new(
+			"Text",
+			"tests/Acme.Tests/.snapshots/Rendering/HtmlTests/RendersTable.verified.txt",
+			".artifacts/.snapshots/received/Acme.Tests/Rendering/HtmlTests/RendersTable.received.txt",
+			"Acme.Tests/Rendering/HtmlTests/RendersTable",
+			comparison,
+			null,
+			"tests/Acme.Tests",
+			"/Acme.Tests/Acme.Tests.Rendering/HtmlTests/RendersTable",
+			false
+		);
 }

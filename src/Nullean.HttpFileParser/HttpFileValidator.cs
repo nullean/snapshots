@@ -8,6 +8,7 @@ internal static class HttpFileValidator
 		environment ??= HttpEnvironment.Empty;
 		var errors = new List<HttpFileError>();
 		var seen = new HashSet<(int, string)>();
+
 		void Error(int line, string message)
 		{
 			if (seen.Add((line, message)))
@@ -15,6 +16,7 @@ internal static class HttpFileValidator
 		}
 
 		var checkedVariables = new HashSet<(HttpFileVariable, int)>();
+
 		void Check(Template template, int scopeLine, int requestIndex)
 		{
 			foreach (var expr in template.Expressions)
@@ -32,9 +34,12 @@ internal static class HttpFileValidator
 						if (!earlier)
 						{
 							var target = file.Requests.FirstOrDefault(q => q.Name == r.RequestName);
-							Error(r.Line, target is null
-								? $"'{r.Reference}' references a request named '{r.RequestName}', and there is none"
-								: $"'{r.Reference}' references request '{r.RequestName}' (line {target.Line}), which runs after this one");
+							Error(
+								r.Line,
+								target is null
+									? $"'{r.Reference}' references a request named '{r.RequestName}', and there is none"
+									: $"'{r.Reference}' references request '{r.RequestName}' (line {target.Line}), which runs after this one"
+							);
 						}
 						break;
 					default:
@@ -57,9 +62,7 @@ internal static class HttpFileValidator
 			if (environment.Variables.ContainsKey(name))
 				return;
 			var later = file.Variables.FirstOrDefault(v => v.Name == name);
-			Error(line, later is not null
-				? $"variable '{name}' is used before its definition at line {later.Line}"
-				: $"unknown variable '{name}'");
+			Error(line, later is not null ? $"variable '{name}' is used before its definition at line {later.Line}" : $"unknown variable '{name}'");
 		}
 
 		foreach (var request in file.Requests)

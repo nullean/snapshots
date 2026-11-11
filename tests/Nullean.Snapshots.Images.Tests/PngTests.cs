@@ -9,12 +9,14 @@ public class PngTests
 	private static string Suite => Path.Combine(AppContext.BaseDirectory, "PngSuite");
 
 	public static IEnumerable<string> ValidFiles() =>
-		Directory.EnumerateFiles(Path.Combine(AppContext.BaseDirectory, "PngSuite"), "*.png")
-			.Select(Path.GetFileName).Where(n => !n!.StartsWith('x')).Order(StringComparer.Ordinal)!;
+		Directory
+			.EnumerateFiles(Path.Combine(AppContext.BaseDirectory, "PngSuite"), "*.png")
+			.Select(Path.GetFileName)
+			.Where(n => !n!.StartsWith('x'))
+			.Order(StringComparer.Ordinal)!;
 
 	public static IEnumerable<string> CorruptFiles() =>
-		Directory.EnumerateFiles(Path.Combine(AppContext.BaseDirectory, "PngSuite"), "x*.png")
-			.Select(Path.GetFileName).Order(StringComparer.Ordinal)!;
+		Directory.EnumerateFiles(Path.Combine(AppContext.BaseDirectory, "PngSuite"), "x*.png").Select(Path.GetFileName).Order(StringComparer.Ordinal)!;
 
 	[Test]
 	[MethodDataSource(nameof(ValidFiles))]
@@ -45,8 +47,7 @@ public class PngTests
 	}
 
 	[Test]
-	public void EncodeThenDecodeIsIdentity() =>
-		TestImages.Image().Sample(image => Png.Decode(Png.Encode(image)).Pixels.AsSpan().SequenceEqual(image.Pixels));
+	public void EncodeThenDecodeIsIdentity() => TestImages.Image().Sample(image => Png.Decode(Png.Encode(image)).Pixels.AsSpan().SequenceEqual(image.Pixels));
 
 	[Test]
 	public void TheOracleReadsWhatWeEncode() =>
@@ -54,9 +55,9 @@ public class PngTests
 
 	[Test]
 	public void EveryFilterTypeDecodes() =>
-		Gen.Select(TestImages.Image(), Gen.Byte[0, 4].Array[1, 5], Gen.Bool, Gen.Int[1, 4])
-			.Sample((image, filters, text, split) =>
-				Png.Decode(TestImages.Encode(image, filters, text, split)).Pixels.AsSpan().SequenceEqual(image.Pixels));
+		Gen.Select(TestImages.Image(), Gen.Byte[0, 4].Array[1, 5], Gen.Bool, Gen.Int[1, 4]).Sample(
+			(image, filters, text, split) => Png.Decode(TestImages.Encode(image, filters, text, split)).Pixels.AsSpan().SequenceEqual(image.Pixels)
+		);
 
 	/// <summary>
 	/// Damage inside a chunk with its CRC fixed up, or a cut-off file, either still decodes or is a FormatException:
@@ -64,19 +65,16 @@ public class PngTests
 	/// </summary>
 	[Test]
 	public void DamagedFilesFailOnlyWithFormatException() =>
-		Gen.Select(TestImages.Image(12), Gen.Int, Gen.Byte, Gen.Bool)
-			.Sample((image, at, value, truncate) =>
+		Gen.Select(TestImages.Image(12), Gen.Int, Gen.Byte, Gen.Bool).Sample((image, at, value, truncate) =>
+		{
+			var png = Png.Encode(image);
+			var damaged = truncate ? png[..(8 + (int)((uint)at % (uint)(png.Length - 8)))] : Damage(png, (uint)at, value);
+			try
 			{
-				var png = Png.Encode(image);
-				var damaged = truncate ? png[..(8 + (int)((uint)at % (uint)(png.Length - 8)))] : Damage(png, (uint)at, value);
-				try
-				{
-					Png.Decode(damaged);
-				}
-				catch (FormatException)
-				{
-				}
-			});
+				Png.Decode(damaged);
+			}
+			catch (FormatException) { }
+		});
 
 	[Test]
 	public void ColourManagementChunksAreIgnored()
@@ -101,8 +99,7 @@ public class PngTests
 	}
 
 	[Test]
-	public void Crc32MatchesTheSpecificationCheckValue() =>
-		Png.Crc32.Compute("123456789"u8).Should().Be(0xCBF43926);
+	public void Crc32MatchesTheSpecificationCheckValue() => Png.Crc32.Compute("123456789"u8).Should().Be(0xCBF43926);
 
 	/// <summary>Sets one byte inside a chunk's type or data and recomputes that chunk's CRC.</summary>
 	private static byte[] Damage(byte[] png, uint at, byte value)

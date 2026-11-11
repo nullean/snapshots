@@ -26,7 +26,8 @@ public class HttpFileRunTests
 		return Path.Combine(dir, files[0].Name);
 	}
 
-	private const string Chained = """
+	private const string Chained =
+		"""
 		### login
 		POST {{host}}/api/login
 		Content-Type: application/json
@@ -54,9 +55,17 @@ public class HttpFileRunTests
 
 		transcript.Failure!.Line.Should().Be(1);
 		transcript.Failure.Message.Should().Be("@expect status 200 failed: the response was 404 Not Found");
-		transcript.Text.Should().StartWith("## GET {{host}}/api/missing\nstatus: 404 Not Found", "the response that missed the expectation is in the transcript");
+		transcript
+			.Text
+			.Should()
+			.StartWith("## GET {{host}}/api/missing\nstatus: 404 Not Found", "the response that missed the expectation is in the transcript");
 		result.Passed.Should().BeFalse();
-		result.FailureMessage.Should().StartWith("Request stopped at ").And.Contain("GET {{host}}/api/missing\n@expect status 200 failed: the response was 404 Not Found");
+		result
+			.FailureMessage
+			.Should()
+			.StartWith("Request stopped at ")
+			.And
+			.Contain("GET {{host}}/api/missing\n@expect status 200 failed: the response was 404 Not Found");
 	}
 
 	[Test]
@@ -107,7 +116,11 @@ public class HttpFileRunTests
 		var transcript = await HttpFileSnapshot.RunAsync(Files(("shop.http", Chained)), new HttpFileSnapshotOptions { Variables = Host() });
 
 		transcript.Failure.Should().BeNull();
-		transcript.Text.Should().Be($$$"""
+		transcript
+			.Text
+			.Should()
+			.Be(
+				$$$"""
 			## login: POST {{host}}/api/login
 			status: 200 OK
 			content-type: application/json; charset=utf-8
@@ -146,7 +159,8 @@ public class HttpFileRunTests
 
 			> not found
 
-			""".Replace("\r\n", "\n", StringComparison.Ordinal));
+			""".Replace("\r\n", "\n", StringComparison.Ordinal)
+			);
 	}
 
 	[Test]
@@ -155,11 +169,16 @@ public class HttpFileRunTests
 		var file = Files(
 			("whoami.http", "GET {{host}}/api/whoami?user={{user}}\n"),
 			(HttpEnvironment.FileName, $$"""{ "dev": { "host": "{{Server.Host}}", "user": "ada" } }"""),
-			(HttpEnvironment.UserFileName, /*lang=json,strict*/ """{ "dev": { "user": "grace-hopper" } }"""));
+			(HttpEnvironment.UserFileName, /*lang=json,strict*/ """{ "dev": { "user": "grace-hopper" } }""")
+		);
 
 		var transcript = await HttpFileSnapshot.RunAsync(file, new HttpFileSnapshotOptions { Environment = "dev" });
 
-		transcript.Text.Should().Be("""
+		transcript
+			.Text
+			.Should()
+			.Be(
+				"""
 			## GET {{host}}/api/whoami?user={{user}}
 			status: 200 OK
 			content-type: application/json; charset=utf-8
@@ -168,7 +187,13 @@ public class HttpFileRunTests
 			  "user": "{{user}}"
 			}
 
-			""".Replace("\r\n", "\n", StringComparison.Ordinal), "the .user value reached the server and is redacted on the way back");
+			""".Replace(
+					"\r\n",
+					"\n",
+					StringComparison.Ordinal
+				),
+				"the .user value reached the server and is redacted on the way back"
+			);
 	}
 
 	private const string EnvName = "SNAPSHOTS_HTTP_TEST_VALUE";
@@ -179,23 +204,27 @@ public class HttpFileRunTests
 	public async Task EchoedSecretsAndEnvironmentValuesNeverReachTheTranscript()
 	{
 		Environment.SetEnvironmentVariable(EnvName, EnvValue);
-		var file = Files(("echo.http", $$$"""
+		var file = Files(
+			("echo.http", $$$"""
 			POST {{host}}/api/echo?k={{$secret ApiKey}}
 			X-Api-Key: {{$secret ApiKey}}
 			Content-Type: text/plain
 
 			env={{$processEnv {{{EnvName}}}}}
-			"""));
+			""")
+		);
 
-		var transcript = await HttpFileSnapshot.RunAsync(file, new HttpFileSnapshotOptions
-		{
-			Variables = Host(),
-			Secrets = name => name == "ApiKey" ? Secret : null,
-			Headers = ["X-Echo", "Set-Cookie"],
-		});
+		var transcript = await HttpFileSnapshot.RunAsync(
+			file,
+			new HttpFileSnapshotOptions { Variables = Host(), Secrets = name => name == "ApiKey" ? Secret : null, Headers = ["X-Echo", "Set-Cookie"], }
+		);
 
 		transcript.Text.Should().NotContain(Secret).And.NotContain(EnvValue).And.NotContain("sk-live");
-		transcript.Text.Should().Be($$$"""
+		transcript
+			.Text
+			.Should()
+			.Be(
+				$$$"""
 			## POST {{host}}/api/echo?k={{$secret ApiKey}}
 			status: 200 OK
 			content-type: application/json; charset=utf-8
@@ -207,13 +236,16 @@ public class HttpFileRunTests
 			  "body": "env={{$processEnv {{{EnvName}}}}}"
 			}
 
-			""".Replace("\r\n", "\n", StringComparison.Ordinal));
+			""".Replace("\r\n", "\n", StringComparison.Ordinal)
+			);
 	}
 
 	[Test]
 	public async Task AConnectionFailureStopsTheRunAndComesFirst()
 	{
-		var file = Files(("down.http", $"GET {{{{host}}}}/api/plain\n\n###\nGET http://localhost:{TestServer.RefusedPort}/never\n\n###\nGET {{{{host}}}}/api/plain\n"));
+		var file = Files(
+			("down.http", $"GET {{{{host}}}}/api/plain\n\n###\nGET http://localhost:{TestServer.RefusedPort}/never\n\n###\nGET {{{{host}}}}/api/plain\n")
+		);
 
 		var transcript = await HttpFileSnapshot.RunAsync(file, new HttpFileSnapshotOptions { Variables = Host() });
 
@@ -241,11 +273,10 @@ public class HttpFileRunTests
 
 		var absolute = await HttpFileSnapshot.RunAsync(file, new HttpFileSnapshotOptions { Variables = Host() });
 		using var client = new HttpClient(new SocketsHttpHandler { AllowAutoRedirect = false }) { BaseAddress = Server.BaseAddress };
-		var relative = await HttpFileSnapshot.RunAsync(file, new HttpFileSnapshotOptions
-		{
-			Client = client,
-			Variables = new Dictionary<string, string>(StringComparer.Ordinal) { ["host"] = "" },
-		});
+		var relative = await HttpFileSnapshot.RunAsync(
+			file,
+			new HttpFileSnapshotOptions { Client = client, Variables = new Dictionary<string, string>(StringComparer.Ordinal) { ["host"] = "" }, }
+		);
 
 		relative.Failure.Should().BeNull();
 		relative.Text.Should().Be(absolute.Text).And.StartWith("## GET {{host}}/api/plain\nstatus: 200 OK\n");
@@ -275,7 +306,11 @@ public class HttpFileRunTests
 		var transcript = await HttpFileSnapshot.RunAsync(file, new HttpFileSnapshotOptions { Client = app.GetTestClient() });
 
 		transcript.Failure.Should().BeNull();
-		transcript.Text.Should().Be("""
+		transcript
+			.Text
+			.Should()
+			.Be(
+				"""
 			## login: POST /api/login
 			status: 200 OK
 			content-type: application/json; charset=utf-8
@@ -290,7 +325,12 @@ public class HttpFileRunTests
 
 			> two orders
 
-			""".Replace("\r\n", "\n", StringComparison.Ordinal));
+			""".Replace(
+					"\r\n",
+					"\n",
+					StringComparison.Ordinal
+				)
+			);
 	}
 
 	[Test]
@@ -299,8 +339,11 @@ public class HttpFileRunTests
 		var p = new TestProject();
 		var file = p.Fs.Path.Combine(p.Project.Directory, "http", "shop.http");
 		p.Fs.AddFile(p.VerifiedFile("http/shop", "responses"), new MockFileData("## GET {{host}}/a\nstatus: 200 OK\n"));
-		var transcript = new HttpTranscript(file, "## GET {{host}}/a\nstatus: 500 Internal Server Error\n",
-			new HttpFileFailure(7, "GET {{host}}/b", "Connection refused (localhost:1)"));
+		var transcript = new HttpTranscript(
+			file,
+			"## GET {{host}}/a\nstatus: 500 Internal Server Error\n",
+			new HttpFileFailure(7, "GET {{host}}/b", "Connection refused (localhost:1)")
+		);
 
 		var result = HttpFileSnapshot.WithFailure(transcript, p.Engine.MatchFile(transcript.Text, HttpFileSnapshot.Format, transcript.File, null, null));
 
@@ -314,8 +357,7 @@ public class HttpFileRunTests
 	}
 
 	[Test]
-	public void FindsTheProjectsHttpFiles() =>
-		HttpFileSnapshot.Find().Should().Equal("http/content.http", "http/orders.http");
+	public void FindsTheProjectsHttpFiles() => HttpFileSnapshot.Find().Should().Equal("http/content.http", "http/orders.http");
 
 	[Test]
 	public void HttpFilesYieldsHttpFilesOnly()
@@ -325,8 +367,7 @@ public class HttpFileRunTests
 
 		attribute.Pattern.Should().Be("*.http");
 		attribute.Folder.Should().Be("http");
-		attribute.Files(assembly, SnapshotFile.Find(assembly, attribute.Folder, attribute.Pattern)).Select(f => f.Name)
-			.Should().Equal("content", "orders");
+		attribute.Files(assembly, SnapshotFile.Find(assembly, attribute.Folder, attribute.Pattern)).Select(f => f.Name).Should().Equal("content", "orders");
 	}
 
 	[Test]

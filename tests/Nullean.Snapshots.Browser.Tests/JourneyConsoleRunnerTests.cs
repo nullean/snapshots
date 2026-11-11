@@ -46,7 +46,14 @@ public partial class JourneyConsoleRunnerTests
 		var output = new StringWriter();
 		var error = new StringWriter();
 		run ??= (file, _) => new JourneyTranscript(file, "", null);
-		var exit = await JourneyConsoleRunner.RunAsync(options, output, error, new Fake(run), new ConsoleJourneyReporter(output, options, interactive), CancellationToken.None);
+		var exit = await JourneyConsoleRunner.RunAsync(
+			options,
+			output,
+			error,
+			new Fake(run),
+			new ConsoleJourneyReporter(output, options, interactive),
+			CancellationToken.None
+		);
 		return (exit, Normalise(output.ToString()), error.ToString());
 	}
 
@@ -74,12 +81,17 @@ public partial class JourneyConsoleRunnerTests
 		{
 			o.OnStep?.Invoke(new JourneyStep(1, ["open", "/pay"], new OpenCommand("/pay")));
 			return file.EndsWith("pay.journey", StringComparison.Ordinal)
-				? new JourneyTranscript(file, "", new JourneyFailure(2, "click #pay", "Timed out after 5s waiting for css #pay to be visible: no element matches."))
+				? new JourneyTranscript(
+					file,
+					"",
+					new JourneyFailure(2, "click #pay", "Timed out after 5s waiting for css #pay to be visible: no element matches.")
+				)
 				: new JourneyTranscript(file, "", null);
 		});
 
 		exit.Should().Be(JourneyExitCode.Failed);
-		output.Should().MatchInlineSnapshot("""
+		output.Should().MatchInlineSnapshot(
+			"""
 			ok      shop/basket (<t>s)
 			FAILED  shop/pay
 
@@ -89,28 +101,37 @@ public partial class JourneyConsoleRunnerTests
 			Rerun:     snap journey run --only shop/pay
 
 			1 passed, 1 failed, 0 skipped in <t>s, against https://shop.test/
-			""");
+			"""
+		);
 	}
 
 	[Test]
 	public async Task SkipsAreCollapsedPerReasonUnlessVerbose()
 	{
 		using var folder = new Folder();
-		var files = Enumerable.Range(0, 5).Select(i => folder.Add($"a/needs{i}", "# @requires build-type:isolated\nopen /"))
+		var files = Enumerable
+			.Range(0, 5)
+			.Select(i => folder.Add($"a/needs{i}", "# @requires build-type:isolated\nopen /"))
 			.Append(folder.Add("a/two", "# @requires env:prod\nopen /"))
-			.Append(folder.Add("a/runs", "open /")).ToList();
+			.Append(folder.Add("a/runs", "open /"))
+			.ToList();
 		var options = new JourneyRunOptions { Files = files, BuildType = "assembler", Env = "demo" };
 
 		var collapsed = await RunAsync(options);
 		var verbose = await RunAsync(new JourneyRunOptions { Files = files, BuildType = "assembler", Env = "demo", Verbose = true });
 
-		collapsed.Output.Should().MatchInlineSnapshot("""
+		collapsed
+			.Output
+			.Should()
+			.MatchInlineSnapshot(
+				"""
 			skipped 5 journeys (requires build-type:isolated); --verbose lists them
 			skipped a/two (requires env:prod)
 			ok      a/runs (<t>s)
 
 			1 passed, 0 failed, 6 skipped in <t>s
-			""");
+			"""
+			);
 		verbose.Output.Should().Contain("skipped a/needs0 (requires build-type:isolated)").And.Contain("skipped a/needs4 (requires build-type:isolated)");
 	}
 
@@ -168,17 +189,15 @@ public partial class JourneyConsoleRunnerTests
 	{
 		using var folder = new Folder();
 		var files = new[] { folder.Add("a/shop", "open /") };
-		var message = "Journey transcript did not match snapshot: journeys/a/shop.verified.journey\n1 difference(s):\n- Shop\n+ Store\nReceived: .artifacts/a/shop.received.journey\nAccept:   snap accept a/shop";
-		var options = new JourneyRunOptions
-		{
-			Files = files,
-			Compare = (file, _) => new SnapshotResult(false, message, "a/shop", "v", "r"),
-		};
+		var message =
+			"Journey transcript did not match snapshot: journeys/a/shop.verified.journey\n1 difference(s):\n- Shop\n+ Store\nReceived: .artifacts/a/shop.received.journey\nAccept:   snap accept a/shop";
+		var options = new JourneyRunOptions { Files = files, Compare = (file, _) => new SnapshotResult(false, message, "a/shop", "v", "r"), };
 
 		var (exit, output, _) = await RunAsync(options);
 
 		exit.Should().Be(JourneyExitCode.Failed);
-		output.Should().MatchInlineSnapshot("""
+		output.Should().MatchInlineSnapshot(
+			"""
 			FAILED  a/shop
 
 			Journey transcript did not match snapshot: journeys/a/shop.verified.journey
@@ -189,7 +208,8 @@ public partial class JourneyConsoleRunnerTests
 			Accept:   snap accept a/shop
 
 			0 passed, 1 failed, 0 skipped in <t>s
-			""");
+			"""
+		);
 	}
 
 	[Test]
@@ -220,9 +240,7 @@ public partial class JourneyConsoleRunnerTests
 		using var folder = new Folder();
 		var files = new[] { folder.Add("a/shop", "open /") };
 
-		var (exit, output, error) = await RunAsync(
-			new JourneyRunOptions { Files = files },
-			(_, _) => throw new BrowserLaunchException("No Chrome found."));
+		var (exit, output, error) = await RunAsync(new JourneyRunOptions { Files = files }, (_, _) => throw new BrowserLaunchException("No Chrome found."));
 
 		exit.Should().Be(JourneyExitCode.Browser);
 		error.Should().Be("Error: No Chrome found.\n".ReplaceLineEndings());
@@ -249,14 +267,30 @@ public partial class JourneyConsoleRunnerTests
 
 		var (_, output, _) = await RunAsync(
 			options,
-			(file, _) => new JourneyTranscript(file, "", new JourneyFailure(3, "click #pay", "Timed out after 5s waiting for css #pay to be visible: no element matches.")),
-			interactive: true);
+			(file, _) => new JourneyTranscript(
+				file,
+				"",
+				new JourneyFailure(3, "click #pay", "Timed out after 5s waiting for css #pay to be visible: no element matches.")
+			),
+			interactive: true
+		);
 
 		var plain = Ansis().Replace(output, "");
-		plain.Should().Contain("journeys/a/pay.journey:3")
-			.And.Contain("3 ").And.Contain("click #pay").And.Contain("get title")
-			.And.Contain("Timed out after 5s waiting for css #pay to be visible: no element matches.")
-			.And.Contain("rerun").And.Contain("snap journey run --only a/pay");
+		plain
+			.Should()
+			.Contain("journeys/a/pay.journey:3")
+			.And
+			.Contain("3 ")
+			.And
+			.Contain("click #pay")
+			.And
+			.Contain("get title")
+			.And
+			.Contain("Timed out after 5s waiting for css #pay to be visible: no element matches.")
+			.And
+			.Contain("rerun")
+			.And
+			.Contain("snap journey run --only a/pay");
 	}
 
 	[GeneratedRegex("\\e\\[[0-9;]*[A-Za-z]|\r")]
@@ -301,15 +335,19 @@ public partial class JourneyConsoleRunnerTests
 		(await RunAsync(new JourneyRunOptions { Files = files, StepSummaryPath = blocked })).Exit.Should().Be(JourneyExitCode.Ok);
 	}
 
-	private static byte[] Png() =>
-		PngEncoder.Encode(new RgbaImage(4, 4, Enumerable.Range(0, 16).SelectMany(_ => new byte[] { 200, 40, 40, 255 }).ToArray()));
+	private static byte[] Png() => PngEncoder.Encode(new RgbaImage(4, 4, Enumerable.Range(0, 16).SelectMany(_ => new byte[] { 200, 40, 40, 255 }).ToArray()));
 
-	private static JourneyTranscript Failed(string file, bool withScreenshot) => new(file, "", new JourneyFailure(3, "click #pay", "Timed out after 5s waiting for css #pay to be visible: no element matches.")
-	{
-		Url = "https://shop.test/pay",
-		Screenshot = withScreenshot ? Png() : null,
-		ScreenshotPath = withScreenshot ? "/tmp/art/failure.png" : null,
-	});
+	private static JourneyTranscript Failed(string file, bool withScreenshot) =>
+		new(
+			file,
+			"",
+			new JourneyFailure(3, "click #pay", "Timed out after 5s waiting for css #pay to be visible: no element matches.")
+			{
+				Url = "https://shop.test/pay",
+				Screenshot = withScreenshot ? Png() : null,
+				ScreenshotPath = withScreenshot ? "/tmp/art/failure.png" : null,
+			}
+		);
 
 	[Test]
 	public async Task TheScreenshotOptionReachesTheJourneyRun()
@@ -338,10 +376,20 @@ public partial class JourneyConsoleRunnerTests
 		using var folder = new Folder();
 		var files = new[] { folder.Add("a/pay", "open /\nclick #pay") };
 
-		var (_, output, _) = await RunAsync(new JourneyRunOptions { Files = files, BaseUrl = new Uri("https://shop.test/"), ScreenshotOnFailure = true }, (file, _) => Failed(file, withScreenshot: true));
+		var (_, output, _) = await RunAsync(
+			new JourneyRunOptions { Files = files, BaseUrl = new Uri("https://shop.test/"), ScreenshotOnFailure = true },
+			(file, _) => Failed(file, withScreenshot: true)
+		);
 
-		output.Should().Contain("Page:       https://shop.test/pay").And.Contain("Screenshot: /tmp/art/failure.png")
-			.And.NotContain("Last open:").And.NotContain("\u2580");
+		output
+			.Should()
+			.Contain("Page:       https://shop.test/pay")
+			.And
+			.Contain("Screenshot: /tmp/art/failure.png")
+			.And
+			.NotContain("Last open:")
+			.And
+			.NotContain("\u2580");
 	}
 
 	[Test]
@@ -349,7 +397,13 @@ public partial class JourneyConsoleRunnerTests
 	{
 		using var folder = new Folder();
 		var files = new[] { folder.Add("a/pay", "open /\nclick #pay") };
-		var options = new JourneyRunOptions { Files = files, BaseUrl = new Uri("https://shop.test/"), ScreenshotOnFailure = true, Rerun = "snap journey run {id}.journey" };
+		var options = new JourneyRunOptions
+		{
+			Files = files,
+			BaseUrl = new Uri("https://shop.test/"),
+			ScreenshotOnFailure = true,
+			Rerun = "snap journey run {id}.journey"
+		};
 
 		var (_, output, _) = await RunAsync(options, (file, _) => Failed(file, withScreenshot: true), interactive: true);
 
@@ -369,15 +423,17 @@ public partial class JourneyConsoleRunnerTests
 		using var folder = new Folder();
 		var files = new[] { folder.Add("a/pay", "open /\nclick #pay") };
 
-		var (_, output, _) = await RunAsync(new JourneyRunOptions { Files = files, BaseUrl = new Uri("https://shop.test/") }, (file, _) => Failed(file, withScreenshot: true), interactive: true);
+		var (_, output, _) = await RunAsync(
+			new JourneyRunOptions { Files = files, BaseUrl = new Uri("https://shop.test/") },
+			(file, _) => Failed(file, withScreenshot: true),
+			interactive: true
+		);
 
 		output.Should().NotContain("\u2580");
 	}
 
-	private static JourneyTranscript Broken(string file, int line = 3) => new(file, "", new JourneyFailure(line, "click #pay", "Timed out after 5s: no element matches.\nsecond line")
-	{
-		Url = "https://shop.test/pay",
-	});
+	private static JourneyTranscript Broken(string file, int line = 3) =>
+		new(file, "", new JourneyFailure(line, "click #pay", "Timed out after 5s: no element matches.\nsecond line") { Url = "https://shop.test/pay", });
 
 	[Test]
 	public void WorkflowCommandDataAndPropertiesAreEscaped()
@@ -390,17 +446,17 @@ public partial class JourneyConsoleRunnerTests
 	public async Task AFailedJourneyGetsAnErrorAnnotationAtItsStepAndASkippedOneGetsNone()
 	{
 		using var folder = new Folder();
-		var files = new[]
-		{
-			folder.Add("a/pay", "open /\nclick #pay"),
-			folder.Add("a/ok", "open /"),
-			folder.Add("a/other", "# @requires env:prod\nopen /"),
-		};
+		var files = new[] { folder.Add("a/pay", "open /\nclick #pay"), folder.Add("a/ok", "open /"), folder.Add("a/other", "# @requires env:prod\nopen /"), };
 
-		var (_, output, _) = await RunAsync(new JourneyRunOptions { Files = files, GitHubActions = true, Env = "demo" }, (file, _) => file.EndsWith("pay.journey", StringComparison.Ordinal) ? Broken(file) : new JourneyTranscript(file, "", null));
+		var (_, output, _) = await RunAsync(
+			new JourneyRunOptions { Files = files, GitHubActions = true, Env = "demo" },
+			(file, _) => file.EndsWith("pay.journey", StringComparison.Ordinal) ? Broken(file) : new JourneyTranscript(file, "", null)
+		);
 
 		var annotations = output.Split('\n').Where(l => l.StartsWith("::", StringComparison.Ordinal)).ToList();
-		annotations.Should().Equal("::error file=journeys/a/pay.journey,line=3,title=Journey failed%3A a/pay::click #pay%0ATimed out after 5s: no element matches.%0Asecond line%0APage: https://shop.test/pay");
+		annotations.Should().Equal(
+			"::error file=journeys/a/pay.journey,line=3,title=Journey failed%3A a/pay::click #pay%0ATimed out after 5s: no element matches.%0Asecond line%0APage: https://shop.test/pay"
+		);
 		output.Should().NotContain("::group::", "a few failures stay expanded");
 	}
 
@@ -444,10 +500,21 @@ public partial class JourneyConsoleRunnerTests
 		var summary = Path.Combine(folder.Path, "summary.md");
 
 		await RunAsync(
-			new JourneyRunOptions { Files = files, Env = "demo", BaseUrl = new Uri("https://shop.test/"), StepSummaryPath = summary, Rerun = "snap journey run {id}.journey" },
-			(file, _) => file.EndsWith("pay.journey", StringComparison.Ordinal) ? Broken(file) : new JourneyTranscript(file, "", null));
+			new JourneyRunOptions
+			{
+				Files = files,
+				Env = "demo",
+				BaseUrl = new Uri("https://shop.test/"),
+				StepSummaryPath = summary,
+				Rerun = "snap journey run {id}.journey"
+			},
+			(file, _) => file.EndsWith("pay.journey", StringComparison.Ordinal) ? Broken(file) : new JourneyTranscript(file, "", null)
+		);
 
-		Normalise(File.ReadAllText(summary)).Should().MatchInlineSnapshot("""
+		Normalise(File.ReadAllText(summary))
+			.Should()
+			.MatchInlineSnapshot(
+				"""
 			### Journeys against https://shop.test/
 
 			✅ **1 passed** · ❌ **1 failed** · ⊘ 2 skipped
@@ -469,22 +536,27 @@ public partial class JourneyConsoleRunnerTests
 			```
 
 			Page: https://shop.test/pay · Rerun: `snap journey run a/pay.journey`
-			""");
+			"""
+			);
 	}
 
 	[Test]
 	public async Task AManyJourneyRunListsOnlyTheFailuresAndCountsTheSkipsPerReason()
 	{
 		using var folder = new Folder();
-		var files = Enumerable.Range(0, 12).Select(i => folder.Add($"a/ok{i:00}", "open /"))
+		var files = Enumerable
+			.Range(0, 12)
+			.Select(i => folder.Add($"a/ok{i:00}", "open /"))
 			.Append(folder.Add("a/pay", "open /\nclick #pay"))
 			.Concat(Enumerable.Range(0, 4).Select(i => folder.Add($"b/skip{i}", "# @requires env:prod\nopen /")))
-			.Append(folder.Add("b/codex", "# @requires build-type:codex\nopen /")).ToList();
+			.Append(folder.Add("b/codex", "# @requires build-type:codex\nopen /"))
+			.ToList();
 		var summary = Path.Combine(folder.Path, "summary.md");
 
 		await RunAsync(
 			new JourneyRunOptions { Files = files, Env = "demo", StepSummaryPath = summary },
-			(file, _) => file.EndsWith("pay.journey", StringComparison.Ordinal) ? Broken(file) : new JourneyTranscript(file, "", null));
+			(file, _) => file.EndsWith("pay.journey", StringComparison.Ordinal) ? Broken(file) : new JourneyTranscript(file, "", null)
+		);
 		var text = File.ReadAllText(summary);
 
 		text.Should().Contain("⊘ Skipped 5: requires env:prod (4), requires build-type:codex (1)");

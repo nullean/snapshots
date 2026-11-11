@@ -12,8 +12,7 @@ public class SnapshotTextTests
 	[Arguments("a\r\nb\rc\n\n\n", "a\nb\nc\n")]
 	[Arguments("\uFEFFa", "a\n")]
 	[Arguments("\uFEFF\uFEFFa", "a\n")]
-	public void Normalizes(string input, string expected) =>
-		SnapshotText.Normalize(input).Should().Be(expected);
+	public void Normalizes(string input, string expected) => SnapshotText.Normalize(input).Should().Be(expected);
 
 	[Test]
 	public void NormalizeIsIdempotent() =>

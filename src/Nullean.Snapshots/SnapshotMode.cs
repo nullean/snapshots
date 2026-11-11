@@ -36,7 +36,5 @@ public readonly record struct SnapshotEnvironment(SnapshotMode Mode, bool Accept
 	/// <summary>The mode for this process.</summary>
 	public static SnapshotEnvironment Current => From(Environment.GetEnvironmentVariable);
 
-	private static bool IsTrue(string? value) =>
-		value is not null
-		&& (value.Trim() == "1" || value.Trim().Equals("true", StringComparison.OrdinalIgnoreCase));
+	private static bool IsTrue(string? value) => value is not null && (value.Trim() == "1" || value.Trim().Equals("true", StringComparison.OrdinalIgnoreCase));
 }

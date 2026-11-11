@@ -46,10 +46,16 @@ public static class HttpSnapshot
 	/// <param name="response">The response; its content is buffered, so it can still be read afterwards.</param>
 	/// <param name="options">Which headers to write.</param>
 	/// <param name="cancellationToken">Stops reading the body.</param>
-	public static async Task<string> RenderAsync(HttpResponseMessage response, HttpSnapshotOptions? options = null, CancellationToken cancellationToken = default)
+	public static async Task<string> RenderAsync(
+		HttpResponseMessage response,
+		HttpSnapshotOptions? options = null,
+		CancellationToken cancellationToken = default
+	)
 	{
 		ArgumentNullException.ThrowIfNull(response);
-		var headers = response.Headers.Concat(response.Content.Headers)
+		var headers = response
+			.Headers
+			.Concat(response.Content.Headers)
 			.SelectMany(h => h.Value.Select(v => new KeyValuePair<string, string>(h.Key, v)))
 			.ToList();
 		var body = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
@@ -70,7 +76,8 @@ public static class HttpSnapshot
 			headers,
 			body,
 			mediaType,
-			mediaType is null ? null : response.Content.Headers.ContentType?.CharSet);
+			mediaType is null ? null : response.Content.Headers.ContentType?.CharSet
+		);
 		var text = new StringBuilder();
 		HttpResponseText.Append(text, section, HttpResponseText.Chosen(options?.Headers), options?.Shape ?? false);
 		return text.ToString();

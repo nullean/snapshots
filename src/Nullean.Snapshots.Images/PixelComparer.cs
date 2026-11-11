@@ -52,6 +52,7 @@ internal static class PixelComparer
 	public static RgbaImage Outline(RgbaImage diff, IReadOnlyList<DiffRegion> regions)
 	{
 		var pixels = (byte[])diff.Pixels.Clone();
+
 		void Set(int x, int y)
 		{
 			var at = ((y * diff.Width) + x) * 4;
@@ -138,8 +139,10 @@ internal static class PixelComparer
 				var delta = a32[i] == b32[i] ? 0 : ColorDelta(verified.Pixels, actual.Pixels, i, i, yOnly: false);
 				if (delta > maxDelta)
 				{
-					if (!includeAntiAliasing
-						&& (AntiAliased(verified.Pixels, x, y, width, height, a32, b32) || AntiAliased(actual.Pixels, x, y, width, height, b32, a32)))
+					if (
+						!includeAntiAliasing &&
+						(AntiAliased(verified.Pixels, x, y, width, height, a32, b32) || AntiAliased(actual.Pixels, x, y, width, height, b32, a32))
+					)
 					{
 						antiAliased++;
 						if (output is not null)
@@ -254,8 +257,8 @@ internal static class PixelComparer
 		if (min == 0 || max == 0)
 			return false;
 
-		return (HasManySiblings(a32, minX, minY, width, height) && HasManySiblings(b32, minX, minY, width, height))
-			|| (HasManySiblings(a32, maxX, maxY, width, height) && HasManySiblings(b32, maxX, maxY, width, height));
+		return (HasManySiblings(a32, minX, minY, width, height) && HasManySiblings(b32, minX, minY, width, height)) ||
+			(HasManySiblings(a32, maxX, maxY, width, height) && HasManySiblings(b32, maxX, maxY, width, height));
 	}
 
 	/// <summary>True when at least three neighbours of a pixel have exactly its colour: it lies in a flat area.</summary>

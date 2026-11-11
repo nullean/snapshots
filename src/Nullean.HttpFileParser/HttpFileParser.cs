@@ -63,8 +63,7 @@ internal sealed class HttpFileParser
 
 	private static bool IsComment(string trimmed) => trimmed.StartsWith('#') || trimmed.StartsWith("//", StringComparison.Ordinal);
 
-	private static string CommentText(string trimmed) =>
-		(trimmed.StartsWith('#') ? trimmed.TrimStart('#') : trimmed[2..].TrimStart('/')).Trim();
+	private static string CommentText(string trimmed) => (trimmed.StartsWith('#') ? trimmed.TrimStart('#') : trimmed[2..].TrimStart('/')).Trim();
 
 	/// <summary>Parses lines [<paramref name="start"/>, <paramref name="end"/>): comments, variables, then at most one request.</summary>
 	private void ParseBlock(int start, int end, string? separatorName)
@@ -141,7 +140,10 @@ internal sealed class HttpFileParser
 						if (TryParseTimeout(argument, out var value))
 							timeout = value;
 						else
-							Error(k, $"'@timeout {argument}' needs a positive number of seconds, optionally with a unit: '@timeout 30', '@timeout 500 ms', '@timeout 2 m'");
+							Error(
+								k,
+								$"'@timeout {argument}' needs a positive number of seconds, optionally with a unit: '@timeout 30', '@timeout 500 ms', '@timeout 2 m'"
+							);
 						break;
 					case "readonly":
 						readOnly = true;
@@ -155,7 +157,10 @@ internal sealed class HttpFileParser
 							Error(k, problem);
 						break;
 					case "prompt":
-						Error(k, "prompt variables ('@prompt') are not supported: a run cannot ask questions. Pass the value with HttpFileRunOptions.Variables");
+						Error(
+							k,
+							"prompt variables ('@prompt') are not supported: a run cannot ask questions. Pass the value with HttpFileRunOptions.Variables"
+						);
 						break;
 					default:
 						// Unknown directives (@note, @no-log, @connection-timeout, ...) are plain comments.
@@ -240,7 +245,12 @@ internal sealed class HttpFileParser
 	{
 		var eq = t.IndexOf('=', StringComparison.Ordinal);
 		var name = eq < 0 ? "" : t[1..eq].Trim();
-		if (eq < 0 || name.Length == 0 || name.Any(char.IsWhiteSpace) || name.StartsWith('$') || name.Contains('{', StringComparison.Ordinal) || name.Contains('}', StringComparison.Ordinal))
+		if (
+			eq < 0 || name.Length == 0 || name.Any(char.IsWhiteSpace) || name.StartsWith('$') || name.Contains('{', StringComparison.Ordinal) || name.Contains(
+				'}',
+				StringComparison.Ordinal
+			)
+		)
 		{
 			Error(k, $"expected a variable definition '@name = value', got '{t}'");
 			return;
@@ -250,7 +260,25 @@ internal sealed class HttpFileParser
 	}
 
 	private static readonly string[] KnownMethods =
-		["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH", "PROPFIND", "PROPPATCH", "MKCOL", "COPY", "MOVE", "LOCK", "UNLOCK", "QUERY"];
+	[
+		"GET",
+		"HEAD",
+		"POST",
+		"PUT",
+		"DELETE",
+		"CONNECT",
+		"OPTIONS",
+		"TRACE",
+		"PATCH",
+		"PROPFIND",
+		"PROPPATCH",
+		"MKCOL",
+		"COPY",
+		"MOVE",
+		"LOCK",
+		"UNLOCK",
+		"QUERY"
+	];
 
 	private void ParseRequest(int k, int end, string? name, HttpFileDirectives directives)
 	{
@@ -343,7 +371,10 @@ internal sealed class HttpFileParser
 		var t = _lines[i].Trim();
 		if (t.StartsWith(">>", StringComparison.Ordinal))
 		{
-			Error(i, $"response redirection ('{(t.StartsWith(">>!", StringComparison.Ordinal) ? ">>!" : ">>")} file') is not supported; the run result holds the response");
+			Error(
+				i,
+				$"response redirection ('{(t.StartsWith(">>!", StringComparison.Ordinal) ? ">>!" : ">>")} file') is not supported; the run result holds the response"
+			);
 			return i;
 		}
 		if (t.StartsWith("> {%", StringComparison.Ordinal))
@@ -396,12 +427,16 @@ internal sealed class HttpFileParser
 		var parts = new List<HttpFileBodyPart>();
 		var buffer = new StringBuilder();
 		var bufferLine = bodyLine;
+
 		void Flush()
 		{
 			if (buffer.Length > 0)
-				parts.Add(new HttpFileBodyPart(HttpFileBodyKind.Text, Template.Parse(buffer.ToString(), bufferLine, _path, _errors), null, null, null, bufferLine));
+				parts.Add(
+					new HttpFileBodyPart(HttpFileBodyKind.Text, Template.Parse(buffer.ToString(), bufferLine, _path, _errors), null, null, null, bufferLine)
+				);
 			buffer.Clear();
 		}
+
 		for (var n = 0; n < lines.Count; n++)
 		{
 			var (text, index) = lines[n];

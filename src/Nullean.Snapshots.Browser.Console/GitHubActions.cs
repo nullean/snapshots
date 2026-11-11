@@ -60,7 +60,8 @@ internal static class GitHubActions
 				properties.Add($"line={failure.Line.ToString(CultureInfo.InvariantCulture)}");
 		}
 		properties.Add($"title={EscapeProperty($"Journey failed: {outcome.File.Id}")}");
-		var message = outcome.Error ?? (failure is null ? outcome.Compared?.FailureMessage ?? "The transcript differs." : $"{failure.Command}\n{failure.Message}");
+		var message = outcome.Error ??
+			(failure is null ? outcome.Compared?.FailureMessage ?? "The transcript differs." : $"{failure.Command}\n{failure.Message}");
 		if (failure?.Url is { Length: > 0 } url)
 			message += $"\nPage: {url}";
 		return $"::error {string.Join(',', properties)}::{Escape(message)}";
@@ -82,7 +83,10 @@ internal static class GitHubActions
 		var skipped = outcomes.Where(o => o.Skipped).ToList();
 		var text = new StringBuilder();
 		_ = text.AppendLine(site is null ? "### Journeys" : $"### Journeys against {site}").AppendLine();
-		_ = text.AppendLine(CultureInfo.InvariantCulture, $"✅ **{passed} passed** · {(failed.Count > 0 ? $"❌ **{failed.Count} failed**" : "0 failed")} · ⊘ {skipped.Count} skipped");
+		_ = text.AppendLine(
+			CultureInfo.InvariantCulture,
+			$"✅ **{passed} passed** · {(failed.Count > 0 ? $"❌ **{failed.Count} failed**" : "0 failed")} · ⊘ {skipped.Count} skipped"
+		);
 		if (skipped.Count > 0)
 			_ = text.AppendLine().AppendLine(SkippedLine(skipped));
 
@@ -107,7 +111,10 @@ internal static class GitHubActions
 	private static string SkippedLine(List<JourneyOutcome> skipped) =>
 		skipped.Count <= 3
 			? "⊘ Skipped " + string.Join(", ", skipped.Select(o => $"`{o.File.Id}` ({o.SkipReason})"))
-			: $"⊘ Skipped {skipped.Count}: " + string.Join(", ", skipped.GroupBy(o => o.SkipReason).OrderByDescending(g => g.Count()).Select(g => $"{g.Key} ({g.Count()})"));
+			: $"⊘ Skipped {skipped.Count}: " + string.Join(
+				", ",
+				skipped.GroupBy(o => o.SkipReason).OrderByDescending(g => g.Count()).Select(g => $"{g.Key} ({g.Count()})")
+			);
 
 	private static string FailureSection(JourneyOutcome outcome, string? rerun)
 	{
@@ -115,7 +122,10 @@ internal static class GitHubActions
 		var text = new StringBuilder();
 		_ = text.AppendLine(CultureInfo.InvariantCulture, $"#### ❌ {outcome.File.Id}").AppendLine();
 		if (failure is not null)
-			_ = text.AppendLine(CultureInfo.InvariantCulture, $"`{outcome.File.Display ?? outcome.File.Path}:{failure.Line}`: `{failure.Command}`").AppendLine();
+			_ = text.AppendLine(
+				CultureInfo.InvariantCulture,
+				$"`{outcome.File.Display ?? outcome.File.Path}:{failure.Line}`: `{failure.Command}`"
+			).AppendLine();
 		var message = outcome.Error ?? failure?.Message ?? outcome.Compared?.FailureMessage ?? "The transcript differs.";
 		_ = text.AppendLine("```text").AppendLine(message.Replace("```", "'''", StringComparison.Ordinal).TrimEnd()).AppendLine("```");
 		var facts = new List<string>();

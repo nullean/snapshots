@@ -13,7 +13,8 @@ public static class TreeGen
 	public static readonly Gen<string> NastyString = Gen.OneOf(
 		// Whole fragments, not single chars: a char picked out of "😀" is a lone surrogate, which no encoder round-trips.
 		Gen.OneOf("a", "b", " ", "\"", "\\", "\n", "\t", "{", "}", "é", "😀").Array[0, 6].Select(string.Concat),
-		Gen.OneOf("", "1", "1.0", "-0", "true", "false", "null", "~", "yes", "no", "0x1F", "1_000", ".inf", "\u0000", "a\r\nb"));
+		Gen.OneOf("", "1", "1.0", "-0", "true", "false", "null", "~", "yes", "no", "0x1F", "1_000", ".inf", "\u0000", "a\r\nb")
+	);
 
 	public static readonly Gen<ScalarNode> Scalar = Gen.OneOf(
 		Gen.Const(ScalarNode.Null()),
@@ -22,7 +23,8 @@ public static class TreeGen
 		Gen.OneOf("0", "-0", "9007199254740993", "-12345678901234567890").Select(t => new ScalarNode(ScalarKind.Int, t)),
 		Gen.Double[-1e6, 1e6].Select(d => new ScalarNode(ScalarKind.Float, FloatText(d))),
 		Gen.OneOf("1.5", "-0.0", "1e300", "2.5E-3").Select(t => new ScalarNode(ScalarKind.Float, t)),
-		NastyString.Select(s => ScalarNode.String(s)));
+		NastyString.Select(s => ScalarNode.String(s))
+	);
 
 	private static string FloatText(double d)
 	{
@@ -51,8 +53,7 @@ public static class TreeGen
 
 	/// <summary>A map with at least <paramref name="minKeys"/> keys, each holding a tree.</summary>
 	public static Gen<MapNode> MapWith(int minKeys) =>
-		Gen.Select(Key, Tree).Array[minKeys, minKeys + 4]
-			.Select(e => (MapNode)Map([.. e.Select((x, i) => ($"k{i}_{x.Item1}", x.Item2))]));
+		Gen.Select(Key, Tree).Array[minKeys, minKeys + 4].Select(e => (MapNode)Map([.. e.Select((x, i) => ($"k{i}_{x.Item1}", x.Item2))]));
 
 	/// <summary>Writes a tree as compact JSON, numbers as their text.</summary>
 	public static string ToJson(Node node)

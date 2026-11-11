@@ -9,13 +9,19 @@ namespace Nullean.HttpFileParser.Tests;
 /// </summary>
 public class DocumentationExampleTests
 {
-	private static string Shape(HttpFile file) => string.Join("\n", file.Requests.Select(r =>
-		$"{r.Name ?? "-"} | {r.Method} {r.UrlTemplate} {r.Version ?? "-"} | {string.Join("; ", r.Headers)} | {r.Body?.Kind.ToString() ?? "-"}"));
+	private static string Shape(HttpFile file) =>
+		string.Join(
+			"\n",
+			file.Requests.Select(
+				r => $"{r.Name ?? "-"} | {r.Method} {r.UrlTemplate} {r.Version ?? "-"} | {string.Join("; ", r.Headers)} | {r.Body?.Kind.ToString() ?? "-"}"
+			)
+		);
 
 	[Test]
 	public void VisualStudioRequests()
 	{
-		var file = HttpFile.Parse("""
+		var file = HttpFile.Parse(
+			"""
 			GET https://localhost:7220/weatherforecast
 
 			###
@@ -27,18 +33,26 @@ public class DocumentationExampleTests
 			GET https://localhost:7220/weatherforecast HTTP/3
 
 			###
-			""");
-		Shape(file).Should().Be("""
+			"""
+		);
+		Shape(file)
+			.Should()
+			.Be(
+				"""
 			- | GET https://localhost:7220/weatherforecast - |  | -
 			- | GET https://localhost:7220/weatherforecast?date=2023-05-11&location=98006 - |  | -
 			- | GET https://localhost:7220/weatherforecast HTTP/3 |  | -
-			""".ReplaceLineEndings("\n"));
+			""".ReplaceLineEndings(
+					"\n"
+				)
+			);
 	}
 
 	[Test]
 	public void VisualStudioHeadersAndBody()
 	{
-		var file = HttpFile.Parse("""
+		var file = HttpFile.Parse(
+			"""
 			GET https://localhost:7220/weatherforecast
 			Date: Wed, 27 Apr 2023 07:28:00 GMT
 
@@ -61,19 +75,30 @@ public class DocumentationExampleTests
 			}
 
 			###
-			""");
-		Shape(file).Should().Be("""
+			"""
+		);
+		Shape(file)
+			.Should()
+			.Be(
+				"""
 			- | GET https://localhost:7220/weatherforecast - | Date: Wed, 27 Apr 2023 07:28:00 GMT | -
 			- | GET https://localhost:7220/weatherforecast - | Cache-Control: max-age=604800; Age: 100 | -
 			- | POST https://localhost:7220/weatherforecast - | Content-Type: application/json; Accept-Language: en-US,en;q=0.5 | Text
-			""".ReplaceLineEndings("\n"));
-		file.Requests[2].Body!.Text.Should().Be(/*lang=json,strict*/ "{\n    \"date\": \"2023-05-10\",\n    \"temperatureC\": 30,\n    \"summary\": \"Warm\"\n}");
+			""".ReplaceLineEndings(
+					"\n"
+				)
+			);
+		file.Requests[2].Body!
+			.Text
+			.Should()
+			.Be(/*lang=json,strict*/ "{\n    \"date\": \"2023-05-10\",\n    \"temperatureC\": 30,\n    \"summary\": \"Warm\"\n}");
 	}
 
 	[Test]
 	public void VisualStudioVariablesAndRequestVariables()
 	{
-		var file = HttpFile.Parse("""
+		var file = HttpFile.Parse(
+			"""
 			@hostname=localhost
 			@port=44320
 			@host={{hostname}}:{{port}}
@@ -96,19 +121,27 @@ public class DocumentationExampleTests
 			Authorization: Bearer {{login.response.body.$.token}}
 
 			###
-			""");
-		Shape(file).Should().Be("""
+			"""
+		);
+		Shape(file)
+			.Should()
+			.Be(
+				"""
 			- | GET https://{{host}}/api/search/tool - |  | -
 			login | POST {{TodoApi_HostAddress}}/users/token - | Content-Type: application/json | Text
 			- | GET {{TodoApi_HostAddress}}/todos - | Authorization: Bearer {{login.response.body.$.token}} | -
-			""".ReplaceLineEndings("\n"));
+			""".ReplaceLineEndings(
+					"\n"
+				)
+			);
 		file.Validate(variables: new Dictionary<string, string> { ["TodoApi_HostAddress"] = "x", ["myusername"] = "u" }).Should().BeEmpty();
 	}
 
 	[Test]
 	public void VisualStudioDynamicValues()
 	{
-		var file = HttpFile.Parse("""
+		var file = HttpFile.Parse(
+			"""
 			GET https://localhost:7220/weatherforecast
 			X-CUSTOM: {{$datetime "dd-MM-yyyy"}}
 			X-ISO8601: {{$datetime iso8601}}
@@ -142,7 +175,8 @@ public class DocumentationExampleTests
 
 			GET {{HostAddress}}{{Path}}
 			X-API-KEY: {{ApiKeyDev}}
-			""");
+			"""
+		);
 		file.Requests.Should().HaveCount(6);
 		file.Requests[1].Headers.Select(h => h.Name).Should().Equal("X-Custom-Minus-1-Year", "X-RFC1123-Plus-1-Day", "X-Timestamp-Plus-1-Year");
 	}
@@ -150,28 +184,41 @@ public class DocumentationExampleTests
 	[Test]
 	public void VisualStudioNamesRequestsWithoutAMethod()
 	{
-		var file = HttpFile.Parse("""
+		var file = HttpFile.Parse(
+			"""
 			# @name login
 			https://contoso.com/api/login HTTP/1.1
 			###
 			// @name login
 			https://contoso.com/api/login HTTP/1.1
-			""");
-		Shape(file).Should().Be("""
+			"""
+		);
+		Shape(file)
+			.Should()
+			.Be(
+				"""
 			login | GET https://contoso.com/api/login HTTP/1.1 |  | -
 			login | GET https://contoso.com/api/login HTTP/1.1 |  | -
-			""".ReplaceLineEndings("\n"));
+			""".ReplaceLineEndings(
+					"\n"
+				)
+			);
 	}
 
 	[Test]
 	public void VisualStudioRefusesXPath() =>
-		ParserTests.Errors("GET https://example.com\nX-Token: {{login.response.body./token}}")
-			.Should().Equal("api.http:2: XPath ('/token') in '{{login.response.body./token}}' is not supported; use JSONPath ('$.name') for JSON bodies or '*' for the whole body");
+		ParserTests
+			.Errors("GET https://example.com\nX-Token: {{login.response.body./token}}")
+			.Should()
+			.Equal(
+				"api.http:2: XPath ('/token') in '{{login.response.body./token}}' is not supported; use JSONPath ('$.name') for JSON bodies or '*' for the whole body"
+			);
 
 	[Test]
 	public void RestClientRequests()
 	{
-		var file = HttpFile.Parse("""
+		var file = HttpFile.Parse(
+			"""
 			https://example.com/comments/1
 
 			###
@@ -195,19 +242,27 @@ public class DocumentationExampleTests
 
 			name=foo
 			&password=bar
-			""");
-		Shape(file).Should().Be("""
+			"""
+		);
+		Shape(file)
+			.Should()
+			.Be(
+				"""
 			- | GET https://example.com/comments/1 - |  | -
 			- | GET https://example.com/comments?page=2&pageSize=10 - |  | -
 			- | POST https://example.com/comments HTTP/1.1 | Content-Type: application/xml; Authorization: token xxx | File
 			- | POST https://api.example.com/login HTTP/1.1 | Content-Type: application/x-www-form-urlencoded | Text
-			""".ReplaceLineEndings("\n"));
+			""".ReplaceLineEndings(
+					"\n"
+				)
+			);
 	}
 
 	[Test]
 	public void RestClientVariables()
 	{
-		var file = HttpFile.Parse("""
+		var file = HttpFile.Parse(
+			"""
 			@hostname = api.example.com
 			@port = 8080
 			@host = {{hostname}}:{{port}}
@@ -239,7 +294,8 @@ public class DocumentationExampleTests
 
 			# @name getFirstReply
 			GET https://{{host}}/comments/{{commentId}}/replies/{{getCommentReplies.response.body.$[0].id}}
-			""");
+			"""
+		);
 		file.Variables.Select(v => v.Name).Should().Equal("hostname", "port", "host", "contentType", "createdAt", "modifiedBy", "commentId");
 		file.Requests.Select(r => r.Name).Should().Equal("createComment", "getCommentReplies", "getFirstReply");
 		file.Validate().Should().BeEmpty();
@@ -248,7 +304,8 @@ public class DocumentationExampleTests
 	[Test]
 	public void RestClientDynamicValues()
 	{
-		var file = HttpFile.Parse("""
+		var file = HttpFile.Parse(
+			"""
 			POST https://api.example.com/comments HTTP/1.1
 			Content-Type: application/xml
 			Date: {{$datetime rfc1123}}
@@ -262,23 +319,28 @@ public class DocumentationExampleTests
 			    "custom_date": "{{$datetime 'yyyy-MM-dd'}}",
 			    "local_custom_date": "{{$localDatetime 'yyyy-MM-dd'}}"
 			}
-			""");
+			"""
+		);
 		file.Requests.Single().Body!.Kind.Should().Be(HttpFileBodyKind.Text);
 	}
 
 	[Test]
 	public void RestClientDirectivesAndRefusals()
 	{
-		var file = HttpFile.Parse("""
+		var file = HttpFile.Parse(
+			"""
 			# @note
 			# @no-redirect
 			# @no-cookie-jar
 			GET https://example.com/api
-			""");
+			"""
+		);
 		file.Requests[0].Directives.NoRedirect.Should().BeTrue();
 		file.Requests[0].Directives.NoCookieJar.Should().BeTrue();
 
-		ParserTests.Errors("""
+		ParserTests
+			.Errors(
+				"""
 			# @prompt username
 			# @prompt refCode Your reference code display on webpage
 			# @prompt otp Your one-time password in your mailbox
@@ -286,14 +348,28 @@ public class DocumentationExampleTests
 			Content-Type: {{contentType}}
 
 			{{otp}}
-			""").Should().HaveCount(3).And.AllSatisfy(e => e.Should().Contain("prompt variables ('@prompt') are not supported"));
+			"""
+			)
+			.Should()
+			.HaveCount(3)
+			.And
+			.AllSatisfy(e => e.Should().Contain("prompt variables ('@prompt') are not supported"));
 
-		ParserTests.Errors("""
+		ParserTests
+			.Errors(
+				"""
 			# @name getFirstReply
 			GET {{baseUrl}}/comments/{{commentId}}/replies/{{getReplies.response.body.//reply[1]/@id}}
-			""").Should().Equal("api.http:2: XPath ('//reply[1]/@id') in '{{getReplies.response.body.//reply[1]/@id}}' is not supported; use JSONPath ('$.name') for JSON bodies or '*' for the whole body");
+			"""
+			)
+			.Should()
+			.Equal(
+				"api.http:2: XPath ('//reply[1]/@id') in '{{getReplies.response.body.//reply[1]/@id}}' is not supported; use JSONPath ('$.name') for JSON bodies or '*' for the whole body"
+			);
 
-		ParserTests.Errors("""
+		ParserTests
+			.Errors(
+				"""
 			POST https://api.github.com/graphql
 			Content-Type: application/json
 			Authorization: Bearer xxx
@@ -304,16 +380,24 @@ public class DocumentationExampleTests
 			    name
 			  }
 			}
-			""").Should().Equal("api.http:4: GraphQL requests (X-REQUEST-TYPE: GraphQL) are not supported; send the query as a JSON body with Content-Type: application/json");
+			"""
+			)
+			.Should()
+			.Equal(
+				"api.http:4: GraphQL requests (X-REQUEST-TYPE: GraphQL) are not supported; send the query as a JSON body with Content-Type: application/json"
+			);
 
-		ParserTests.Errors("curl -X POST https://example.com/comments -H 'Content-Type: application/json' -d '{}'")
-			.Should().Equal("api.http:1: cURL commands are not supported; write the request as 'METHOD URL' followed by its headers");
+		ParserTests
+			.Errors("curl -X POST https://example.com/comments -H 'Content-Type: application/json' -d '{}'")
+			.Should()
+			.Equal("api.http:1: cURL commands are not supported; write the request as 'METHOD URL' followed by its headers");
 	}
 
 	[Test]
 	public void JetBrainsPortableForms()
 	{
-		var file = HttpFile.Parse("""
+		var file = HttpFile.Parse(
+			"""
 			### A basic request
 			GET http://example.com/a/
 
@@ -362,8 +446,12 @@ public class DocumentationExampleTests
 			###
 			# @timeout 600
 			GET example.com/api
-			""");
-		Shape(file).Should().Be("""
+			"""
+		);
+		Shape(file)
+			.Should()
+			.Be(
+				"""
 			A basic request | GET http://example.com/a/ - |  | -
 			- | GET https://example.com/a/ - |  | -
 			A second request using the GET method | GET https://example.com:8080/api/html/get?id=123&value=content - |  | -
@@ -373,7 +461,10 @@ public class DocumentationExampleTests
 			- | POST https://example.com:8080/api/html/post - | Content-Type: application/json | File
 			- | GET example.com/status/301 - |  | -
 			- | GET example.com/api - |  | -
-			""".ReplaceLineEndings("\n"));
+			""".ReplaceLineEndings(
+					"\n"
+				)
+			);
 		file.Requests[7].Directives.NoRedirect.Should().BeTrue();
 		file.Requests[8].Directives.Timeout.Should().Be(TimeSpan.FromSeconds(600));
 	}
@@ -381,7 +472,8 @@ public class DocumentationExampleTests
 	[Test]
 	public void JetBrainsMultipart()
 	{
-		var file = HttpFile.Parse("""
+		var file = HttpFile.Parse(
+			"""
 			POST https://example.com/api/upload HTTP/1.1
 			Content-Type: multipart/form-data; boundary=boundary
 
@@ -398,7 +490,8 @@ public class DocumentationExampleTests
 
 			< ./input.txt
 			--boundary--
-			""");
+			"""
+		);
 		file.Requests[0].Body!.Kind.Should().Be(HttpFileBodyKind.Mixed);
 		file.Requests[0].Body!.Parts.Count(p => p.Kind == HttpFileBodyKind.File).Should().Be(2);
 	}
@@ -406,21 +499,31 @@ public class DocumentationExampleTests
 	[Test]
 	public void JetBrainsScriptsAreRefused()
 	{
-		ParserTests.Errors("""
+		ParserTests
+			.Errors(
+				"""
 			GET https://httpbin.org/get
 
 			> {%
 			    client.global.set("my_cookie", response.headers.valuesOf("Set-Cookie")[0]);
 			%}
-			""").Should().Equal("api.http:3: JetBrains response handler scripts ('> {% ... %}') are not supported: they run JavaScript");
+			"""
+			)
+			.Should()
+			.Equal("api.http:3: JetBrains response handler scripts ('> {% ... %}') are not supported: they run JavaScript");
 
-		ParserTests.Errors("""
+		ParserTests
+			.Errors("""
 			GET https://httpbin.org/get
 
 			> /path/to/responseHandler.js
-			""").Should().Equal("api.http:3: JetBrains response handler files ('> handler.js') are not supported: they run JavaScript");
+			""")
+			.Should()
+			.Equal("api.http:3: JetBrains response handler files ('> handler.js') are not supported: they run JavaScript");
 
-		ParserTests.Errors("""
+		ParserTests
+			.Errors(
+				"""
 			< {%
 			    const start = Date.now();
 			    await sleep(10000);
@@ -430,11 +533,17 @@ public class DocumentationExampleTests
 			> {%
 			    console.log("Post-script: Script execution complete.");
 			%}
-			""").Should().Equal(
-			"api.http:1: JetBrains pre-request scripts ('< {% ... %}') are not supported: they run JavaScript",
-			"api.http:7: JetBrains response handler scripts ('> {% ... %}') are not supported: they run JavaScript");
+			"""
+			)
+			.Should()
+			.Equal(
+				"api.http:1: JetBrains pre-request scripts ('< {% ... %}') are not supported: they run JavaScript",
+				"api.http:7: JetBrains response handler scripts ('> {% ... %}') are not supported: they run JavaScript"
+			);
 
-		ParserTests.Errors("""
+		ParserTests
+			.Errors(
+				"""
 			POST https://httpbin.org/post
 			Content-Type: application/json
 
@@ -444,9 +553,14 @@ public class DocumentationExampleTests
 			}
 
 			>> myFolder/myFile.json
-			""").Should().Equal("api.http:9: response redirection ('>> file') is not supported; the run result holds the response");
+			"""
+			)
+			.Should()
+			.Equal("api.http:9: response redirection ('>> file') is not supported; the run result holds the response");
 
-		ParserTests.Errors("""
+		ParserTests
+			.Errors(
+				"""
 			POST https://httpbin.org/post
 			Content-Type: application/json
 
@@ -457,8 +571,12 @@ public class DocumentationExampleTests
 
 			> {{$projectRoot}}/handler.js
 			>>! {{$historyFolder}}/myFile.json
-			""").Should().Equal(
-			"api.http:9: JetBrains response handler files ('> handler.js') are not supported: they run JavaScript",
-			"api.http:10: response redirection ('>>! file') is not supported; the run result holds the response");
+			"""
+			)
+			.Should()
+			.Equal(
+				"api.http:9: JetBrains response handler files ('> handler.js') are not supported: they run JavaScript",
+				"api.http:10: response redirection ('>>! file') is not supported; the run result holds the response"
+			);
 	}
 }

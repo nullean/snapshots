@@ -36,36 +36,54 @@ public class InlineSnapshotSourceTests
 	public void ReplacesASingleLineLiteralWithARegularOne()
 	{
 		var source = Source("class T {", "\tvoid M()", "\t{", "\t\tx.Should().MatchInlineSnapshot(\"old\");", "\t}", "}");
-		Apply(source, Edit(4, "\"old\"", "old", "new \"q\" \\ \t\n")).Should().Be(
-			Source("class T {", "\tvoid M()", "\t{", "\t\tx.Should().MatchInlineSnapshot(\"new \\\"q\\\" \\\\ \\t\");", "\t}", "}"));
+		Apply(source, Edit(4, "\"old\"", "old", "new \"q\" \\ \t\n"))
+			.Should()
+			.Be(Source("class T {", "\tvoid M()", "\t{", "\t\tx.Should().MatchInlineSnapshot(\"new \\\"q\\\" \\\\ \\t\");", "\t}", "}"));
 	}
 
 	[Test]
 	public void WritesSeveralLinesAsARawLiteralOneLevelPastTheStatement()
 	{
 		var source = Source("class T {", "\tvoid M()", "\t{", "\t\tx.Should().MatchInlineSnapshot(\"old\");", "\t}", "}");
-		Apply(source, Edit(4, "\"old\"", "old", "a\n\nb {c}\n")).Should().Be(
-			Source("class T {", "\tvoid M()", "\t{", "\t\tx.Should().MatchInlineSnapshot(\"\"\"", "\t\t\ta", "", "\t\t\tb {c}", "\t\t\t\"\"\");", "\t}", "}"));
+		Apply(source, Edit(4, "\"old\"", "old", "a\n\nb {c}\n"))
+			.Should()
+			.Be(
+				Source(
+					"class T {",
+					"\tvoid M()",
+					"\t{",
+					"\t\tx.Should().MatchInlineSnapshot(\"\"\"",
+					"\t\t\ta",
+					"",
+					"\t\t\tb {c}",
+					"\t\t\t\"\"\");",
+					"\t}",
+					"}"
+				)
+			);
 	}
 
 	[Test]
 	public void IndentsOneLevelPastTheLineOfTheCallWithTheFilesStyle()
 	{
 		var spaces = Source("    x.Should()", "        .MatchInlineSnapshot(\"old\");");
-		Apply(spaces, Edit(2, "\"old\"", "old", "a\nb\n")).Should().Be(
-			Source("    x.Should()", "        .MatchInlineSnapshot(\"\"\"", "            a", "            b", "            \"\"\");"));
+		Apply(spaces, Edit(2, "\"old\"", "old", "a\nb\n"))
+			.Should()
+			.Be(Source("    x.Should()", "        .MatchInlineSnapshot(\"\"\"", "            a", "            b", "            \"\"\");"));
 
 		var tabs = Source("\tvoid M() => x.Should()", "\t\t.MatchInlineSnapshot(\"old\");");
-		Apply(tabs, Edit(2, "\"old\"", "old", "a\nb\n")).Should().Be(
-			Source("\tvoid M() => x.Should()", "\t\t.MatchInlineSnapshot(\"\"\"", "\t\t\ta", "\t\t\tb", "\t\t\t\"\"\");"));
+		Apply(tabs, Edit(2, "\"old\"", "old", "a\nb\n"))
+			.Should()
+			.Be(Source("\tvoid M() => x.Should()", "\t\t.MatchInlineSnapshot(\"\"\"", "\t\t\ta", "\t\t\tb", "\t\t\t\"\"\");"));
 	}
 
 	[Test]
 	public void UsesMoreQuotesThanTheLongestRunInTheValue()
 	{
 		var source = Source("x.MatchInlineSnapshot(\"old\");");
-		Apply(source, Edit(1, "\"old\"", "old", "say \"\"\"hi\"\"\"\nbye\n")).Should().Be(
-			Source("x.MatchInlineSnapshot(\"\"\"\"", "    say \"\"\"hi\"\"\"", "    bye", "    \"\"\"\");"));
+		Apply(source, Edit(1, "\"old\"", "old", "say \"\"\"hi\"\"\"\nbye\n"))
+			.Should()
+			.Be(Source("x.MatchInlineSnapshot(\"\"\"\"", "    say \"\"\"hi\"\"\"", "    bye", "    \"\"\"\");"));
 	}
 
 	[Test]
@@ -78,38 +96,39 @@ public class InlineSnapshotSourceTests
 
 	[Test]
 	public void WritesAnEmptyValueAsAnEmptyLiteral() =>
-		Apply(Source("x.MatchInlineSnapshot(\"old\");"), Edit(1, "\"old\"", "old", string.Empty))
-			.Should().Be(Source("x.MatchInlineSnapshot(\"\");"));
+		Apply(Source("x.MatchInlineSnapshot(\"old\");"), Edit(1, "\"old\"", "old", string.Empty)).Should().Be(Source("x.MatchInlineSnapshot(\"\");"));
 
 	[Test]
 	public void InsertsTheLiteralWhenTheArgumentWasLeftOut() =>
-		Apply(Source("x.Should().MatchInlineSnapshot();"), Edit(1, null, null, "new\n"))
-			.Should().Be(Source("x.Should().MatchInlineSnapshot(\"new\");"));
+		Apply(Source("x.Should().MatchInlineSnapshot();"), Edit(1, null, null, "new\n")).Should().Be(Source("x.Should().MatchInlineSnapshot(\"new\");"));
 
 	[Test]
 	public void AppendsANamedArgumentWhenOtherArgumentsAreGiven() =>
 		Apply(Source("x.Should().MatchInlineSnapshot(because: \"why\");"), Edit(1, null, null, "new\n"))
-			.Should().Be(Source("x.Should().MatchInlineSnapshot(because: \"why\", expected: \"new\");"));
+			.Should()
+			.Be(Source("x.Should().MatchInlineSnapshot(because: \"why\", expected: \"new\");"));
 
 	[Test]
 	public void ReplacesANullArgument() =>
-		Apply(Source("x.Should().MatchInlineSnapshot(null);"), Edit(1, "null", null, "new\n"))
-			.Should().Be(Source("x.Should().MatchInlineSnapshot(\"new\");"));
+		Apply(Source("x.Should().MatchInlineSnapshot(null);"), Edit(1, "null", null, "new\n")).Should().Be(Source("x.Should().MatchInlineSnapshot(\"new\");"));
 
 	[Test]
 	public void FindsANamedExpectedArgumentAmongOthers() =>
 		Apply(Source("x.Should().MatchInlineSnapshot(because: \"old\", expected: \"old2\");"), Edit(1, "\"old2\"", "old2", "new\n"))
-			.Should().Be(Source("x.Should().MatchInlineSnapshot(because: \"old\", expected: \"new\");"));
+			.Should()
+			.Be(Source("x.Should().MatchInlineSnapshot(because: \"old\", expected: \"new\");"));
 
 	[Test]
 	public void FindsTheFormatOverloadsSecondArgument() =>
 		Apply(Source("x.Should().MatchInlineSnapshot(SnapshotFormats.Text, \"old\");"), Edit(1, "\"old\"", "old", "new\n"))
-			.Should().Be(Source("x.Should().MatchInlineSnapshot(SnapshotFormats.Text, \"new\");"));
+			.Should()
+			.Be(Source("x.Should().MatchInlineSnapshot(SnapshotFormats.Text, \"new\");"));
 
 	[Test]
 	public void TellsTwoCallsOnOneLineApartByTheirArgument() =>
 		Apply(Source("a.Should().MatchInlineSnapshot(\"one\"); b.Should().MatchInlineSnapshot(\"two\");"), Edit(1, "\"two\"", "two", "2\n"))
-			.Should().Be(Source("a.Should().MatchInlineSnapshot(\"one\"); b.Should().MatchInlineSnapshot(\"2\");"));
+			.Should()
+			.Be(Source("a.Should().MatchInlineSnapshot(\"one\"); b.Should().MatchInlineSnapshot(\"2\");"));
 
 	[Test]
 	public void IgnoresTheMethodNameInCommentsAndStrings()
@@ -121,7 +140,8 @@ public class InlineSnapshotSourceTests
 			"var r = \"\"\"",
 			"    x.MatchInlineSnapshot(\"old\")",
 			"    \"\"\";",
-			"x.MatchInlineSnapshot(\"old\");");
+			"x.MatchInlineSnapshot(\"old\");"
+		);
 		var written = Apply(source, Edit(7, "\"old\"", "old", "new\n"));
 		written.Should().Be(source.Replace("x.MatchInlineSnapshot(\"old\");\n", "x.MatchInlineSnapshot(\"new\");\n", StringComparison.Ordinal));
 	}
@@ -142,14 +162,21 @@ public class InlineSnapshotSourceTests
 		InlineSnapshotSource.Check(Source("x.MatchInlineSnapshot(@\"a\"\"b\r\nc\");"), Edit(1, "@\"a\"\"b\r\nc\"", null, "x"), out var verbatim);
 		verbatim.Should().Be("a\"b\r\nc");
 
-		InlineSnapshotSource.Check(Source("  x.MatchInlineSnapshot(\"\"\"", "    one", "", "      two", "    \"\"\");"),
-			Edit(1, "\"\"\"\n    one\n\n      two\n    \"\"\"", null, "x"), out var raw);
+		InlineSnapshotSource.Check(
+			Source("  x.MatchInlineSnapshot(\"\"\"", "    one", "", "      two", "    \"\"\");"),
+			Edit(1, "\"\"\"\n    one\n\n      two\n    \"\"\"", null, "x"),
+			out var raw
+		);
 		raw.Should().Be("one\n\n  two");
 
 		InlineSnapshotSource.Check(Source("x.MatchInlineSnapshot(\"\"\"say \"hi\"\"\"\");"), Edit(1, "\"\"\"say \"hi\"\"\"\"", null, "x"), out var single);
 		single.Should().Be("say \"hi\"");
 
-		InlineSnapshotSource.Check(Source("x.MatchInlineSnapshot(\"\\u0041\\x42\\U00000043\\n\\0\");"), Edit(1, "\"\\u0041\\x42\\U00000043\\n\\0\"", null, "x"), out var escapes);
+		InlineSnapshotSource.Check(
+			Source("x.MatchInlineSnapshot(\"\\u0041\\x42\\U00000043\\n\\0\");"),
+			Edit(1, "\"\\u0041\\x42\\U00000043\\n\\0\"", null, "x"),
+			out var escapes
+		);
 		escapes.Should().Be("ABC\n\0");
 	}
 
@@ -157,8 +184,9 @@ public class InlineSnapshotSourceTests
 	public void KeepsTheFilesLineEndings()
 	{
 		var source = "class T\r\n{\r\n\tvoid M() { x.MatchInlineSnapshot(\"old\"); }\r\n}\r\n";
-		Apply(source, Edit(3, "\"old\"", "old", "a\nb\n")).Should().Be(
-			"class T\r\n{\r\n\tvoid M() { x.MatchInlineSnapshot(\"\"\"\r\n\t\ta\r\n\t\tb\r\n\t\t\"\"\"); }\r\n}\r\n");
+		Apply(source, Edit(3, "\"old\"", "old", "a\nb\n"))
+			.Should()
+			.Be("class T\r\n{\r\n\tvoid M() { x.MatchInlineSnapshot(\"\"\"\r\n\t\ta\r\n\t\tb\r\n\t\t\"\"\"); }\r\n}\r\n");
 	}
 
 	[Test]
@@ -189,8 +217,7 @@ public class InlineSnapshotSourceTests
 
 	[Test]
 	public void RefusesWhenTwoCallsMatch() =>
-		Error(Source("a.MatchInlineSnapshot(\"old\"); b.MatchInlineSnapshot(\"old\");"), Edit(1, "\"old\"", "old", "n\n"))
-			.Should().Contain("2 calls");
+		Error(Source("a.MatchInlineSnapshot(\"old\"); b.MatchInlineSnapshot(\"old\");"), Edit(1, "\"old\"", "old", "n\n")).Should().Contain("2 calls");
 
 	[Test]
 	public void CasesThatDisagreeAboutOneLiteralAreAllRefusedAndCasesThatAgreeAreFine()
@@ -209,16 +236,24 @@ public class InlineSnapshotSourceTests
 	public void AppliesSeveralEditsInOneFileWithoutShiftingTheOthers()
 	{
 		var source = Source("a.MatchInlineSnapshot(\"1\");", "b.MatchInlineSnapshot(\"2\");", "c.MatchInlineSnapshot(\"3\");");
-		var result = InlineSnapshotSource.Rewrite(source, [
-			Edit(1, "\"1\"", "1", "one\ntwo\n"),
-			Edit(3, "\"3\"", "3", "three\n"),
-			Edit(2, "\"2\"", "x", "stale\n"),
-		]);
+		var result = InlineSnapshotSource.Rewrite(
+			source,
+			[Edit(1, "\"1\"", "1", "one\ntwo\n"), Edit(3, "\"3\"", "3", "three\n"), Edit(2, "\"2\"", "x", "stale\n"),]
+		);
 		result.Errors.Select(e => e is null).Should().Equal(true, true, false);
-		result.Source.Should().Be(Source(
-			"a.MatchInlineSnapshot(\"\"\"", "    one", "    two", "    \"\"\");",
-			"b.MatchInlineSnapshot(\"2\");",
-			"c.MatchInlineSnapshot(\"three\");"));
+		result
+			.Source
+			.Should()
+			.Be(
+				Source(
+					"a.MatchInlineSnapshot(\"\"\"",
+					"    one",
+					"    two",
+					"    \"\"\");",
+					"b.MatchInlineSnapshot(\"2\");",
+					"c.MatchInlineSnapshot(\"three\");"
+				)
+			);
 	}
 
 	[Test]
@@ -284,21 +319,14 @@ public class InlineSnapshotSourceTests
 		// One line, a chain over several lines, a raw literal over several lines, and a named argument.
 		ReadBack(Capture("one line"), nameof(Capture)).Should().Be("one line");
 
-		ReadBack(
-			Capture2(
-				"split over lines"),
-			nameof(Capture2)).Should().Be("split over lines");
+		ReadBack(Capture2("split over lines"), nameof(Capture2)).Should().Be("split over lines");
 
-		ReadBack(
-			Capture(
-				Probe.Instance
-					.Chain()
-					.Chain(),
-				"""
+		ReadBack(Capture(Probe.Instance.Chain().Chain(), """
 				several
 				  lines
-				"""),
-			nameof(Capture)).Should().Be("several\n  lines");
+				"""), nameof(Capture))
+			.Should()
+			.Be("several\n  lines");
 
 		ReadBack(Capture(expected: "named"), nameof(Capture)).Should().Be("named");
 
@@ -307,8 +335,40 @@ public class InlineSnapshotSourceTests
 
 	// ---- properties --------------------------------------------------------------------------------------------
 
-	private static readonly Gen<string> Values = Gen.OneOf(
-			Gen.OneOf("a", "b", " ", "  ", "\t", "\n", "\n\n", "\r\n", "\r", "\"", "\"\"\"", "\"\"\"\"", "\\", "{", "}", "$", "@", "//", "/*", "'", "\u0000", "\u0001", "\u007F", "\u0085", "\u00e9", "\ud83d\ude00", ((char)0x2028).ToString(), "\u200b", "\ufeff"))
+	private static readonly Gen<string> Values = Gen
+		.OneOf(
+			Gen.OneOf(
+				"a",
+				"b",
+				" ",
+				"  ",
+				"\t",
+				"\n",
+				"\n\n",
+				"\r\n",
+				"\r",
+				"\"",
+				"\"\"\"",
+				"\"\"\"\"",
+				"\\",
+				"{",
+				"}",
+				"$",
+				"@",
+				"//",
+				"/*",
+				"'",
+				"\u0000",
+				"\u0001",
+				"\u007F",
+				"\u0085",
+				"\u00e9",
+				"\ud83d\ude00",
+				((char)0x2028).ToString(),
+				"\u200b",
+				"\ufeff"
+			)
+		)
 		.List[0, 24]
 		.Select(parts => SnapshotText.Normalize(string.Concat(parts)));
 
@@ -349,7 +409,12 @@ public class InlineSnapshotSourceTests
 			var body = value.TrimEnd('\n');
 			var literal = form switch
 			{
-				0 => "\"" + body.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal).Replace("\n", "\\n", StringComparison.Ordinal).Replace("\r", "\\r", StringComparison.Ordinal) + "\"",
+				0 =>
+					"\"" + body
+						.Replace("\\", "\\\\", StringComparison.Ordinal)
+						.Replace("\"", "\\\"", StringComparison.Ordinal)
+						.Replace("\n", "\\n", StringComparison.Ordinal)
+						.Replace("\r", "\\r", StringComparison.Ordinal) + "\"",
 				1 => "@\"" + body.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"",
 				_ => InlineSnapshotSource.Encode(value, "  ", "\n"),
 			};
@@ -357,7 +422,14 @@ public class InlineSnapshotSourceTests
 			var tree = CSharpSyntaxTree.ParseText(source);
 			if (tree.GetDiagnostics().Any(d => d.Severity == DiagnosticSeverity.Error))
 				return true; // not a literal the compiler accepts; nothing to agree on
-			var roslyn = (string)tree.GetRoot().DescendantNodes().OfType<LiteralExpressionSyntax>().Single(l => l.IsKind(SyntaxKind.StringLiteralExpression)).Token.Value!;
+			var roslyn =
+				(string)tree
+					.GetRoot()
+					.DescendantNodes()
+					.OfType<LiteralExpressionSyntax>()
+					.Single(l => l.IsKind(SyntaxKind.StringLiteralExpression))
+					.Token
+					.Value!;
 			InlineSnapshotSource.Check(source, Edit(1, literal, null, "x"), out var ours);
 			return ours == roslyn.Replace("\r\n", "\n", StringComparison.Ordinal);
 		});

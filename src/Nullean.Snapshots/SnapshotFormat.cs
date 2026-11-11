@@ -85,7 +85,8 @@ public abstract class BinarySnapshotFormat
 	/// Throws a <see cref="FormatException"/> when <paramref name="actual"/> is not a valid value of this format, before
 	/// anything is written. The default accepts everything.
 	/// </summary>
-	public virtual void Validate(ReadOnlySpan<byte> actual) { }
+	public virtual void Validate(ReadOnlySpan<byte> actual)
+	{ }
 
 	/// <summary>Compares the verified bytes with the actual bytes.</summary>
 	public abstract BinarySnapshotComparison Compare(ReadOnlySpan<byte> verified, ReadOnlySpan<byte> actual);

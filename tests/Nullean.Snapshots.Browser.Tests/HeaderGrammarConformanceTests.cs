@@ -33,7 +33,11 @@ public class HeaderGrammarConformanceTests
 
 		http.Tags.Should().Equal(journey.Tags);
 		http.Requires.Select(r => r.ToString()).Should().Equal(journey.Requires.Select(r => r.ToString()));
-		http.Requires.Select(r => (r.Kind, string.Join(",", r.Values), r.Negated)).Should().Equal(journey.Requires.Select(r => (r.Kind, string.Join(",", r.Values), r.Negated)));
+		http
+			.Requires
+			.Select(r => (r.Kind, string.Join(",", r.Values), r.Negated))
+			.Should()
+			.Equal(journey.Requires.Select(r => (r.Kind, string.Join(",", r.Values), r.Negated)));
 		http.Monitor?.Schedule.Should().Be(journey.Monitor?.Schedule);
 		(http.Monitor?.Locations ?? []).Should().Equal(journey.Monitor?.Locations ?? []);
 		(http.Monitor is null).Should().Be(journey.Monitor is null);

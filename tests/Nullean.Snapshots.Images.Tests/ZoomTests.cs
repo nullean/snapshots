@@ -24,7 +24,10 @@ public class ZoomTests
 
 	[Test]
 	public void AZoomIsDeclaredAsAnAttachmentWhenAsked() =>
-		new ImageSnapshotFormat(new ImageSnapshotOptions { ZoomOnChanges = true }).AttachmentSuffixes.Should().Equal(ImageSnapshotFormat.DiffSuffix, ImageSnapshotFormat.ZoomSuffix);
+		new ImageSnapshotFormat(new ImageSnapshotOptions { ZoomOnChanges = true })
+			.AttachmentSuffixes
+			.Should()
+			.Equal(ImageSnapshotFormat.DiffSuffix, ImageSnapshotFormat.ZoomSuffix);
 
 	[Test]
 	public void TheZoomIsTheChangedPlaceAndItsSurroundingsAtTheirOwnSize()
@@ -52,7 +55,11 @@ public class ZoomTests
 	{
 		var zoom = Attachment(Compare(Page, Page.With(100, 50, 0, 0, 0), zoom: true, outline: true), ImageSnapshotFormat.ZoomSuffix);
 
-		Enumerable.Range(0, zoom.PixelCount).Count(i => zoom.Pixels[i * 4] == 0 && zoom.Pixels[(i * 4) + 1] == 102 && zoom.Pixels[(i * 4) + 2] == 255).Should().BeGreaterThan(0);
+		Enumerable
+			.Range(0, zoom.PixelCount)
+			.Count(i => zoom.Pixels[i * 4] == 0 && zoom.Pixels[(i * 4) + 1] == 102 && zoom.Pixels[(i * 4) + 2] == 255)
+			.Should()
+			.BeGreaterThan(0);
 	}
 
 	[Test]
@@ -60,10 +67,23 @@ public class ZoomTests
 	{
 		var small = TestImages.Solid(20, 10, 255, 255, 255);
 
-		Compare(small, small.With(5, 4, 0, 0, 0), zoom: true).Attachments.Select(a => a.Suffix).Should().ContainSingle().Which.Should().Be(ImageSnapshotFormat.DiffSuffix, "the padded crop is the whole image");
+		Compare(small, small.With(5, 4, 0, 0, 0), zoom: true)
+			.Attachments
+			.Select(a => a.Suffix)
+			.Should()
+			.ContainSingle()
+			.Which
+			.Should()
+			.Be(ImageSnapshotFormat.DiffSuffix, "the padded crop is the whole image");
 		var wide = TestImages.Solid(400, 100, 255, 255, 255);
-		Compare(wide, wide.With(5, 5, 0, 0, 0).With(395, 95, 0, 0, 0), zoom: true).Attachments.Select(a => a.Suffix).Should()
-			.ContainSingle().Which.Should().Be(ImageSnapshotFormat.DiffSuffix, "two places in opposite corners make the crop the whole picture");
+		Compare(wide, wide.With(5, 5, 0, 0, 0).With(395, 95, 0, 0, 0), zoom: true)
+			.Attachments
+			.Select(a => a.Suffix)
+			.Should()
+			.ContainSingle()
+			.Which
+			.Should()
+			.Be(ImageSnapshotFormat.DiffSuffix, "two places in opposite corners make the crop the whole picture");
 
 		// Area is what counts: two places far apart on one line are a thin strip, which is cropped (the strip's whole width).
 		var tall = TestImages.Solid(1000, 400, 255, 255, 255);

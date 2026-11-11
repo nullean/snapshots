@@ -14,7 +14,10 @@ public class TreeShapeTests
 
 	[Test]
 	public void ValuesBecomeTheirKind() =>
-		Shape(/*lang=json,strict*/ """{"s":"hello","b":true,"i":42,"f":4.5,"e":1e3,"n":null}""").Should().Be("""
+		Shape(/*lang=json,strict*/ """{"s":"hello","b":true,"i":42,"f":4.5,"e":1e3,"n":null}""")
+			.Should()
+			.Be(
+				"""
 			{
 			  "b": false,
 			  "e": 1.0,
@@ -24,7 +27,12 @@ public class TreeShapeTests
 			  "s": "string"
 			}
 
-			""".Replace("\r\n", "\n", StringComparison.Ordinal));
+			""".Replace(
+					"\r\n",
+					"\n",
+					StringComparison.Ordinal
+				)
+			);
 
 	[Test]
 	public void KeysAreSortedSoServerOrderNeverShows() =>
@@ -33,7 +41,8 @@ public class TreeShapeTests
 	[Test]
 	public void AnArrayCollapsesToTheUnionOfItsItems() =>
 		Shape(/*lang=json,strict*/ """[{"id":1,"name":"a"},{"id":2,"extra":true},{"id":3,"name":null}]""")
-			.Should().Be(Shape(/*lang=json,strict*/ """[{"extra":false,"id":1,"name":"x"}]"""));
+			.Should()
+			.Be(Shape(/*lang=json,strict*/ """[{"extra":false,"id":1,"name":"x"}]"""));
 
 	[Test]
 	public void TheNumberOfItemsNeverShows() =>
@@ -65,13 +74,16 @@ public class TreeShapeTests
 	{
 		var shape = (SeqNode)TreeShape.Project(JsonSnapshot.Parse(/*lang=json,strict*/ """["b",2,"a",null,1.5,true,3,false]"""));
 
-		shape.Items.Cast<ScalarNode>().Select(s => s.Kind).Should()
+		shape
+			.Items
+			.Cast<ScalarNode>()
+			.Select(s => s.Kind)
+			.Should()
 			.Equal(ScalarKind.Null, ScalarKind.Bool, ScalarKind.Int, ScalarKind.Float, ScalarKind.String);
 	}
 
 	[Test]
-	public void NestedArraysMergeIntoOne() =>
-		Shape(/*lang=json,strict*/ """[[1],[2,3],["a"]]""").Should().Be(Shape(/*lang=json,strict*/ """[["a",1]]"""));
+	public void NestedArraysMergeIntoOne() => Shape(/*lang=json,strict*/ """[[1],[2,3],["a"]]""").Should().Be(Shape(/*lang=json,strict*/ """[["a",1]]"""));
 
 	[Test]
 	public void AnAddedPropertyIsExactlyOneDifference()
@@ -79,7 +91,13 @@ public class TreeShapeTests
 		var before = TreeShape.Project(JsonSnapshot.Parse(/*lang=json,strict*/ """{"hits":[{"id":1,"tags":["a"]}]}"""));
 		var after = TreeShape.Project(JsonSnapshot.Parse(/*lang=json,strict*/ """{"hits":[{"id":1,"tags":["a"],"score":0.5}]}"""));
 
-		TreeDiffer.Instance.Diff(before, after).Should().ContainSingle().Which.Should()
+		TreeDiffer
+			.Instance
+			.Diff(before, after)
+			.Should()
+			.ContainSingle()
+			.Which
+			.Should()
 			.Match<TreeDifference>(d => d.Kind == DifferenceKind.Unexpected && d.Path.EndsWith("score", StringComparison.Ordinal));
 	}
 

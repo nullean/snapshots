@@ -68,7 +68,9 @@ public class SiteImagesTests
 	}
 
 	private static bool HasBlue(byte[] png) =>
-		Png.Decode(png) is var image && Enumerable.Range(0, image.PixelCount).Any(i => image.Pixels[i * 4] == 0 && image.Pixels[(i * 4) + 1] == 102 && image.Pixels[(i * 4) + 2] == 255);
+		Png.Decode(png) is var image && Enumerable.Range(0, image.PixelCount).Any(
+			i => image.Pixels[i * 4] == 0 && image.Pixels[(i * 4) + 1] == 102 && image.Pixels[(i * 4) + 2] == 255
+		);
 
 	[Test]
 	public void TheDiffImageBoxesEachPlaceUnlessOptionsSayOtherwise()
@@ -92,7 +94,14 @@ public class SiteImagesTests
 		difference.ZoomPath.Should().Be(Path.Combine(Target, "nav.zoom.png"));
 		var zoom = Png.Decode(fs.File.ReadAllBytes(difference.ZoomPath));
 		(zoom.Width, zoom.Height).Should().Be((65, 65), "a crop at its own size, not enlarged");
-		SiteImages.Compare(fs, Baseline, Target).Select(d => d.Name).Should().ContainSingle().Which.Should().Be("nav.png", "neither the diff nor the zoom of an earlier run is a screenshot");
+		SiteImages
+			.Compare(fs, Baseline, Target)
+			.Select(d => d.Name)
+			.Should()
+			.ContainSingle()
+			.Which
+			.Should()
+			.Be("nav.png", "neither the diff nor the zoom of an earlier run is a screenshot");
 	}
 
 	[Test]
@@ -118,17 +127,29 @@ public class SiteImagesTests
 	[Test]
 	public void AScreenshotOnlyOneSideTookIsADifference()
 	{
-		var fs = Folders(("baseline", "only-baseline.png", Solid(4, 4, 1)), ("target", "only-target.png", Solid(4, 4, 1)), ("baseline", "both.png", Solid(4, 4, 1)), ("target", "both.png", Solid(4, 4, 1)));
+		var fs = Folders(
+			("baseline", "only-baseline.png", Solid(4, 4, 1)),
+			("target", "only-target.png", Solid(4, 4, 1)),
+			("baseline", "both.png", Solid(4, 4, 1)),
+			("target", "both.png", Solid(4, 4, 1))
+		);
 
-		SiteImages.Compare(fs, Baseline, Target).Select(d => (d.Name, d.Summary)).Should().Equal(
-			("only-baseline.png", "the target did not take it"),
-			("only-target.png", "the baseline did not take it"));
+		SiteImages
+			.Compare(fs, Baseline, Target)
+			.Select(d => (d.Name, d.Summary))
+			.Should()
+			.Equal(("only-baseline.png", "the target did not take it"), ("only-target.png", "the baseline did not take it"));
 	}
 
 	[Test]
 	public void ScreenshotsInFoldersArePairedByTheirPath()
 	{
-		var fs = Folders(("baseline", "a/nav.png", Solid(4, 4, 1)), ("target", "a/nav.png", Solid(4, 4, 1, (1, 1))), ("baseline", "b/nav.png", Solid(4, 4, 1)), ("target", "b/nav.png", Solid(4, 4, 1)));
+		var fs = Folders(
+			("baseline", "a/nav.png", Solid(4, 4, 1)),
+			("target", "a/nav.png", Solid(4, 4, 1, (1, 1))),
+			("baseline", "b/nav.png", Solid(4, 4, 1)),
+			("target", "b/nav.png", Solid(4, 4, 1))
+		);
 
 		SiteImages.Compare(fs, Baseline, Target).Should().ContainSingle().Which.Name.Should().Be("a/nav.png");
 	}

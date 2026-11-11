@@ -13,10 +13,8 @@ internal sealed record ReceivedMarker(string Project, string VerifiedDirectory)
 {
 	public const string FileName = ".snapshots-project";
 
-	public string Render() => new StringBuilder()
-		.Append("project=").Append(Project).Append('\n')
-		.Append("verified=").Append(VerifiedDirectory).Append('\n')
-		.ToString();
+	public string Render() =>
+		new StringBuilder().Append("project=").Append(Project).Append('\n').Append("verified=").Append(VerifiedDirectory).Append('\n').ToString();
 
 	/// <summary>Parses <c>key=value</c> lines; unknown keys are ignored, and a marker without a project is null.</summary>
 	public static ReceivedMarker? Parse(string text)

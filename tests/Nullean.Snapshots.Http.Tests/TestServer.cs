@@ -10,12 +10,15 @@ internal sealed class TestServer : IAsyncDisposable
 {
 	public const string Token = "tok-0123456789";
 
-	private static readonly Lazy<TestServer> SharedServer = new(() =>
-	{
-		var server = new TestServer();
-		AppDomain.CurrentDomain.ProcessExit += (_, _) => server.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(5));
-		return server;
-	}, LazyThreadSafetyMode.ExecutionAndPublication);
+	private static readonly Lazy<TestServer> SharedServer = new(
+		() =>
+		{
+			var server = new TestServer();
+			AppDomain.CurrentDomain.ProcessExit += (_, _) => server.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(5));
+			return server;
+		},
+		LazyThreadSafetyMode.ExecutionAndPublication
+	);
 
 	/// <summary>One server for the whole test process, started on first use.</summary>
 	public static TestServer Shared => SharedServer.Value;
@@ -124,9 +127,13 @@ internal sealed class TestServer : IAsyncDisposable
 					break;
 				case "/api/catalog":
 					// "self" holds this server's own address, as a page that links to itself does: only the origin scrub makes two sites equal.
-					Json(response, 200, _preview
-						? $$"""{"items":[{"sku":"a","price":2.5,"badge":"new"},{"sku":"b","price":4}],"home":"http://preview.test/catalog","self":"{{Host}}/api/catalog"}"""
-						: $$"""{"items":[{"sku":"a","price":1.5},{"sku":"b","price":3}],"home":"http://prod.test/catalog","self":"{{Host}}/api/catalog"}""");
+					Json(
+						response,
+						200,
+						_preview
+							? $$"""{"items":[{"sku":"a","price":2.5,"badge":"new"},{"sku":"b","price":4}],"home":"http://preview.test/catalog","self":"{{Host}}/api/catalog"}"""
+							: $$"""{"items":[{"sku":"a","price":1.5},{"sku":"b","price":3}],"home":"http://prod.test/catalog","self":"{{Host}}/api/catalog"}"""
+					);
 					break;
 				case "/api/whoami":
 					Json(response, 200, $$"""{"user":"{{request.QueryString["user"]}}"}""");
@@ -174,8 +181,7 @@ internal sealed class TestServer : IAsyncDisposable
 	}
 
 	// Every character as a \uXXXX escape: valid JSON that never contains the value as written.
-	private static string Escape(string value) =>
-		string.Concat(value.Select(c => $"\\u{(int)c:X4}"));
+	private static string Escape(string value) => string.Concat(value.Select(c => $"\\u{(int)c:X4}"));
 
 	private static void Json(HttpListenerResponse response, int status, string json)
 	{
@@ -217,9 +223,7 @@ internal sealed class TestServer : IAsyncDisposable
 		{
 			await _loop;
 		}
-		catch (ObjectDisposedException)
-		{
-		}
+		catch (ObjectDisposedException) { }
 		_stop.Dispose();
 	}
 }

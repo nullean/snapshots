@@ -137,14 +137,20 @@ public sealed record HttpTranscript(string File, string Text, HttpFileFailure? F
 		{
 			var exchange = result.Redact(raw);
 			var response = exchange.Response;
-			HttpResponseText.Append(text, new HttpResponseSection(
-				Heading(exchange.Request),
-				response.StatusCode,
-				response.ReasonPhrase,
-				[.. response.Headers.Concat(response.ContentHeaders).Select(h => new KeyValuePair<string, string>(h.Name, h.Value))],
-				response.Body,
-				response.MediaType,
-				response.CharSet), chosen, shape);
+			HttpResponseText.Append(
+				text,
+				new HttpResponseSection(
+					Heading(exchange.Request),
+					response.StatusCode,
+					response.ReasonPhrase,
+					[.. response.Headers.Concat(response.ContentHeaders).Select(h => new KeyValuePair<string, string>(h.Name, h.Value))],
+					response.Body,
+					response.MediaType,
+					response.CharSet
+				),
+				chosen,
+				shape
+			);
 		}
 
 		// Again over the whole text: pretty-printing unescapes JSON strings, so a value a server echoed as "+..."
@@ -157,15 +163,13 @@ public sealed record HttpTranscript(string File, string Text, HttpFileFailure? F
 	public const string OriginToken = "{origin}";
 
 	/// <summary>The origin of an http(s) URL, without a trailing slash; <see langword="null"/> for any other.</summary>
-	internal static string? Origin(Uri? baseUrl) =>
-		baseUrl is { Scheme: "http" or "https" } ? baseUrl.GetLeftPart(UriPartial.Authority) : null;
+	internal static string? Origin(Uri? baseUrl) => baseUrl is { Scheme: "http" or "https" } ? baseUrl.GetLeftPart(UriPartial.Authority) : null;
 
 	/// <summary>Parses a transcript into its sections, as <see cref="HttpSnapshotFormat.Parse"/> does.</summary>
 	/// <exception cref="FormatException">The text is not a transcript.</exception>
 	public static Trees.SeqNode Parse(string text) => HttpResponseText.Parse(text);
 
-	internal static string Heading(HttpFileRequest request) =>
-		request.Name is { Length: > 0 } name ? $"{name}: {request.RequestLine}" : request.RequestLine;
+	internal static string Heading(HttpFileRequest request) => request.Name is { Length: > 0 } name ? $"{name}: {request.RequestLine}" : request.RequestLine;
 }
 
 /// <summary>
@@ -187,9 +191,12 @@ public static partial class HttpFileSnapshot
 		var root = Path.Combine(project, folder);
 		if (!Directory.Exists(root))
 			return [];
-		return [.. Directory.EnumerateFiles(root, "*.http", SearchOption.AllDirectories)
-			.Select(f => Path.GetRelativePath(project, f).Replace('\\', '/'))
-			.Order(StringComparer.Ordinal)];
+		return [
+			.. Directory
+				.EnumerateFiles(root, "*.http", SearchOption.AllDirectories)
+				.Select(f => Path.GetRelativePath(project, f).Replace('\\', '/'))
+				.Order(StringComparer.Ordinal)
+		];
 	}
 
 	/// <summary>
@@ -255,21 +262,24 @@ public static partial class HttpFileSnapshot
 		options ??= new HttpFileSnapshotOptions();
 		var full = Path.GetFullPath(httpFile);
 		var file = HttpFile.Load(full);
-		var result = await HttpFileRunner.RunAsync(file, options.Client, new HttpFileRunOptions
-		{
-			Environment = options.Environment,
-			Variables = options.Variables,
-			Secrets = options.Secrets,
-			UserSecretsId = options.UserSecretsId,
-			SecretsAssembly = options.SecretsAssembly,
-			UserSecretsRoot = options.UserSecretsRoot,
-			TimeProvider = options.TimeProvider,
-			Random = options.Random,
-			ReadOnly = options.ReadOnly,
-		}, cancellationToken).ConfigureAwait(false);
-		var failure = result.Failure is { } f
-			? new HttpFileFailure(f.Line, HttpTranscript.Heading(f.Request), result.Redact(f.Message))
-			: null;
+		var result = await HttpFileRunner.RunAsync(
+			file,
+			options.Client,
+			new HttpFileRunOptions
+			{
+				Environment = options.Environment,
+				Variables = options.Variables,
+				Secrets = options.Secrets,
+				UserSecretsId = options.UserSecretsId,
+				SecretsAssembly = options.SecretsAssembly,
+				UserSecretsRoot = options.UserSecretsRoot,
+				TimeProvider = options.TimeProvider,
+				Random = options.Random,
+				ReadOnly = options.ReadOnly,
+			},
+			cancellationToken
+		).ConfigureAwait(false);
+		var failure = result.Failure is { } f ? new HttpFileFailure(f.Line, HttpTranscript.Heading(f.Request), result.Redact(f.Message)) : null;
 		return new HttpTranscript(full, HttpTranscript.Render(result, options.Headers, options.Transcript == TranscriptMode.Shape, options.BaseUrl), failure)
 		{
 			// The text is already the shape, so it is compared like any other.
@@ -295,11 +305,7 @@ public static partial class HttpFileSnapshot
 		if (transcript.Failure is not { } failure)
 			return result;
 		var stopped = $"Request stopped at {failure.Describe(Relative(transcript.File))}";
-		return result with
-		{
-			Passed = false,
-			FailureMessage = result.FailureMessage is { } message ? stopped + "\n" + message : stopped,
-		};
+		return result with { Passed = false, FailureMessage = result.FailureMessage is { } message ? stopped + "\n" + message : stopped, };
 	}
 
 	// Messages use paths relative to the working folder when the file is below it, as the rest of the library's do.
@@ -315,8 +321,9 @@ public static partial class HttpFileSnapshot
 	/// </summary>
 	internal static string ProjectDirectory(string callerFilePath)
 	{
-		var fromMetadata = Assembly.GetEntryAssembly()?.GetCustomAttributes<AssemblyMetadataAttribute>()
-			.LastOrDefault(a => a.Key == "Nullean.Snapshots.ProjectDirectory")?.Value;
+		var fromMetadata = Assembly.GetEntryAssembly()?.GetCustomAttributes<AssemblyMetadataAttribute>().LastOrDefault(
+			a => a.Key == "Nullean.Snapshots.ProjectDirectory"
+		)?.Value;
 		if (!string.IsNullOrWhiteSpace(fromMetadata))
 			return fromMetadata;
 		for (var dir = Path.GetDirectoryName(callerFilePath); !string.IsNullOrEmpty(dir); dir = Path.GetDirectoryName(dir))
@@ -326,6 +333,7 @@ public static partial class HttpFileSnapshot
 		}
 
 		throw new InvalidOperationException(
-			$"Cannot find the test project for '{callerFilePath}'. Reference Nullean.Snapshots from the test project so its build targets record it.");
+			$"Cannot find the test project for '{callerFilePath}'. Reference Nullean.Snapshots from the test project so its build targets record it."
+		);
 	}
 }

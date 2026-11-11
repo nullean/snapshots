@@ -20,7 +20,8 @@ public partial class TreeDifferProperties
 		TreeGen.Tree.Select(t => (t, TreeGen.ReverseKeys(t))),
 		TreeGen.Tree.Select(t => (t, JsonSnapshot.Parse(TreeGen.ToJson(t)))),
 		Gen.Select(TreeGen.Tree, TreeGen.Tree),
-		Gen.Select(TreeGen.MapWith(3), Gen.Int[0, 2]).Select((m, i) => ((Node)m, (Node)new MapNode([.. m.Entries.Where((_, k) => k != i)]))));
+		Gen.Select(TreeGen.MapWith(3), Gen.Int[0, 2]).Select((m, i) => ((Node)m, (Node)new MapNode([.. m.Entries.Where((_, k) => k != i)])))
+	);
 
 	// 1
 	[Test]
@@ -30,12 +31,19 @@ public partial class TreeDifferProperties
 	// compares as doubles.
 	[Test]
 	public void AgreesWithTheJsonDiffPatchOracle() =>
-		Pair.Where(p => !HasHugeNumbers(p.A) && !HasHugeNumbers(p.B)).Sample(p =>
-		{
-			var ours = Diff(p.A, p.B).Count == 0;
-			var oracle = JsonDiffPatcher.DeepEquals(JsonNode.Parse(TreeGen.ToJson(p.A)), JsonNode.Parse(TreeGen.ToJson(p.B)), JsonElementComparison.Semantic);
-			return ours == oracle;
-		}, print: Show);
+		Pair.Where(p => !HasHugeNumbers(p.A) && !HasHugeNumbers(p.B)).Sample(
+			p =>
+			{
+				var ours = Diff(p.A, p.B).Count == 0;
+				var oracle = JsonDiffPatcher.DeepEquals(
+					JsonNode.Parse(TreeGen.ToJson(p.A)),
+					JsonNode.Parse(TreeGen.ToJson(p.B)),
+					JsonElementComparison.Semantic
+				);
+				return ours == oracle;
+			},
+			print: Show
+		);
 
 	// 3: emptiness is symmetric, and swapping sides swaps missing for unexpected.
 	[Test]
@@ -44,12 +52,15 @@ public partial class TreeDifferProperties
 		{
 			var forward = Diff(p.A, p.B);
 			var backward = Diff(p.B, p.A);
+
 			int Count(IReadOnlyList<TreeDifference> d, DifferenceKind k) => d.Count(x => x.Kind == k);
+
 			var forwardEmpty = forward.Count == 0;
 			var backwardEmpty = backward.Count == 0;
-			return forwardEmpty == backwardEmpty
-				&& Count(forward, DifferenceKind.Missing) - Count(forward, DifferenceKind.Unexpected)
-					== Count(backward, DifferenceKind.Unexpected) - Count(backward, DifferenceKind.Missing);
+			return forwardEmpty == backwardEmpty && Count(forward, DifferenceKind.Missing) - Count(forward, DifferenceKind.Unexpected) == Count(
+				backward,
+				DifferenceKind.Unexpected
+			) - Count(backward, DifferenceKind.Missing);
 		});
 
 	// 4: k edits on distinct keys of a map give exactly k differences, each at the edited key.
@@ -140,7 +151,11 @@ public partial class TreeDifferProperties
 			// A scalar replacement, a dropped first item and an appended item are one difference each; a replaced
 			// subtree may hold many, but never outside its own path.
 			var bounded = replacement is not ScalarNode || diff.Count <= 2 * roots.Count;
-			return bounded && diff.All(d => roots.Exists(r => d.Path == r || d.Path.StartsWith(r + ".", StringComparison.Ordinal) || d.Path.StartsWith(r + "[", StringComparison.Ordinal)));
+			return bounded && diff.All(
+				d => roots.Exists(
+					r => d.Path == r || d.Path.StartsWith(r + ".", StringComparison.Ordinal) || d.Path.StartsWith(r + "[", StringComparison.Ordinal)
+				)
+			);
 		});
 
 	// 5
@@ -150,8 +165,7 @@ public partial class TreeDifferProperties
 		{
 			var reversed = TreeGen.ReverseKeys(map);
 			var ordered = new TreeDiffOptions { MapOrder = MapOrder.Significant };
-			return Diff(map, reversed).Count == 0
-				&& Diff(map, reversed, ordered).Any(d => d.Kind == DifferenceKind.KeyOrderChanged && d.Path == "$");
+			return Diff(map, reversed).Count == 0 && Diff(map, reversed, ordered).Any(d => d.Kind == DifferenceKind.KeyOrderChanged && d.Path == "$");
 		});
 
 	// 6
@@ -170,13 +184,18 @@ public partial class TreeDifferProperties
 	// 7
 	[Test]
 	public void MessagesAreDeterministic() =>
-		Pair.Sample(p =>
-		{
-			var first = Render(Diff(p.A, p.B));
-			var reparsedA = JsonSnapshot.Parse(TreeGen.ToJson(p.A));
-			var reparsedB = JsonSnapshot.Parse(TreeGen.ToJson(p.B));
-			return first == Render(Diff(p.A, p.B)) && Strip(first) == Strip(Render(new TreeDiffer().Diff(reparsedA, reparsedB)));
-		}, print: p => Show(p) + "\n" + Render(Diff(p.A, p.B)) + "\n---\n" + Render(new TreeDiffer().Diff(JsonSnapshot.Parse(TreeGen.ToJson(p.A)), JsonSnapshot.Parse(TreeGen.ToJson(p.B)))));
+		Pair.Sample(
+			p =>
+			{
+				var first = Render(Diff(p.A, p.B));
+				var reparsedA = JsonSnapshot.Parse(TreeGen.ToJson(p.A));
+				var reparsedB = JsonSnapshot.Parse(TreeGen.ToJson(p.B));
+				return first == Render(Diff(p.A, p.B)) && Strip(first) == Strip(Render(new TreeDiffer().Diff(reparsedA, reparsedB)));
+			},
+			print: p => Show(p) + "\n" + Render(Diff(p.A, p.B)) + "\n---\n" + Render(
+				new TreeDiffer().Diff(JsonSnapshot.Parse(TreeGen.ToJson(p.A)), JsonSnapshot.Parse(TreeGen.ToJson(p.B)))
+			)
+		);
 
 	// 8: the alignment matches as many items as a plain dynamic programming LCS.
 	[Test]
@@ -193,13 +212,16 @@ public partial class TreeDifferProperties
 	// 9: printing and parsing back gives the same tree, kinds and text included.
 	[Test]
 	public void PrettyRoundTrips() =>
-		TreeGen.Tree.Sample(t =>
-		{
-			var json = TreeGen.ToJson(t);
-			var pretty = JsonSnapshot.Pretty(json);
-			return Diff(t, JsonSnapshot.Parse(pretty), new TreeDiffOptions { StrictNumbers = true, MapOrder = MapOrder.Significant }).Count == 0
-				&& JsonSnapshot.Pretty(pretty) == pretty;
-		}, print: t => TreeGen.ToJson(t) + "\n" + JsonSnapshot.Pretty(TreeGen.ToJson(t)));
+		TreeGen.Tree.Sample(
+			t =>
+			{
+				var json = TreeGen.ToJson(t);
+				var pretty = JsonSnapshot.Pretty(json);
+				return Diff(t, JsonSnapshot.Parse(pretty), new TreeDiffOptions { StrictNumbers = true, MapOrder = MapOrder.Significant }).Count ==
+					0 && JsonSnapshot.Pretty(pretty) == pretty;
+			},
+			print: t => TreeGen.ToJson(t) + "\n" + JsonSnapshot.Pretty(TreeGen.ToJson(t))
+		);
 
 	// 13: every reported path resolves in the tree it names, and the rendered lines are plain and capped.
 	[Test]
@@ -207,9 +229,11 @@ public partial class TreeDifferProperties
 		Pair.Sample(p =>
 		{
 			var diff = Diff(p.A, p.B);
-			var resolves = diff.All(d => d.Kind == DifferenceKind.Unexpected
-				? NodePath.Resolve(p.B, d.Path) is not null
-				: NodePath.Resolve(p.A, d.Path) is not null && (d.ActualPath is null || NodePath.Resolve(p.B, d.ActualPath) is not null));
+			var resolves = diff.All(
+				d => d.Kind == DifferenceKind.Unexpected
+					? NodePath.Resolve(p.B, d.Path) is not null
+					: NodePath.Resolve(p.A, d.Path) is not null && (d.ActualPath is null || NodePath.Resolve(p.B, d.ActualPath) is not null)
+			);
 			var message = SnapshotMessages.Describe(new SnapshotComparison(diff.Count == 0, TreeDifferences.Describe(diff, "verified.json")));
 			var lines = message.Split('\n');
 			return resolves && !message.Contains('\u001b', StringComparison.Ordinal) && lines.Length <= SnapshotMessageLimits.MaxLines + 2;
@@ -219,11 +243,18 @@ public partial class TreeDifferProperties
 	[Test]
 	public void LargeTreesStayFast()
 	{
-		Node Big(int seed) => new SeqNode([.. Enumerable.Range(0, 2500).Select(i => (Node)new MapNode([
-			new(ScalarNode.String("id"), new ScalarNode(ScalarKind.Int, i.ToString(System.Globalization.CultureInfo.InvariantCulture))),
-			new(ScalarNode.String("name"), ScalarNode.String(i % 97 == seed ? "changed" : "item " + i)),
-			new(ScalarNode.String("tags"), new SeqNode([ScalarNode.String("a"), ScalarNode.String("b")])),
-		]))]);
+		Node Big(int seed) =>
+			new SeqNode([
+				.. Enumerable.Range(0, 2500).Select(
+					i =>
+						(Node)new MapNode([
+							new(ScalarNode.String("id"), new ScalarNode(ScalarKind.Int, i.ToString(System.Globalization.CultureInfo.InvariantCulture))),
+							new(ScalarNode.String("name"), ScalarNode.String(i % 97 == seed ? "changed" : "item " + i)),
+							new(ScalarNode.String("tags"), new SeqNode([ScalarNode.String("a"), ScalarNode.String("b")])),
+						])
+				)
+			]);
+
 		var expected = Big(-1);
 		var actual = Big(3);
 		TreeGen.Count(expected).Should().BeGreaterThan(10_000);
@@ -248,19 +279,18 @@ public partial class TreeDifferProperties
 
 	private static string Show((Node A, Node B) p) => TreeGen.ToJson(p.A) + "  vs  " + TreeGen.ToJson(p.B);
 
-	private static string Render(IReadOnlyList<TreeDifference> diff) =>
-		string.Join("\n", TreeDifferences.Describe(diff, "verified.json").Select(l => l[0]));
+	private static string Render(IReadOnlyList<TreeDifference> diff) => string.Join("\n", TreeDifferences.Describe(diff, "verified.json").Select(l => l[0]));
 
 	// Positions differ between a hand-built tree and a parsed one; the rest of the message must not.
-	private static string Strip(string message) =>
-		Position().Replace(message, "");
+	private static string Strip(string message) => Position().Replace(message, "");
 
 	[System.Text.RegularExpressions.GeneratedRegex(@"   \(verified\.json:\d+:\d+\)")]
 	private static partial System.Text.RegularExpressions.Regex Position();
 
 	private static bool HasHugeNumbers(Node node) => node switch
 	{
-		ScalarNode { IsNumber: true } s => s.Canonical.TrimStart('-').Replace(".", "", StringComparison.Ordinal).Length > 15 || s.Canonical.Contains('e', StringComparison.OrdinalIgnoreCase),
+		ScalarNode { IsNumber: true } s =>
+			s.Canonical.TrimStart('-').Replace(".", "", StringComparison.Ordinal).Length > 15 || s.Canonical.Contains('e', StringComparison.OrdinalIgnoreCase),
 		MapNode m => m.Entries.Any(e => HasHugeNumbers(e.Value)),
 		SeqNode q => q.Items.Any(HasHugeNumbers),
 		_ => false,

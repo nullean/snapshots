@@ -29,9 +29,13 @@ public static class TreeShape
 		return node switch
 		{
 			ScalarNode s => Scalar(s),
-			MapNode m => new MapNode([.. m.Entries
-				.Select(e => new KeyValuePair<ScalarNode, Node>(ScalarNode.String(e.Key.Canonical), Project(e.Value)))
-				.OrderBy(e => e.Key.Canonical, StringComparer.Ordinal)]),
+			MapNode m =>
+				new MapNode([
+					.. m
+						.Entries
+						.Select(e => new KeyValuePair<ScalarNode, Node>(ScalarNode.String(e.Key.Canonical), Project(e.Value)))
+						.OrderBy(e => e.Key.Canonical, StringComparer.Ordinal)
+				]),
 			SeqNode s => Collapse([.. s.Items.Select(Project)]),
 			_ => throw new ArgumentException($"Unknown node type {node.GetType().Name}.", nameof(node)),
 		};

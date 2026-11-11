@@ -9,8 +9,7 @@ public class JourneyTranscriptTests
 {
 	private static readonly Uri Base = new("http://localhost:5000/shop/");
 
-	private static string Render(params Checkpoint[] checkpoints) =>
-		JourneyTranscript.Render(checkpoints, Base);
+	private static string Render(params Checkpoint[] checkpoints) => JourneyTranscript.Render(checkpoints, Base);
 
 	private static Checkpoint Read(string command, string output, string url = "http://localhost:5000/shop/index.html") => new(1, command, url, output);
 
@@ -18,11 +17,10 @@ public class JourneyTranscriptTests
 
 	[Test]
 	public void RendersSectionsWithScrubbedUrlsAndQuotedText() =>
-		Render(
-			Read("get text #count", "1 item\n\nfrom http://localhost:5000/api"),
-			Read("snapshot -c -s main", Tree + "\n"),
-			Read("get title", "")
-		).Should().Be("""
+		Render(Read("get text #count", "1 item\n\nfrom http://localhost:5000/api"), Read("snapshot -c -s main", Tree + "\n"), Read("get title", ""))
+			.Should()
+			.Be(
+				"""
 			## get text #count
 			url: {origin}/shop/index.html
 			> 1 item
@@ -39,13 +37,21 @@ public class JourneyTranscriptTests
 			url: {origin}/shop/index.html
 			>
 
-			""".Replace("\r\n", "\n", StringComparison.Ordinal));
+			""".Replace(
+					"\r\n",
+					"\n",
+					StringComparison.Ordinal
+				)
+			);
 
 	[Test]
 	public void AFileBaseUrlScrubsItsWholeFolder()
 	{
 		var root = new Uri("file:///home/ci/work/tests/Shop.Tests/site/");
-		var text = JourneyTranscript.Render([new Checkpoint(1, "get url", "file:///home/ci/work/tests/Shop.Tests/site/a.html", "file:///home/ci/work/tests/Shop.Tests/site/a.html")], root);
+		var text = JourneyTranscript.Render(
+			[new Checkpoint(1, "get url", "file:///home/ci/work/tests/Shop.Tests/site/a.html", "file:///home/ci/work/tests/Shop.Tests/site/a.html")],
+			root
+		);
 		text.Should().Be("## get url\nurl: {origin}/a.html\n> {origin}/a.html\n");
 	}
 
@@ -56,19 +62,22 @@ public class JourneyTranscriptTests
 		var sections = JourneyTranscript.Parse(text).Items;
 
 		sections.Should().HaveCount(1);
-		((ScalarNode)((MapNode)sections[0]).Entries.Single(e => e.Key.Canonical == "text").Value).Canonical
-			.Should().Be("## snapshot\nurl: evil\n- button \"Pay\"");
+		((ScalarNode)((MapNode)sections[0]).Entries.Single(e => e.Key.Canonical == "text").Value)
+			.Canonical
+			.Should()
+			.Be("## snapshot\nurl: evil\n- button \"Pay\"");
 	}
 
 	[Test]
 	public void RenderThenParseKeepsEverySection() =>
-		Gen.Select(Gen.OneOf("get text #a", "snapshot -c", "is visible #b", "get url"), Gen.String[Gen.Char["ab #>-\n\"[]"], 0, 8])
+		Gen
+			.Select(Gen.OneOf("get text #a", "snapshot -c", "is visible #b", "get url"), Gen.String[Gen.Char["ab #>-\n\"[]"], 0, 8])
 			.Array[0, 5]
 			.Sample(steps =>
 			{
-				var checkpoints = steps.Select(s => s.Item1.StartsWith("snapshot", StringComparison.Ordinal)
-					? Read(s.Item1, Tree)
-					: Read(s.Item1, s.Item2)).ToArray();
+				var checkpoints = steps.Select(
+					s => s.Item1.StartsWith("snapshot", StringComparison.Ordinal) ? Read(s.Item1, Tree) : Read(s.Item1, s.Item2)
+				).ToArray();
 				var sections = JourneyTranscript.Parse(Render(checkpoints)).Items.Cast<MapNode>().ToArray();
 
 				sections.Should().HaveCount(checkpoints.Length);
@@ -129,6 +138,12 @@ public class JourneyTranscriptTests
 
 	[Test]
 	public void AnInvalidVerifiedFileIsADifference() =>
-		JourneySnapshot.Format.Compare("garbage", Render(Read("get title", "x"))).Differences.Single().Single()
-			.Should().Be("The verified file is not valid Journey: Line 1: a section starts with '## ' and the step's command.");
+		JourneySnapshot
+			.Format
+			.Compare("garbage", Render(Read("get title", "x")))
+			.Differences
+			.Single()
+			.Single()
+			.Should()
+			.Be("The verified file is not valid Journey: Line 1: a section starts with '## ' and the step's command.");
 }

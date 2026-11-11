@@ -8,26 +8,37 @@ public class AriaTreeTests
 {
 	private static readonly Gen<string> Names = Gen.String[Gen.Char["ab \"\\[]:,\n\t=-é"], 0, 6];
 
-	private static readonly Gen<KeyValuePair<ScalarNode, Node>[]> Attrs =
-		Gen.Select(Gen.Bool, Gen.Int[1, 3], Gen.OneOf("true", "false", "mixed"), Gen.Bool, Gen.Bool)
-			.Select((level, n, check, selected, disabled) =>
-			{
-				var attrs = new List<KeyValuePair<ScalarNode, Node>>();
-				if (level)
-					attrs.Add(new(ScalarNode.String("level"), ScalarNode.String(n.ToString(System.Globalization.CultureInfo.InvariantCulture))));
-				if (check != "false")
-					attrs.Add(new(ScalarNode.String("checked"), ScalarNode.String(check)));
-				if (selected)
-					attrs.Add(new(ScalarNode.String("selected"), ScalarNode.Bool(true)));
-				if (disabled)
-					attrs.Add(new(ScalarNode.String("disabled"), ScalarNode.Bool(true)));
-				return attrs.ToArray();
-			});
+	private static readonly Gen<KeyValuePair<ScalarNode, Node>[]> Attrs = Gen.Select(
+		Gen.Bool,
+		Gen.Int[1, 3],
+		Gen.OneOf("true", "false", "mixed"),
+		Gen.Bool,
+		Gen.Bool
+	).Select((level, n, check, selected, disabled) =>
+	{
+		var attrs = new List<KeyValuePair<ScalarNode, Node>>();
+		if (level)
+			attrs.Add(new(ScalarNode.String("level"), ScalarNode.String(n.ToString(System.Globalization.CultureInfo.InvariantCulture))));
+		if (check != "false")
+			attrs.Add(new(ScalarNode.String("checked"), ScalarNode.String(check)));
+		if (selected)
+			attrs.Add(new(ScalarNode.String("selected"), ScalarNode.Bool(true)));
+		if (disabled)
+			attrs.Add(new(ScalarNode.String("disabled"), ScalarNode.Bool(true)));
+		return attrs.ToArray();
+	});
 
 	private static Gen<SeqNode> Trees(int depth) =>
-		Gen.Select(Gen.OneOf("button", "link", "heading", "StaticText", "main", "listitem"), Names, Gen.Bool, Attrs,
-				Gen.String[Gen.Char["ab :[]\"#"], 0, 5], Gen.Bool,
-				depth == 0 ? Gen.Const(new SeqNode([])) : Gen.Int[0, 2].SelectMany(_ => Trees(depth - 1)))
+		Gen
+			.Select(
+				Gen.OneOf("button", "link", "heading", "StaticText", "main", "listitem"),
+				Names,
+				Gen.Bool,
+				Attrs,
+				Gen.String[Gen.Char["ab :[]\"#"], 0, 5],
+				Gen.Bool,
+				depth == 0 ? Gen.Const(new SeqNode([])) : Gen.Int[0, 2].SelectMany(_ => Trees(depth - 1))
+			)
 			.Select((role, name, hasName, attrs, value, hasValue, children) =>
 			{
 				var entries = new List<KeyValuePair<ScalarNode, Node>> { new(ScalarNode.String("role"), ScalarNode.String(role)) };
@@ -40,7 +51,9 @@ public class AriaTreeTests
 				if (children.Items.Count > 0)
 					entries.Add(new(ScalarNode.String("children"), children));
 				return (Node)new MapNode(entries);
-			}).Array[0, 3].Select(items => new SeqNode(items));
+			})
+			.Array[0, 3]
+			.Select(items => new SeqNode(items));
 
 	[Test]
 	public void PrintThenParseGivesTheTreeBack() =>
@@ -55,7 +68,8 @@ public class AriaTreeTests
 	[Test]
 	public void ParsesWhatNulleanCdpPrints()
 	{
-		var tree = AriaTree.Parse("""
+		var tree = AriaTree.Parse(
+			"""
 			- navigation "Main"
 			  - link "Home"
 			- main
@@ -63,9 +77,14 @@ public class AriaTreeTests
 			  - checkbox "Only in stock" [checked=true, disabled]
 			  - combobox "Sort" [expanded=false]: Name
 			  - textbox: free text: with colon
-			""");
+			"""
+		);
 
-		AriaTree.Print(tree).Should().Be("""
+		AriaTree
+			.Print(tree)
+			.Should()
+			.Be(
+				"""
 			- navigation "Main"
 			  - link "Home"
 			- main
@@ -74,7 +93,12 @@ public class AriaTreeTests
 			  - combobox "Sort" [expanded=false]: Name
 			  - textbox: free text: with colon
 
-			""".Replace("\r\n", "\n", StringComparison.Ordinal));
+			""".Replace(
+					"\r\n",
+					"\n",
+					StringComparison.Ordinal
+				)
+			);
 		var heading = (MapNode)((SeqNode)((MapNode)tree.Items[1]).Entries.Single(e => e.Key.Canonical == "children").Value).Items[0];
 		((ScalarNode)heading.Entries.Single(e => e.Key.Canonical == "name").Value).Canonical.Should().Be("Say \"hi\" \\ now\n");
 		heading.Span.Should().Be(new SourceSpan(4, 3));

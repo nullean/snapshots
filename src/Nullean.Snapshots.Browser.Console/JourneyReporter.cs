@@ -1,5 +1,5 @@
-using System.Globalization;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using Nullean.Cdp.Journeys;
 
@@ -157,9 +157,11 @@ public sealed class ConsoleJourneyReporter : IJourneyReporter
 			var skipped = outcomes.Count(o => o.Skipped);
 			_output.WriteLine(_interactive ? PrettyTotals(passed, failed, skipped, elapsed) : PlainTotals(passed, failed, skipped, elapsed));
 			if (passed + failed == 0)
-				_output.WriteLine(_options.AllowAllSkipped
-					? "Every selected journey was skipped; none applies to this site."
-					: "Every selected journey was skipped, so nothing was checked.");
+				_output.WriteLine(
+					_options.AllowAllSkipped
+						? "Every selected journey was skipped; none applies to this site."
+						: "Every selected journey was skipped, so nothing was checked."
+				);
 		}
 	}
 
@@ -169,7 +171,10 @@ public sealed class ConsoleJourneyReporter : IJourneyReporter
 		var text = new StringBuilder();
 		_ = text.AppendLine(CultureInfo.InvariantCulture, $"{Ansi.Bold(lead)} running against:").AppendLine();
 		foreach (var row in rows)
-			_ = text.AppendLine(CultureInfo.InvariantCulture, $"  {row.Label.PadRight(Label)}{Ansi.Cyan(row.Value)}{(row.Source is null ? "" : $" {Ansi.Dim($"({row.Source})")}")}");
+			_ = text.AppendLine(
+				CultureInfo.InvariantCulture,
+				$"  {row.Label.PadRight(Label)}{Ansi.Cyan(row.Value)}{(row.Source is null ? "" : $" {Ansi.Dim($"({row.Source})")}")}"
+			);
 		foreach (var note in notes ?? [])
 			_ = text.AppendLine(CultureInfo.InvariantCulture, $"  {Ansi.Yellow("Note".PadRight(Label))}{note}");
 		return text.ToString().TrimEnd();

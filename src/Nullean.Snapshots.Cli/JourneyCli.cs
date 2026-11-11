@@ -2,9 +2,9 @@ using System.IO.Abstractions;
 using System.Text.RegularExpressions;
 using Nullean.Argh;
 using Nullean.Cdp.Journeys;
-using Nullean.Snapshots.Differences;
 using Nullean.Snapshots.Browser;
 using Nullean.Snapshots.Browser.Console;
+using Nullean.Snapshots.Differences;
 
 namespace Nullean.Snapshots.Cli;
 
@@ -73,13 +73,19 @@ internal sealed class JourneyCli(
 			return ExitCode.Usage;
 
 		if (getVariable(SnapshotEnvironment.AcceptVariable) is { Length: > 0 })
-			error.WriteLine($"{SnapshotEnvironment.AcceptVariable} is ignored: 'snap journey run' never accepts. Review with 'snap review' or accept with 'snap accept'.");
+			error.WriteLine(
+				$"{SnapshotEnvironment.AcceptVariable} is ignored: 'snap journey run' never accepts. Review with 'snap review' or accept with 'snap accept'."
+			);
 
 		// No test identity, no manifest flush, and the accept variable hidden: comparing is all this does. The project is
 		// always the one holding the journey file, found by walking up to its csproj, never this process's assembly.
 		var projects = new SnapshotProjectResolver(fileSystem);
-		var engine = new SnapshotEngine(fileSystem, k => k == SnapshotEnvironment.AcceptVariable ? null : getVariable(k), () => null,
-			(site, _) => WithArtifactsReceived(fileSystem, projects.FromCallerFile(site.FilePath)));
+		var engine = new SnapshotEngine(
+			fileSystem,
+			k => k == SnapshotEnvironment.AcceptVariable ? null : getVariable(k),
+			() => null,
+			(site, _) => WithArtifactsReceived(fileSystem, projects.FromCallerFile(site.FilePath))
+		);
 		var args = more ?? new JourneyRunArgs();
 		if (!TryParseViewport(args.Viewport, out var viewport, out problem) || !TryParseHeaders(args.Headers, out var headers, out problem))
 		{
@@ -87,9 +93,20 @@ internal sealed class JourneyCli(
 			return ExitCode.Usage;
 		}
 
-		var options = BuildOptions(JourneyRunFile.FromPaths(_root, files), baseUri, allow, fileRoot, artifacts, variant, args, engine, viewport, headers,
+		var options = BuildOptions(
+			JourneyRunFile.FromPaths(_root, files),
+			baseUri,
+			allow,
+			fileRoot,
+			artifacts,
+			variant,
+			args,
+			engine,
+			viewport,
+			headers,
 			mode == TranscriptMode.Off ? null : (f, recorded) => engine.MatchFile(recorded.Text, JourneySnapshot.Format, f.Path, null, null, variant),
-			RerunCommand(baseUrl, variant, transcript, args));
+			RerunCommand(baseUrl, variant, transcript, args)
+		);
 		var interactive = args.Interactive ?? ConsoleJourneyReporter.UseInteractive;
 		if (interactive && baseUri is not null)
 		{
@@ -97,9 +114,14 @@ internal sealed class JourneyCli(
 			output.WriteLine();
 		}
 
-		return await JourneyConsoleRunner
-			.RunAsync(options, output, error, new DelegateExecutor(run, ensureReady), new ConsoleJourneyReporter(output, options, interactive), cancellationToken)
-			.ConfigureAwait(false);
+		return await JourneyConsoleRunner.RunAsync(
+			options,
+			output,
+			error,
+			new DelegateExecutor(run, ensureReady),
+			new ConsoleJourneyReporter(output, options, interactive),
+			cancellationToken
+		).ConfigureAwait(false);
 	}
 
 	/// <summary>
@@ -157,8 +179,12 @@ internal sealed class JourneyCli(
 		}
 
 		var projects = new SnapshotProjectResolver(fileSystem);
-		var engine = new SnapshotEngine(fileSystem, k => k == SnapshotEnvironment.AcceptVariable ? null : getVariable(k), () => null,
-			(site, _) => WithArtifactsReceived(fileSystem, projects.FromCallerFile(site.FilePath)));
+		var engine = new SnapshotEngine(
+			fileSystem,
+			k => k == SnapshotEnvironment.AcceptVariable ? null : getVariable(k),
+			() => null,
+			(site, _) => WithArtifactsReceived(fileSystem, projects.FromCallerFile(site.FilePath))
+		);
 		var runFiles = JourneyRunFile.FromPaths(_root, files);
 		var recordFile = record is null ? null : fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, record));
 		var pruneFile = prune is null ? null : fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, prune));
@@ -170,17 +196,36 @@ internal sealed class JourneyCli(
 		if (toSeed.Count > 0)
 		{
 			var captured = new StringWriter();
-			var seedOptions = BuildOptions(toSeed, baselineUri, allow, fileRoot, artifacts, null, args, engine, viewport, headers,
+			var seedOptions = BuildOptions(
+				toSeed,
+				baselineUri,
+				allow,
+				fileRoot,
+				artifacts,
+				null,
+				args,
+				engine,
+				viewport,
+				headers,
 				(f, recorded) =>
 				{
 					// A baseline that stopped at a failing step is not one to compare with.
 					if (recorded.Failure is null)
 						_ = engine.SeedBaseline(recorded.Text, JourneySnapshot.Format.Extension, f.Path, null);
 					return new SnapshotResult(true, null, string.Empty, string.Empty, string.Empty);
-				}, string.Empty, seeding: true, role: "baseline");
-			var seeded = await JourneyConsoleRunner
-				.RunAsync(seedOptions, captured, error, executor, new ConsoleJourneyReporter(captured, seedOptions, false), cancellationToken)
-				.ConfigureAwait(false);
+				},
+				string.Empty,
+				seeding: true,
+				role: "baseline"
+			);
+			var seeded = await JourneyConsoleRunner.RunAsync(
+				seedOptions,
+				captured,
+				error,
+				executor,
+				new ConsoleJourneyReporter(captured, seedOptions, false),
+				cancellationToken
+			).ConfigureAwait(false);
 			if (seeded != JourneyExitCode.Ok)
 			{
 				output.WriteLine($"The run against the baseline {baselineUri} did not finish, so there is nothing to compare with:");
@@ -192,25 +237,42 @@ internal sealed class JourneyCli(
 		// Pass two: the target, compared with what pass one wrote.
 		var usageErrors = 0;
 		var screenshots = new List<(JourneyRunFile File, IReadOnlyList<ImageDifference> Pictures)>();
+
 		SnapshotResult CompareOne(JourneyRunFile f, JourneyTranscript recorded)
 		{
 			try
 			{
-				var result = engine.CompareSites(recorded.Text, JourneySnapshot.Format, JourneyRuleTargets.Instance, f.Path,
-					new SiteComparisonOptions { Record = recordFile, Prune = pruneFile, Note = $"recorded against {targetUri}" });
+				var result = engine.CompareSites(
+					recorded.Text,
+					JourneySnapshot.Format,
+					JourneyRuleTargets.Instance,
+					f.Path,
+					new SiteComparisonOptions { Record = recordFile, Prune = pruneFile, Note = $"recorded against {targetUri}" }
+				);
 				if (result.Recorded.Count > 0)
-					output.WriteLine($"Recorded {result.Recorded.Count} rule(s) for {f.Id} in {fileSystem.Path.GetRelativePath(_root, recordFile!).Replace('\\', '/')}.");
+					output.WriteLine(
+						$"Recorded {result.Recorded.Count} rule(s) for {f.Id} in {fileSystem.Path.GetRelativePath(_root, recordFile!).Replace('\\', '/')}."
+					);
 				var passed = result.Passed;
 				var message = result.FailureMessage;
-				if (imageDiff != "off" && artifacts is null
-					&& SiteImages.Compare(fileSystem, engine.SiteArtifactsDirectory(f.Path, "baseline", clean: false), engine.SiteArtifactsDirectory(f.Path, "target", clean: false)) is { Count: > 0 } pictures)
+				if (
+					imageDiff != "off" && artifacts is null &&
+					SiteImages.Compare(
+						fileSystem,
+						engine.SiteArtifactsDirectory(f.Path, "baseline", clean: false),
+						engine.SiteArtifactsDirectory(f.Path, "target", clean: false)
+					) is { Count: > 0 } pictures
+				)
 				{
 					lock (screenshots)
 						screenshots.Add((f, pictures));
 					if (imageDiff == "fail")
 					{
 						passed = false;
-						message = (message is null ? string.Empty : message + "\n") + $"{pictures.Count} screenshot(s) differ: " + string.Join(", ", pictures.Select(p => p.Name));
+						message = (message is null ? string.Empty : message + "\n") + $"{pictures.Count} screenshot(s) differ: " + string.Join(
+							", ",
+							pictures.Select(p => p.Name)
+						);
 					}
 				}
 
@@ -223,17 +285,38 @@ internal sealed class JourneyCli(
 			}
 		}
 
-		var options = BuildOptions(runFiles, targetUri, allow, fileRoot, artifacts, null, args, engine, viewport, headers, CompareOne,
-			$"snap journey compare {{id}}.journey --baseline {baselineUri} --target {targetUri} --reuse-baseline", role: "target");
+		var options = BuildOptions(
+			runFiles,
+			targetUri,
+			allow,
+			fileRoot,
+			artifacts,
+			null,
+			args,
+			engine,
+			viewport,
+			headers,
+			CompareOne,
+			$"snap journey compare {{id}}.journey --baseline {baselineUri} --target {targetUri} --reuse-baseline",
+			role: "target"
+		);
 		if (interactive)
 		{
-			output.WriteLine(ConsoleJourneyReporter.ContextBlock($"snap {Version}".TrimEnd(), [new ContextRow("Baseline", baselineUri.ToString()), new ContextRow("Target", targetUri.ToString())]));
+			output.WriteLine(ConsoleJourneyReporter.ContextBlock(
+				$"snap {Version}".TrimEnd(),
+				[new ContextRow("Baseline", baselineUri.ToString()), new ContextRow("Target", targetUri.ToString())]
+			));
 			output.WriteLine();
 		}
 
-		var exit = await JourneyConsoleRunner
-			.RunAsync(options, output, error, executor, new ConsoleJourneyReporter(output, options, interactive), cancellationToken)
-			.ConfigureAwait(false);
+		var exit = await JourneyConsoleRunner.RunAsync(
+			options,
+			output,
+			error,
+			executor,
+			new ConsoleJourneyReporter(output, options, interactive),
+			cancellationToken
+		).ConfigureAwait(false);
 		if (screenshots.Count > 0)
 			ReportScreenshots(screenshots, imageDiff == "fail", interactive);
 		return usageErrors > 0 ? Math.Max(exit, ExitCode.Usage) : exit;
@@ -244,7 +327,9 @@ internal sealed class JourneyCli(
 	{
 		var count = screenshots.Sum(s => s.Pictures.Count);
 		output.WriteLine();
-		output.WriteLine($"{count} screenshot(s) differ between the baseline and the target{(failing ? string.Empty : " (not a failure: --image-diff fail makes it one)")}:");
+		output.WriteLine(
+			$"{count} screenshot(s) differ between the baseline and the target{(failing ? string.Empty : " (not a failure: --image-diff fail makes it one)")}:"
+		);
 		foreach (var (file, pictures) in screenshots.OrderBy(s => s.File.Id, StringComparer.Ordinal))
 		{
 			foreach (var picture in pictures)
@@ -260,10 +345,12 @@ internal sealed class JourneyCli(
 				// The zoom, when there is one, is the closer look: a small crop, drawn bigger than its pixels so it is readable; the diff
 				// is the whole picture, drawn at the size it has.
 				var shown = picture.ZoomPath ?? diff;
-				if (draw && fileSystem.File.Exists(shown)
-					&& (picture.ZoomPath is null
+				if (
+					draw && fileSystem.File.Exists(shown) &&
+					(picture.ZoomPath is null
 						? TerminalPicture.TryDraw(output, fileSystem.File.ReadAllBytes(shown))
-						: TerminalPicture.TryDrawZoom(output, fileSystem.File.ReadAllBytes(shown))))
+						: TerminalPicture.TryDrawZoom(output, fileSystem.File.ReadAllBytes(shown)))
+				)
 					output.WriteLine();
 			}
 		}
@@ -291,47 +378,65 @@ internal sealed class JourneyCli(
 	}
 
 	private JourneyRunOptions BuildOptions(
-		IReadOnlyList<JourneyRunFile> files, Uri? baseUri, IReadOnlyList<string>? allow, string? fileRoot, string? artifacts, string? variant,
-		JourneyRunArgs args, SnapshotEngine engine, JourneyViewport? viewport, IReadOnlyDictionary<string, string> headers,
-		Func<JourneyRunFile, JourneyTranscript, SnapshotResult>? compare, string rerun, bool seeding = false, string? role = null
-	) => new()
-	{
-		Files = files,
-		BaseUrl = baseUri,
-		AllowedHosts = allow ?? [],
-		FileRoot = fileRoot is null ? null : fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, fileRoot)),
-		// As in a test: a journey that writes files gets its own folder next to its received transcript.
-		// A comparison keeps a folder per site, so the second run does not empty the first's screenshots.
-		ArtifactsFor = f => artifacts is not null
-			? fileSystem.Path.GetFullPath(role is null ? fileSystem.Path.Combine(_root, artifacts) : fileSystem.Path.Combine(_root, artifacts, role))
-			: WritesFiles(f.Path) || args.ScreenshotOnFailure ? (role is null ? engine.ArtifactsDirectory(f.Path) : engine.SiteArtifactsDirectory(f.Path, role, clean: true)) : null,
-		Compare = compare,
-		Variant = variant,
-		Load = path => Journey.Parse(fileSystem.File.ReadAllText(path), path),
-		Features = new HashSet<string>(args.Features, StringComparer.Ordinal),
-		BuildType = args.BuildType,
-		Env = args.Env,
-		ReadOnly = args.ReadOnly,
-		AllowMutations = args.AllowMutations,
-		WritableUrls = args.Writable,
-		Viewport = viewport,
-		UserAgent = args.UserAgent,
-		Headers = headers,
-		Tags = new HashSet<string>(args.Tags, StringComparer.Ordinal),
-		Parallel = args.Parallel,
-		// The baseline pass is not the run: a journey it skips is skipped in the comparison too, and it reports to no one.
-		AllowAllSkipped = seeding || args.AllowAllSkipped,
-		ScreenshotOnFailure = args.ScreenshotOnFailure,
-		Verbose = args.Verbose,
-		JUnitPath = seeding ? null : args.JUnit,
-		StepSummary = !seeding,
-		Rerun = rerun,
-		ParseErrorExitCode = ExitCode.Usage,
-	};
+		IReadOnlyList<JourneyRunFile> files,
+		Uri? baseUri,
+		IReadOnlyList<string>? allow,
+		string? fileRoot,
+		string? artifacts,
+		string? variant,
+		JourneyRunArgs args,
+		SnapshotEngine engine,
+		JourneyViewport? viewport,
+		IReadOnlyDictionary<string, string> headers,
+		Func<JourneyRunFile, JourneyTranscript, SnapshotResult>? compare,
+		string rerun,
+		bool seeding = false,
+		string? role = null
+	) =>
+		new()
+		{
+			Files = files,
+			BaseUrl = baseUri,
+			AllowedHosts = allow ?? [],
+			FileRoot = fileRoot is null ? null : fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, fileRoot)),
+			// As in a test: a journey that writes files gets its own folder next to its received transcript.
+			// A comparison keeps a folder per site, so the second run does not empty the first's screenshots.
+			ArtifactsFor =
+				f => artifacts is not null
+					? fileSystem.Path.GetFullPath(role is null ? fileSystem.Path.Combine(_root, artifacts) : fileSystem.Path.Combine(_root, artifacts, role))
+					: WritesFiles(f.Path) || args.ScreenshotOnFailure
+						? (role is null ? engine.ArtifactsDirectory(f.Path) : engine.SiteArtifactsDirectory(f.Path, role, clean: true))
+						: null,
+			Compare = compare,
+			Variant = variant,
+			Load = path => Journey.Parse(fileSystem.File.ReadAllText(path), path),
+			Features = new HashSet<string>(args.Features, StringComparer.Ordinal),
+			BuildType = args.BuildType,
+			Env = args.Env,
+			ReadOnly = args.ReadOnly,
+			AllowMutations = args.AllowMutations,
+			WritableUrls = args.Writable,
+			Viewport = viewport,
+			UserAgent = args.UserAgent,
+			Headers = headers,
+			Tags = new HashSet<string>(args.Tags, StringComparer.Ordinal),
+			Parallel = args.Parallel,
+			// The baseline pass is not the run: a journey it skips is skipped in the comparison too, and it reports to no one.
+			AllowAllSkipped = seeding || args.AllowAllSkipped,
+			ScreenshotOnFailure = args.ScreenshotOnFailure,
+			Verbose = args.Verbose,
+			JUnitPath = seeding ? null : args.JUnit,
+			StepSummary = !seeding,
+			Rerun = rerun,
+			ParseErrorExitCode = ExitCode.Usage,
+		};
 
 	private static string Version =>
-		typeof(JourneyCli).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), inherit: false)
-			.OfType<System.Reflection.AssemblyInformationalVersionAttribute>().FirstOrDefault()?.InformationalVersion.Split('+')[0] ?? "";
+		typeof(JourneyCli)
+			.Assembly
+			.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), inherit: false)
+			.OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+			.FirstOrDefault()?.InformationalVersion.Split('+')[0] ?? "";
 
 	private static List<ContextRow> ContextRows(Uri site, JourneyRunArgs args)
 	{
@@ -388,8 +493,15 @@ internal sealed class JourneyCli(
 		if (value is null)
 			return true;
 		var parts = value.Split('x');
-		if (parts.Length == 2 && int.TryParse(parts[0], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var width)
-			&& int.TryParse(parts[1], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var height) && width > 0 && height > 0)
+		if (
+			parts.Length == 2 && int.TryParse(
+				parts[0],
+				System.Globalization.NumberStyles.None,
+				System.Globalization.CultureInfo.InvariantCulture,
+				out var width
+			) && int.TryParse(parts[1], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var height) && width >
+				0 && height > 0
+		)
 		{
 			viewport = new JourneyViewport(width, height);
 			return true;
@@ -508,9 +620,20 @@ internal sealed class JourneyCli(
 			}
 
 			// Not build output, and not dot folders: verified and received transcripts end in .journey too.
-			all ??= [.. fileSystem.Directory.EnumerateFiles(_root, "*.journey", SearchOption.AllDirectories)
-				.Where(f => !fileSystem.Path.GetRelativePath(_root, f).Split('/', '\\')
-					.Any(part => part is "bin" or "obj" or "node_modules" || part.StartsWith('.')))];
+			all ??=
+			[
+				.. fileSystem
+					.Directory
+					.EnumerateFiles(_root, "*.journey", SearchOption.AllDirectories)
+					.Where(
+						f =>
+							!fileSystem
+								.Path
+								.GetRelativePath(_root, f)
+								.Split('/', '\\')
+								.Any(part => part is "bin" or "obj" or "node_modules" || part.StartsWith('.'))
+					)
+			];
 			var regex = new Regex("^" + FileGlob(pattern.Replace('\\', '/').TrimStart('.', '/')) + "$", RegexOptions.CultureInvariant);
 			var matched = all.Where(f => regex.IsMatch(fileSystem.Path.GetRelativePath(_root, f).Replace('\\', '/'))).ToList();
 			if (matched.Count == 0)
@@ -522,8 +645,7 @@ internal sealed class JourneyCli(
 	}
 
 	// As for keys, but "**/" also matches no folder at all: journeys/**/*.journey includes journeys/a.journey.
-	internal static string FileGlob(string pattern) =>
-		string.Join("(?:.*/)?", pattern.Split("**/").Select(SnapCli.Glob));
+	internal static string FileGlob(string pattern) => string.Join("(?:.*/)?", pattern.Split("**/").Select(SnapCli.Glob));
 }
 
 /// <summary>The options of <c>snap journey run</c> beyond the files, the base URL and what to compare.</summary>
@@ -748,7 +870,20 @@ internal sealed class JourneyCommands
 				AllowAllSkipped = allowAllSkipped,
 				ScreenshotOnFailure = screenshotOnFailure,
 			};
-			return await cli.CompareAsync(files, baseline, target, CancellationToken.None, allow, fileRoot, artifacts, reuseBaseline, record, prune, args, imageDiff).ConfigureAwait(false);
+			return await cli.CompareAsync(
+				files,
+				baseline,
+				target,
+				CancellationToken.None,
+				allow,
+				fileRoot,
+				artifacts,
+				reuseBaseline,
+				record,
+				prune,
+				args,
+				imageDiff
+			).ConfigureAwait(false);
 		}
 		finally
 		{

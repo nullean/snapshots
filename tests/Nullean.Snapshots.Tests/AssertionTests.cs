@@ -17,7 +17,13 @@ public class AssertionTests
 		var p = new TestProject { Identity = TestProject.TUnitLike() };
 		p.AddVerified(Key, "<table>\n  <tr><td>{kibana}</td></tr>\n  <tr><td>beats</td></tr>\n</table>\n");
 
-		var message = Fail(p, () => "<table>\n  <tr><td>{Kibana}</td></tr>\n  <tr><td>beats</td></tr>\n</table>\n".Should().MatchSnapshot(callerFilePath: p.TestFile, callerMemberName: "RendersTable"));
+		var message = Fail(
+			p,
+			() => "<table>\n  <tr><td>{Kibana}</td></tr>\n  <tr><td>beats</td></tr>\n</table>\n".Should().MatchSnapshot(
+				callerFilePath: p.TestFile,
+				callerMemberName: "RendersTable"
+			)
+		);
 
 		message.Should().MatchSnapshot();
 	}

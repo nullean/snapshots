@@ -61,7 +61,9 @@ public sealed class HttpEnvironment
 		}
 		if (name is null)
 			return Empty;
-		throw new HttpFileParseException([new HttpFileError(httpFilePath, 1, $"environment '{name}' was selected but no {FileName} was found in '{start}' or above it")]);
+		throw new HttpFileParseException([
+			new HttpFileError(httpFilePath, 1, $"environment '{name}' was selected but no {FileName} was found in '{start}' or above it")
+		]);
 	}
 
 	/// <summary>Reads the environment files in <paramref name="directory"/> and selects <paramref name="name"/>.</summary>
@@ -109,6 +111,7 @@ public sealed class HttpEnvironment
 		if (span.StartsWith(Encoding.UTF8.Preamble))
 			span = span[Encoding.UTF8.Preamble.Length..];
 		var data = span.ToArray();
+
 		int LineOf(long offset)
 		{
 			var line = 1;
@@ -166,7 +169,14 @@ public sealed class HttpEnvironment
 		return result;
 	}
 
-	private static HttpEnvironmentValue? ParseValue(string path, string environment, JsonProperty variable, int line, bool sensitive, List<HttpFileError> errors)
+	private static HttpEnvironmentValue? ParseValue(
+		string path,
+		string environment,
+		JsonProperty variable,
+		int line,
+		bool sensitive,
+		List<HttpFileError> errors
+	)
 	{
 		var v = variable.Value;
 		switch (v.ValueKind)
@@ -183,12 +193,20 @@ public sealed class HttpEnvironment
 				var secretName = Str("secretName");
 				if (providerName == "AspnetUserSecrets" && string.IsNullOrEmpty(secretName))
 				{
-					errors.Add(new HttpFileError(path, line, $"'{variable.Name}' in environment '{environment}': the AspnetUserSecrets provider needs a 'secretName'"));
+					errors.Add(
+						new HttpFileError(path, line, $"'{variable.Name}' in environment '{environment}': the AspnetUserSecrets provider needs a 'secretName'")
+					);
 					return null;
 				}
 				return new HttpEnvironmentValue(variable.Name, Str("value"), providerName, secretName, Str("resourceId"), true, path, line);
 			default:
-				errors.Add(new HttpFileError(path, line, $"'{variable.Name}' in environment '{environment}' must be a string, a number, a boolean or a secret ({{\"provider\": ..., \"secretName\": ...}})"));
+				errors.Add(
+					new HttpFileError(
+						path,
+						line,
+						$"'{variable.Name}' in environment '{environment}' must be a string, a number, a boolean or a secret ({{\"provider\": ..., \"secretName\": ...}})"
+					)
+				);
 				return null;
 		}
 	}

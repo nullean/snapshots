@@ -49,13 +49,23 @@ public static partial class JourneySnapshot
 		var writes = options.Run.ArtifactsDirectory is null && (options.Run.ScreenshotOnFailure || WritesFiles(file));
 		if (!options.ReuseBaseline || SiteComparison.ReadBaseline(Format, file) is null)
 		{
-			var baseline = await RunAsync(file, With(options.Run, writes ? SiteComparison.ArtifactsDirectory(file, "baseline") : null, options.Baseline), cancellationToken, callerFilePath).ConfigureAwait(false);
+			var baseline = await RunAsync(
+				file,
+				With(options.Run, writes ? SiteComparison.ArtifactsDirectory(file, "baseline") : null, options.Baseline),
+				cancellationToken,
+				callerFilePath
+			).ConfigureAwait(false);
 			if (baseline.Failure is { } failed)
 				return Stopped("Baseline", failed, file);
 			_ = SiteComparison.SeedBaseline(baseline.Text, Format, file);
 		}
 
-		var target = await RunAsync(file, With(options.Run, writes ? SiteComparison.ArtifactsDirectory(file, "target") : null, options.Target), cancellationToken, callerFilePath).ConfigureAwait(false);
+		var target = await RunAsync(
+			file,
+			With(options.Run, writes ? SiteComparison.ArtifactsDirectory(file, "target") : null, options.Target),
+			cancellationToken,
+			callerFilePath
+		).ConfigureAwait(false);
 		return Compare(target, options.Target, file, options);
 	}
 
@@ -66,22 +76,32 @@ public static partial class JourneySnapshot
 	/// <param name="journeyFile">The journey; a relative path is relative to the test project.</param>
 	/// <param name="options">How closely the pixels must match; image snapshots' defaults when unset.</param>
 	/// <param name="callerFilePath">Filled in by the compiler.</param>
-	public static IReadOnlyList<ImageDifference> CompareScreenshots(string journeyFile, Images.ImageSnapshotOptions? options = null, [CallerFilePath] string callerFilePath = "")
+	public static IReadOnlyList<ImageDifference> CompareScreenshots(
+		string journeyFile,
+		Images.ImageSnapshotOptions? options = null,
+		[CallerFilePath] string callerFilePath = ""
+	)
 	{
 		ArgumentException.ThrowIfNullOrEmpty(journeyFile);
 		var file = ResolveFile(journeyFile, callerFilePath);
-		return SiteImages.Compare(new System.IO.Abstractions.FileSystem(), SiteComparison.ArtifactsDirectory(file, "baseline", clean: false), SiteComparison.ArtifactsDirectory(file, "target", clean: false), options);
+		return SiteImages.Compare(
+			new System.IO.Abstractions.FileSystem(),
+			SiteComparison.ArtifactsDirectory(file, "baseline", clean: false),
+			SiteComparison.ArtifactsDirectory(file, "target", clean: false),
+			options
+		);
 	}
 
 	/// <summary>Compares a target's transcript with the seeded baseline, as <see cref="CompareAsync"/> does after its two runs.</summary>
 	internal static SiteComparisonResult Compare(JourneyTranscript target, Uri targetSite, string file, JourneyCompareOptions options)
 	{
-		var result = SiteComparison.Compare(target.Text, Format, JourneyRuleTargets.Instance, file, new SiteComparisonOptions
-		{
-			Record = options.Record,
-			Prune = options.Prune,
-			Note = $"recorded against {targetSite}",
-		});
+		var result = SiteComparison.Compare(
+			target.Text,
+			Format,
+			JourneyRuleTargets.Instance,
+			file,
+			new SiteComparisonOptions { Record = options.Record, Prune = options.Prune, Note = $"recorded against {targetSite}", }
+		);
 		if (target.Failure is not { } stopped)
 			return result;
 		var message = $"Target stopped at {stopped.Describe(Relative(file))}";

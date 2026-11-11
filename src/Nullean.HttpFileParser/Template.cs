@@ -150,8 +150,7 @@ internal sealed class VariableExpr(string text, int line) : Expr(text, line)
 /// <summary><c>{{login.response.body.$.token}}</c>, <c>{{login.request.headers.Accept}}</c>.</summary>
 internal sealed class RequestReferenceExpr : Expr
 {
-	private RequestReferenceExpr(string text, int line, string requestName, bool response, bool body, string selector, JsonPath? jsonPath)
-		: base(text, line)
+	private RequestReferenceExpr(string text, int line, string requestName, bool response, bool body, string selector, JsonPath? jsonPath) : base(text, line)
 	{
 		RequestName = requestName;
 		Response = response;
@@ -204,12 +203,24 @@ internal sealed class RequestReferenceExpr : Expr
 		}
 		else if (body && selector.StartsWith('/'))
 		{
-			errors.Add(new HttpFileError(path, line, $"XPath ('{selector}') in '{{{{{text}}}}}' is not supported; use JSONPath ('$.name') for JSON bodies or '*' for the whole body"));
+			errors.Add(
+				new HttpFileError(
+					path,
+					line,
+					$"XPath ('{selector}') in '{{{{{text}}}}}' is not supported; use JSONPath ('$.name') for JSON bodies or '*' for the whole body"
+				)
+			);
 		}
 		else if (body && selector != "*")
 		{
 			if (!selector.StartsWith('$'))
-				errors.Add(new HttpFileError(path, line, $"'{selector}' in '{{{{{text}}}}}' is not a body selector: use '*' for the whole body or a JSONPath starting with '$'"));
+				errors.Add(
+					new HttpFileError(
+						path,
+						line,
+						$"'{selector}' in '{{{{{text}}}}}' is not a body selector: use '*' for the whole body or a JSONPath starting with '$'"
+					)
+				);
 			else if (!JsonPath.TryParse(selector, out jsonPath, out var problem))
 				errors.Add(new HttpFileError(path, line, $"invalid JSONPath '{selector}' in '{{{{{text}}}}}': {problem}"));
 		}
@@ -234,7 +245,8 @@ internal enum DynamicKind
 /// <summary><c>{{$guid}}</c>, <c>{{$datetime iso8601 1 d}}</c>, <c>{{$processEnv NAME}}</c> and the other dynamic values.</summary>
 internal sealed class DynamicExpr : Expr
 {
-	private DynamicExpr(string text, int line) : base(text, line) { }
+	private DynamicExpr(string text, int line) : base(text, line)
+	{ }
 
 	public DynamicKind Kind { get; private init; }
 
@@ -262,7 +274,9 @@ internal sealed class DynamicExpr : Expr
 		var tokens = Tokenize(text, out var tokenError);
 		var head = tokens.Count > 0 ? tokens[0].Value : text;
 		var args = tokens.Skip(1).ToList();
+
 		void Error(string message) => errors.Add(new HttpFileError(path, line, message));
+
 		if (tokenError is not null)
 		{
 			Error($"'{{{{{text}}}}}': {tokenError}");
@@ -328,13 +342,20 @@ internal sealed class DynamicExpr : Expr
 					var indirect = head != "$secret" && name.StartsWith('%');
 					return new DynamicExpr(text, line)
 					{
-						Kind = head switch { "$processEnv" => DynamicKind.ProcessEnv, "$dotenv" => DynamicKind.DotEnv, _ => DynamicKind.Secret },
+						Kind = head switch
+						{
+							"$processEnv" => DynamicKind.ProcessEnv,
+							"$dotenv" => DynamicKind.DotEnv,
+							_ => DynamicKind.Secret
+						},
 						Argument = indirect ? name[1..] : name,
 						Indirect = indirect,
 					};
 				}
 			case "$aadToken" or "$aadV2Token":
-				Error($"'{{{{{text}}}}}' is not supported: Azure AD tokens need an interactive sign-in. Provide the token through HttpFileRunOptions.Secrets and reference it as '{{{{$secret Name}}}}'");
+				Error(
+					$"'{{{{{text}}}}}' is not supported: Azure AD tokens need an interactive sign-in. Provide the token through HttpFileRunOptions.Secrets and reference it as '{{{{$secret Name}}}}'"
+				);
 				return new DynamicExpr(text, line) { Kind = DynamicKind.Guid };
 			default:
 				if (head.StartsWith("$env.", StringComparison.Ordinal) && head.Length > 5)

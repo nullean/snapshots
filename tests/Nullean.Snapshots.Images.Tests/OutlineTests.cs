@@ -13,8 +13,7 @@ public class OutlineTests
 
 	private static RgbaImage Diff(RgbaImage verified, RgbaImage actual, bool outline)
 	{
-		var comparison = new ImageSnapshotFormat(new ImageSnapshotOptions { OutlineRegions = outline })
-			.Compare(Png.Encode(verified), Png.Encode(actual));
+		var comparison = new ImageSnapshotFormat(new ImageSnapshotOptions { OutlineRegions = outline }).Compare(Png.Encode(verified), Png.Encode(actual));
 		comparison.Comparison.IsMatch.Should().BeFalse();
 		return Png.Decode(comparison.Attachments.Single().Content.Span);
 	}
@@ -86,6 +85,11 @@ public class OutlineTests
 
 		boxed.Comparison.Summary.Should().Be(plain.Comparison.Summary);
 		boxed.Comparison.Differences.Should().BeEquivalentTo(plain.Comparison.Differences);
-		new ImageSnapshotFormat(new ImageSnapshotOptions { OutlineRegions = true }).Compare(Png.Encode(White), Png.Encode(White)).Comparison.IsMatch.Should().BeTrue();
+		new ImageSnapshotFormat(new ImageSnapshotOptions { OutlineRegions = true })
+			.Compare(Png.Encode(White), Png.Encode(White))
+			.Comparison
+			.IsMatch
+			.Should()
+			.BeTrue();
 	}
 }
