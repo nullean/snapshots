@@ -1,7 +1,20 @@
 # Nullean.HttpFileParser
 
-Parse, lint and run `.http` request files: the format of Visual Studio 17.8+, the VS Code REST Client and the
-JetBrains HTTP Client, in its script-free forms. No dependencies beyond the BCL; AOT and trim clean. MIT.
+Parse, lint and run `.http` request files against any `HttpClient`: the format of Visual Studio 17.8+, the VS Code
+REST Client and the JetBrains HTTP Client, in its script-free forms. Environments, user secrets, chained responses and
+redaction of sensitive values. No dependencies beyond the BCL; AOT and trim clean. MIT.
+
+[![NuGet](https://img.shields.io/nuget/v/Nullean.HttpFileParser?style=flat-square)](https://www.nuget.org/packages/Nullean.HttpFileParser)
+
+## Install
+
+```sh
+dotnet add package Nullean.HttpFileParser
+```
+
+## Quick start
+
+A file such as `api.http`:
 
 ```http
 @host = https://localhost:5001
@@ -17,31 +30,27 @@ GET {{host}}/orders?since={{$datetime iso8601 -1 d}}
 Authorization: Bearer {{login.response.body.$.token}}
 ```
 
-## Parse and lint
+Lint it, then run it:
 
 ```csharp
 using Nullean.HttpFileParser;
 
 var file = HttpFile.Load("api.http");          // throws HttpFileParseException listing every problem
-foreach (var request in file.Requests)
-    Console.WriteLine($"{request.Line}: {request.RequestLine}");
-
 var environment = HttpEnvironment.Load(file.Path, "dev");
 foreach (var problem in file.Validate(environment))
     Console.WriteLine(problem);                 // api.http:12: unknown variable 'hots'
-```
 
-Every error is `file:line: message`, and parsing reports all of them at once.
-
-## Run
-
-```csharp
 var result = await HttpFileRunner.RunAsync(file, client, new HttpFileRunOptions { Environment = "dev" });
 foreach (var exchange in result.Exchanges.Select(result.Redact))
     Console.WriteLine($"{exchange.Request.RequestLine} -> {exchange.Response.StatusCode}");
 if (result.Failure is { } failure)
     Console.WriteLine(failure);                 // api.http:7: Connection refused (localhost:5001)
 ```
+
+Every error is `file:line: message`, and parsing reports all of them at once. `file.Requests` lists the requests with
+their line and request line.
+
+## Running
 
 - Requests run in file order. The run stops at the first request that cannot be resolved, sent or read, and keeps the
   exchanges before it. A 404 or 500 is a response, not a failure.
@@ -91,3 +100,8 @@ because replacing it everywhere would mangle unrelated text.
 
 Pass `TimeProvider` and a seeded `Random` in `HttpFileRunOptions` to make `$datetime`, `$guid` and `$randomInt`
 repeatable.
+
+## Learn more
+
+- Snapshotting `.http` runs in tests: `Nullean.Snapshots.Http` and https://snapshots.nullean.net/formats/http/
+- Source and issues: https://github.com/nullean/snapshots

@@ -1,33 +1,29 @@
 <p align="center">
   <a href="https://snapshots.nullean.net">
     <picture>
-      <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/nullean/snapshots/main/docs/images/brand/png/lockup-light.png">
-      <img src="https://raw.githubusercontent.com/nullean/snapshots/main/docs/images/brand/png/lockup.png" alt="snapshots." width="276" height="96">
+      <source media="(prefers-color-scheme: light)" srcset="docs/images/brand/png/lockup-light.png">
+      <img src="docs/images/brand/png/lockup.png" alt="snapshots." width="276" height="96">
     </picture>
   </a>
 </p>
 
-<p align="center"><strong>Structural Snapshot tests for .NET</strong></p>
+<p align="center">Structural snapshot tests for .NET: text, HTML, JSON, YAML, images, browser journeys and HTTP, compared by structure and reported in plain messages people and agents can act on.</p>
 
 <p align="center">
-  <a href="https://www.nuget.org/packages/Nullean.Snapshots.AwesomeAssertions"><img alt="NuGet" src="https://img.shields.io/nuget/v/Nullean.Snapshots.AwesomeAssertions?color=9fc9ea&label=nuget"></a>
-  <a href="https://github.com/nullean/snapshots/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/nullean/snapshots/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="https://snapshots.nullean.net"><img alt="Docs" src="https://img.shields.io/badge/docs-snapshots.nullean.net-c6dd7a"></a>
+  <a href="https://www.nuget.org/packages/Nullean.Snapshots.AwesomeAssertions"><img src="https://img.shields.io/nuget/v/Nullean.Snapshots.AwesomeAssertions?style=flat-square" alt="NuGet"></a>
+  <a href="https://github.com/nullean/snapshots/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/nullean/snapshots/ci.yml?branch=main&style=flat-square&label=ci" alt="CI"></a>
+  <a href="https://snapshots.nullean.net"><img src="https://img.shields.io/badge/docs-snapshots.nullean.net-20a0a0?style=flat-square" alt="Docs"></a>
 </p>
 
----
+![An image snapshot's diff: the verified screenshot faded to grey, the changed heading in red, outlined in blue](docs/images/image-diff.png)
 
-Nullean.Snapshots is snapshot testing on [AwesomeAssertions](https://awesomeassertions.org) for text, HTML, JSON,
-YAML, PNG images, browser journeys and HTTP responses. A test's output is compared with a verified file kept with your
-tests, or with a string literal right in the test (inline snapshots); when it differs, the test fails with
-a short, plain message that says exactly what moved and how to accept it. A small native AOT CLI, `snap`, reviews and
-accepts what changed.
+<sub>A real diff image from `Nullean.Snapshots.Images`: the snapshots.nullean.net landing page, screenshotted, then
+again with one word of its heading changed. Everything else on the page matched.</sub>
 
-```csharp
-[Test]
-public void Serializes() =>
-	catalog.Should().MatchJsonSnapshot(AppJsonContext.Default.Catalog);
-```
+Nullean.Snapshots is snapshot testing on [AwesomeAssertions](https://awesomeassertions.org). A test's output is
+compared with a verified file kept with your tests, or with a string literal right in the test (inline snapshots);
+when it differs, the test fails with a short, plain message that says exactly what moved and how to accept it. A
+small native AOT CLI, `snap`, reviews and accepts what changed.
 
 ```text
 JSON did not match snapshot: tests/Shop.Tests/.snapshots/CatalogTests/Serializes.verified.json
@@ -39,7 +35,49 @@ Received: .artifacts/.snapshots/received/Shop.Tests/CatalogTests/Serializes.rece
 Accept:   snap accept Shop.Tests/CatalogTests/Serializes   (or: dnx Nullean.Snapshots.Cli accept Shop.Tests/CatalogTests/Serializes)
 ```
 
-## How it works
+## Install
+
+```sh
+dotnet add package Nullean.Snapshots.AwesomeAssertions
+dotnet add package Nullean.Snapshots.Json
+dotnet add package Nullean.Snapshots.TUnit
+dotnet tool install --global Nullean.Snapshots.Cli
+```
+
+Add the format packages you need (`.Html`, `.Yaml`, `.Images.Assertions`, `.Browser.Assertions`, `.Http.Assertions`);
+`Nullean.Snapshots.TUnit` gives every case of a data-driven TUnit test its own file. The packages need .NET 10.
+
+## Quick start
+
+```csharp
+using AwesomeAssertions;
+using Nullean.Snapshots;
+using Nullean.Snapshots.Json;
+
+public class CatalogTests
+{
+	[Test]
+	public void Renders() =>
+		Catalog.Render().Should().MatchSnapshot();          // .snapshots/CatalogTests/Renders.verified.txt
+
+	[Test]
+	public void Serializes() =>
+		Catalog.ToJson().Should().MatchJsonSnapshot();      // compared as a tree, not as text
+
+	[Test]
+	public void Greets() =>
+		Catalog.Greet("Kibana").Should().MatchInlineSnapshot("Hello, Kibana!");
+}
+```
+
+The first run of a new snapshot fails and writes a received file. Read it, accept it, and commit the verified file:
+
+```sh
+snap            # walk through what changed: accept, reject or skip each snapshot
+snap accept CatalogTests/Renders
+```
+
+From then on a change in output is a decision you make with the difference in front of you.
 
 - **Compared by structure, not by text.** HTML compares as a DOM; JSON and YAML compare as trees. Attribute order,
   whitespace, key order and `1` versus `1.0` do not fail a test, and a changed field is reported by its path, with
@@ -62,51 +100,33 @@ Accept:   snap accept Shop.Tests/CatalogTests/Serializes   (or: dnx Nullean.Snap
 
 ## Packages
 
-| Package | For |
-|---|---|
-| [`Nullean.Snapshots`](https://www.nuget.org/packages/Nullean.Snapshots) | the core: the snapshot store, accept modes, scrubbers, the line and tree differs and the failure messages; the other packages build on it |
-| [`Nullean.Snapshots.AwesomeAssertions`](https://www.nuget.org/packages/Nullean.Snapshots.AwesomeAssertions) | `Should().MatchSnapshot()` and `MatchInlineSnapshot()` for text, and the base the format packages build on |
-| [`Nullean.Snapshots.Html`](https://www.nuget.org/packages/Nullean.Snapshots.Html) | `MatchHtmlSnapshot`, `MatchInlineHtmlSnapshot`, `BeHtml`, `ContainHtml`, `NotContainHtml`; select, remove and transform first |
-| [`Nullean.Snapshots.Json`](https://www.nuget.org/packages/Nullean.Snapshots.Json) | `MatchJsonSnapshot` and `MatchInlineJsonSnapshot` for JSON text and objects (AOT-safe through `JsonTypeInfo<T>`), `BeJson` |
-| [`Nullean.Snapshots.Yaml`](https://www.nuget.org/packages/Nullean.Snapshots.Yaml) | `MatchYamlSnapshot`, `MatchInlineYamlSnapshot`, `BeYaml`; the YAML 1.2 core schema, anchors and merge keys, stored as written |
-| [`Nullean.Snapshots.Images`](https://www.nuget.org/packages/Nullean.Snapshots.Images) | PNG screenshots compared by pixels, with a diff image on failure (`ImageSnapshotFormat`) |
-| [`Nullean.Snapshots.Images.Assertions`](https://www.nuget.org/packages/Nullean.Snapshots.Images.Assertions) | `MatchImageSnapshot` for AwesomeAssertions |
-| [`Nullean.Snapshots.Browser`](https://www.nuget.org/packages/Nullean.Snapshots.Browser) | browser journeys: agent-browser commands run in Chrome with [Nullean.Cdp](https://cdp.nullean.net), each read compared as a tree (`JourneySnapshot`, `snap journey run`) |
-| [`Nullean.Snapshots.Browser.Assertions`](https://www.nuget.org/packages/Nullean.Snapshots.Browser.Assertions) | `MatchJourneySnapshot` and `MatchAriaSnapshot` for AwesomeAssertions |
-| [`Nullean.Snapshots.Http`](https://www.nuget.org/packages/Nullean.Snapshots.Http) | HTTP responses and `.http` files run with [Nullean.HttpFileParser](https://www.nuget.org/packages/Nullean.HttpFileParser): status, chosen headers and JSON bodies compared as trees, secrets redacted (`HttpSnapshot`, `HttpFileSnapshot`, `snap http run`) |
-| [`Nullean.Snapshots.Http.Assertions`](https://www.nuget.org/packages/Nullean.Snapshots.Http.Assertions) | `MatchHttpSnapshot`, `MatchHttpFileSnapshot` and `HttpFileTest` for AwesomeAssertions |
-| [`Nullean.HttpFileParser`](https://www.nuget.org/packages/Nullean.HttpFileParser) | parses, lints and runs `.http` files on its own, with no dependency on the snapshot packages; the portable subset of the Visual Studio, REST Client and JetBrains dialects |
-| [`Nullean.Snapshots.TUnit`](https://www.nuget.org/packages/Nullean.Snapshots.TUnit) | the running TUnit test's class, method and arguments, so every case gets its own file |
-| [`Nullean.Snapshots.Cli`](https://www.nuget.org/packages/Nullean.Snapshots.Cli) | `snap`: review, diff, accept, reject, and find orphaned snapshots; accepting an inline snapshot rewrites the literal in the test; `snap journey run` and `snap http run` check journeys and `.http` files without a test run |
+| Package | What it is | |
+|---|---|---|
+| [`Nullean.Snapshots`](src/Nullean.Snapshots/README.md) | the core: the snapshot store, accept modes, scrubbers, the line and tree differs and the failure messages; the other packages build on it | [![NuGet](https://img.shields.io/nuget/v/Nullean.Snapshots?style=flat-square)](https://www.nuget.org/packages/Nullean.Snapshots) |
+| [`Nullean.Snapshots.AwesomeAssertions`](src/Nullean.Snapshots.AwesomeAssertions/README.md) | `Should().MatchSnapshot()` and `MatchInlineSnapshot()` for text, and the base the format packages build on | [![NuGet](https://img.shields.io/nuget/v/Nullean.Snapshots.AwesomeAssertions?style=flat-square)](https://www.nuget.org/packages/Nullean.Snapshots.AwesomeAssertions) |
+| [`Nullean.Snapshots.Html`](src/Nullean.Snapshots.Html/README.md) | `MatchHtmlSnapshot`, `MatchInlineHtmlSnapshot`, `BeHtml`, `ContainHtml`, `NotContainHtml`; select, remove and transform first | [![NuGet](https://img.shields.io/nuget/v/Nullean.Snapshots.Html?style=flat-square)](https://www.nuget.org/packages/Nullean.Snapshots.Html) |
+| [`Nullean.Snapshots.Json`](src/Nullean.Snapshots.Json/README.md) | `MatchJsonSnapshot` and `MatchInlineJsonSnapshot` for JSON text and objects (AOT-safe through `JsonTypeInfo<T>`), `BeJson` | [![NuGet](https://img.shields.io/nuget/v/Nullean.Snapshots.Json?style=flat-square)](https://www.nuget.org/packages/Nullean.Snapshots.Json) |
+| [`Nullean.Snapshots.Yaml`](src/Nullean.Snapshots.Yaml/README.md) | `MatchYamlSnapshot`, `MatchInlineYamlSnapshot`, `BeYaml`; the YAML 1.2 core schema, anchors and merge keys, stored as written | [![NuGet](https://img.shields.io/nuget/v/Nullean.Snapshots.Yaml?style=flat-square)](https://www.nuget.org/packages/Nullean.Snapshots.Yaml) |
+| [`Nullean.Snapshots.Images`](src/Nullean.Snapshots.Images/README.md) | PNG screenshots compared by pixels, with a diff image on failure (`ImageSnapshotFormat`) | [![NuGet](https://img.shields.io/nuget/v/Nullean.Snapshots.Images?style=flat-square)](https://www.nuget.org/packages/Nullean.Snapshots.Images) |
+| [`Nullean.Snapshots.Images.Assertions`](src/Nullean.Snapshots.Images.Assertions/README.md) | `MatchImageSnapshot` for AwesomeAssertions | [![NuGet](https://img.shields.io/nuget/v/Nullean.Snapshots.Images.Assertions?style=flat-square)](https://www.nuget.org/packages/Nullean.Snapshots.Images.Assertions) |
+| [`Nullean.Snapshots.Browser`](src/Nullean.Snapshots.Browser/README.md) | browser journeys: agent-browser commands run in Chrome with [Nullean.Cdp](https://cdp.nullean.net), each read compared as a tree (`JourneySnapshot`, `snap journey run`) | [![NuGet](https://img.shields.io/nuget/v/Nullean.Snapshots.Browser?style=flat-square)](https://www.nuget.org/packages/Nullean.Snapshots.Browser) |
+| [`Nullean.Snapshots.Browser.Assertions`](src/Nullean.Snapshots.Browser.Assertions/README.md) | `MatchJourneySnapshot`, `MatchAriaSnapshot` and `JourneyTest` for AwesomeAssertions | [![NuGet](https://img.shields.io/nuget/v/Nullean.Snapshots.Browser.Assertions?style=flat-square)](https://www.nuget.org/packages/Nullean.Snapshots.Browser.Assertions) |
+| [`Nullean.Snapshots.Browser.Console`](src/Nullean.Snapshots.Browser.Console/README.md) | runs a suite of journeys from the console with streamed results, grouped skips and readable failures, for `snap journey run` and any tool that wants the same output | [![NuGet](https://img.shields.io/nuget/v/Nullean.Snapshots.Browser.Console?style=flat-square)](https://www.nuget.org/packages/Nullean.Snapshots.Browser.Console) |
+| [`Nullean.Snapshots.Http`](src/Nullean.Snapshots.Http/README.md) | HTTP responses and `.http` files run with `Nullean.HttpFileParser`: status, chosen headers and JSON bodies compared as trees, secrets redacted (`HttpSnapshot`, `HttpFileSnapshot`, `snap http run`) | [![NuGet](https://img.shields.io/nuget/v/Nullean.Snapshots.Http?style=flat-square)](https://www.nuget.org/packages/Nullean.Snapshots.Http) |
+| [`Nullean.Snapshots.Http.Assertions`](src/Nullean.Snapshots.Http.Assertions/README.md) | `MatchHttpSnapshot`, `MatchHttpFileSnapshot` and `HttpFileTest` for AwesomeAssertions | [![NuGet](https://img.shields.io/nuget/v/Nullean.Snapshots.Http.Assertions?style=flat-square)](https://www.nuget.org/packages/Nullean.Snapshots.Http.Assertions) |
+| [`Nullean.HttpFileParser`](src/Nullean.HttpFileParser/README.md) | parses, lints and runs `.http` files on its own, with no dependency on the snapshot packages; the portable subset of the Visual Studio, REST Client and JetBrains dialects | [![NuGet](https://img.shields.io/nuget/v/Nullean.HttpFileParser?style=flat-square)](https://www.nuget.org/packages/Nullean.HttpFileParser) |
+| [`Nullean.Snapshots.TUnit`](src/Nullean.Snapshots.TUnit/README.md) | the running TUnit test's class, method and arguments, so every case gets its own file; `[SnapshotFiles]`, `[JourneyFiles]` and `[HttpFiles]` data sources | [![NuGet](https://img.shields.io/nuget/v/Nullean.Snapshots.TUnit?style=flat-square)](https://www.nuget.org/packages/Nullean.Snapshots.TUnit) |
+| [`Nullean.Snapshots.Cli`](src/Nullean.Snapshots.Cli/README.md) | `snap`: review, diff, accept, reject, and find orphaned snapshots; accepting an inline snapshot rewrites the literal in the test; `snap journey run` and `snap http run` check journeys and `.http` files without a test run | [![NuGet](https://img.shields.io/nuget/v/Nullean.Snapshots.Cli?style=flat-square)](https://www.nuget.org/packages/Nullean.Snapshots.Cli) |
 
-## Getting started
+Versions are 0.x while the API settles.
 
-```xml
-<PackageReference Include="Nullean.Snapshots.AwesomeAssertions" Version="0.*" />
-<PackageReference Include="Nullean.Snapshots.Json" Version="0.*" />
-<PackageReference Include="Nullean.Snapshots.TUnit" Version="0.*" />
-```
+## Learn more
 
-```sh
-dotnet tool install --global Nullean.Snapshots.Cli
-snap            # walk through what changed: accept, reject or skip each snapshot
-```
+- Documentation: https://snapshots.nullean.net (the formats, the `snap` workflow, snapshots in CI, working with
+  coding agents, and the reference)
+- [Releases](https://github.com/nullean/snapshots/releases)
+- [Contributing](https://github.com/nullean/.github/blob/main/CONTRIBUTING.md); in this repository,
+  [AGENTS.md](AGENTS.md) for conventions, [DECISIONS.md](DECISIONS.md) for the choices behind the design and
+  [ROADMAP.md](ROADMAP.md) for the plan. `mise run docs` builds and serves the documentation locally.
 
-The first run of a new snapshot fails and writes a received file. Read it, accept it with `snap accept <key>` (or
-`snap review`), and commit the verified file. From then on a change in output is a decision you make with the
-difference in front of you.
-
-Read more at **[snapshots.nullean.net](https://snapshots.nullean.net)**: the formats, the `snap` workflow,
-snapshots in CI, working with coding agents, and the reference.
-
-Versions are 0.x while the API settles. The packages need .NET 10.
-
-## Contributing
-
-See [AGENTS.md](AGENTS.md) for conventions, [DECISIONS.md](DECISIONS.md) for the choices behind the design and
-[ROADMAP.md](ROADMAP.md) for the plan. `scripts/docs.sh` builds and serves the documentation locally, given a
-`docs-builder` binary.
-
-## License
-
-MIT, see [LICENSE.txt](LICENSE.txt).
+MIT licensed. Copyright Nullean and contributors.
