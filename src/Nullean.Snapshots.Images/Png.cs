@@ -189,8 +189,10 @@ internal static class Png
 				read += n;
 			}
 		}
-		catch (InvalidDataException e)
+		catch (Exception e) when (e is InvalidDataException or IOException)
 		{
+			// Some corrupt streams surface as InvalidDataException, others as the zlib layer's ZLibException (an IOException): both mean
+			// the same, and a damaged file must only ever fail with FormatException.
 			throw new FormatException("Corrupt PNG: the image data does not decompress.", e);
 		}
 
