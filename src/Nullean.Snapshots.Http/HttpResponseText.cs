@@ -113,7 +113,87 @@ internal static class HttpResponseText
 			return;
 		}
 
+		if (!shape && IsEventStream(section.MediaType) && Events(body) is { } events)
+		{
+			text.Append(events);
+			return;
+		}
+
 		AppendQuoted(text, body);
+	}
+
+	private const string EventsMarker = "events:";
+
+	private static readonly string[] EventFields = ["event", "id", "retry"];
+
+	internal static bool IsEventStream(string? mediaType) => string.Equals(mediaType?.Trim(), "text/event-stream", StringComparison.OrdinalIgnoreCase);
+
+	/// <summary>
+	/// A server-sent event stream as <c>events:</c> and its events, separated by a blank line: <c>event</c>, <c>id</c> and <c>retry</c> as lines, and the <c>data</c> that is JSON pretty-printed
+	/// on the lines after <c>data:</c>, else on its own line. <see langword="null"/> when the stream has anything this cannot say exactly (comments, a repeated field, data over
+	/// several lines that is not JSON, empty data): it is quoted as text then.
+	/// </summary>
+	private static string? Events(string body)
+	{
+		var events = new List<string>();
+		foreach (var block in Lines(body)
+			.Aggregate(new List<List<string>> { new() }, (blocks, line) =>
+			{
+				if (line.Length == 0)
+				{
+					if (blocks[^1].Count > 0)
+						blocks.Add([]);
+				}
+				else
+					blocks[^1].Add(line);
+				return blocks;
+			})
+			.Where(b => b.Count > 0))
+		{
+			var fields = new Dictionary<string, string>(StringComparer.Ordinal);
+			var data = new List<string>();
+			foreach (var line in block)
+			{
+				var colon = line.IndexOf(':', StringComparison.Ordinal);
+				if (colon <= 0)
+					return null;
+				var name = line[..colon];
+				var value = line[(colon + 1)..];
+				if (value.StartsWith(' '))
+					value = value[1..];
+				if (name == "data")
+					data.Add(value);
+				else if (!EventFields.Contains(name, StringComparer.Ordinal) || !fields.TryAdd(name, value) || value.Length == 0 || value.Contains('\n'))
+					return null;
+			}
+
+			if (data.Count == 0)
+				return null;
+			var payload = string.Join('\n', data);
+			string? json = null;
+			try
+			{
+				json = payload.Length > 0 ? JsonTree.Pretty(payload) : null;
+			}
+			catch (FormatException)
+			{
+				// Not JSON: kept as a line below.
+			}
+
+			if (json is null && (data.Count > 1 || payload.Length == 0))
+				return null;
+			var lines = new StringBuilder();
+			foreach (var field in EventFields)
+			{
+				if (fields.TryGetValue(field, out var v))
+					lines.Append(field).Append(": ").Append(v).Append('\n');
+			}
+
+			lines.Append(json is null ? "data: " + payload + "\n" : "data:\n" + json);
+			events.Add(lines.ToString());
+		}
+
+		return events.Count == 0 ? null : EventsMarker + "\n" + string.Join('\n', events);
 	}
 
 	/// <summary>Every line prefixed with <c>&gt; </c> (an empty one with <c>&gt;</c>), so no body text can start a section.</summary>
@@ -297,6 +377,8 @@ internal static class HttpResponseText
 
 	private static KeyValuePair<ScalarNode, Node> Body(string[] body, int firstLine)
 	{
+		if (body[0] == EventsMarker)
+			return new(ScalarNode.String("body"), ParseEvents(body, firstLine));
 		if (body[0].StartsWith('>'))
 		{
 			var quoted = new List<string>(body.Length);
@@ -338,6 +420,66 @@ internal static class HttpResponseText
 		}
 
 		return new(ScalarNode.String("body"), Shift(json, firstLine - 1));
+	}
+
+	/// <summary>The events of a stream, as written by <see cref="Events"/>: a sequence of <c>{event, id, retry, data}</c>, <c>data</c> a JSON tree or a string.</summary>
+	private static SeqNode ParseEvents(string[] body, int firstLine)
+	{
+		var items = new List<Node>();
+		var i = 1;
+		while (i < body.Length)
+		{
+			if (body[i].Length == 0)
+			{
+				i++;
+				continue;
+			}
+
+			var entries = new List<KeyValuePair<ScalarNode, Node>>();
+			var span = new SourceSpan(firstLine + i, 1);
+			for (; i < body.Length && body[i].Length > 0; i++)
+			{
+				var line = firstLine + i;
+				var colon = body[i].IndexOf(':', StringComparison.Ordinal);
+				if (colon <= 0)
+					throw new FormatException($"Line {line}: an event line is 'event: ', 'id: ', 'retry: ' or 'data: '.");
+				var name = body[i][..colon];
+				var value = body[i][(colon + 1)..];
+				if (value.StartsWith(' '))
+					value = value[1..];
+				if (name != "data" && !EventFields.Contains(name, StringComparer.Ordinal))
+					throw new FormatException($"Line {line}: an event line is 'event: ', 'id: ', 'retry: ' or 'data: '.");
+				if (entries.Any(e => e.Key.Canonical == name))
+					throw new FormatException($"Line {line}: '{name}' appears twice in one event.");
+				if (name != "data" || value.Length > 0)
+				{
+					entries.Add(new(ScalarNode.String(name), ScalarNode.String(value, new SourceSpan(line, colon + 3))));
+					continue;
+				}
+
+				var end = i + 1;
+				while (end < body.Length && body[end].Length > 0)
+					end++;
+				if (end == i + 1)
+					throw new FormatException($"Line {line}: 'data:' is followed by JSON, or has its text after it.");
+				Node json;
+				try
+				{
+					json = JsonTree.Parse(string.Join('\n', body[(i + 1)..end]));
+				}
+				catch (FormatException e)
+				{
+					throw new FormatException($"Line {line + 1}: the data is not valid JSON. {e.Message}", e);
+				}
+
+				entries.Add(new(ScalarNode.String("data"), Shift(json, line)));
+				i = end - 1;
+			}
+
+			items.Add(new MapNode(entries, span));
+		}
+
+		return new SeqNode(items, new SourceSpan(firstLine, 1));
 	}
 
 	/// <summary>Moves a tree parsed from the body alone to its lines in the whole text.</summary>

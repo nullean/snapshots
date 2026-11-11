@@ -812,3 +812,13 @@ two sites. This change is the rules and what reads them; running the two sites i
   hide that a header or the status can be ignored the same way (`$[*].headers.x-request-id`).
 - `diff` comes after `because` on the assertions so positional callers keep working. On `HttpFileTest.RunAsync` the two new parameters sit before `cancellationToken` (CA1068 wants it last),
   so a caller that passed the token positionally as the third argument must name it.
+
+## HTTP: event streams (#34)
+
+- **`text/event-stream` bodies are written as `events:` and parsed into the section's `body`**, a sequence of `{event, id, retry, data}` maps, `data` a JSON tree when the payload is JSON and a string
+  otherwise. Under `body` (not a new key) so everything that reaches JSON bodies reaches events without change: `IgnorePaths` (`$[*].body[*].data.x`) and `.differences` rules (`body $[*].data.x`).
+  An MCP server's whole JSON-RPC message sat on one quoted line, so one changed field rewrote it.
+- **Lossless or quoted.** Only fields the format can write back exactly are structured: `event`, `id`, `retry` (single line, non-empty) and `data`. A comment line, a repeated field, empty data or
+  several `data:` lines that are not JSON when joined (the event stream's own rule joins them with newlines) leave the whole body quoted text as before, so no stream is ever read wrongly.
+  Field order in the file is fixed (`event`, `id`, `retry`, `data`); the stream's own order carries no meaning.
+- Shape mode leaves a stream as `text: text/event-stream`, like any text: the shape of the events is not a request anyone made.

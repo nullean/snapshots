@@ -64,6 +64,11 @@ status: 404 Not Found
 - Then a blank line and the body, decoded:
   - JSON (`application/json` or any `+json` type) pretty-printed and compared as a tree: keys in any order, numbers by
     value. Invalid JSON is written as text.
+  - A server-sent event stream (`text/event-stream`, what an MCP server answers with) as `events:` and one block per event, a blank line
+    between them: `event:`, `id:` and `retry:` lines, then `data:` with its JSON pretty-printed on the lines after it (compared as a tree, so a
+    changed field is `body[0].data.result.n`, and `IgnorePaths` and `body $[*].data...` rules reach it) or text after `data:` when it is not JSON,
+    such as `[DONE]`. A stream with a comment line, a repeated field, empty data or several lines of data that is not JSON is quoted as text, below.
+    A [shape](#shapes-properties-without-values) of a stream is `text: text/event-stream`.
   - Any other text (`text/*`, XML, JavaScript, form posts, anything with a charset) with `> ` before every line, so a
     body can never start a section.
   - Anything else as `binary: 2048 bytes, image/png`.
