@@ -1,0 +1,3 @@
+# The preview shows a badge on items that are new.
+## GET {{host}}/api/catalog
+added body $.items[*].badge

@@ -1,0 +1,2 @@
+open index.html
+snapshot -c -s nav

@@ -1,0 +1,3 @@
+## GET {{host}}/api/catalog
+added body $.items[*].badge
+removed body $.items[*].legacy

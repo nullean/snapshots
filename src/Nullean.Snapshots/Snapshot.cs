@@ -32,6 +32,9 @@ public static class Snapshot
 	/// <summary>Lets a test run the assertion packages against its own engine, without touching other tests.</summary>
 	internal static AsyncLocal<SnapshotEngine?> EngineOverride { get; } = new();
 
+	/// <summary>The engine assertions use: the test's own when it set one, else the process's.</summary>
+	internal static SnapshotEngine Current => EngineOverride.Value ?? Engine;
+
 	/// <summary>
 	/// Compares <paramref name="actual"/> with its verified snapshot. On a match a stale received file is removed. On a
 	/// mismatch the received file is written and the result carries the failure message, unless
@@ -136,7 +139,7 @@ public static class Snapshot
 public readonly record struct InlineSnapshotCallSite(SnapshotCallSite CallSite, string MethodName, string? ExpectedExpression);
 
 /// <summary>The snapshot workflow over an <see cref="IFileSystem"/>, so tests can run it on a mock.</summary>
-internal sealed class SnapshotEngine(
+internal sealed partial class SnapshotEngine(
 	IFileSystem fileSystem,
 	Func<string, string?> getVariable,
 	Func<ISnapshotTestIdentityProvider?>? identityProvider = null,

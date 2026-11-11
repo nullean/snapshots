@@ -40,6 +40,12 @@ public sealed class HttpFileSnapshotOptions
 	/// <summary>Headers to write on top of <c>content-type</c> and <c>location</c>; credential headers are never written.</summary>
 	public IReadOnlyCollection<string> Headers { get; init; } = [];
 
+	/// <summary>
+	/// The origin (<c>https://docs.example.com</c>) of the site under test. Wherever it appears in the transcript, in a
+	/// <c>location</c> header or a body, it is written as <c>{origin}</c>, so two sites compare equal.
+	/// </summary>
+	public Uri? BaseUrl { get; init; }
+
 	/// <summary>The clock for <c>$datetime</c>, <c>$timestamp</c> and the like.</summary>
 	public TimeProvider TimeProvider { get; init; } = TimeProvider.System;
 
@@ -122,7 +128,7 @@ public sealed record HttpTranscript(string File, string Text, HttpFileFailure? F
 	/// Renders the exchanges of <paramref name="result"/>, redacted, writing <paramref name="headers"/> on top of the defaults.
 	/// With <paramref name="shape"/> the bodies are written as their shape (see <see cref="TranscriptMode.Shape"/>).
 	/// </summary>
-	public static string Render(HttpFileRunResult result, IEnumerable<string>? headers = null, bool shape = false)
+	public static string Render(HttpFileRunResult result, IEnumerable<string>? headers = null, bool shape = false, Uri? baseUrl = null)
 	{
 		ArgumentNullException.ThrowIfNull(result);
 		var chosen = HttpResponseText.Chosen(headers);
@@ -143,8 +149,16 @@ public sealed record HttpTranscript(string File, string Text, HttpFileFailure? F
 
 		// Again over the whole text: pretty-printing unescapes JSON strings, so a value a server echoed as "+..."
 		// only reads as the value now.
-		return result.Redact(text.ToString());
+		var redacted = result.Redact(text.ToString());
+		return Origin(baseUrl) is { } origin ? redacted.Replace(origin, OriginToken, StringComparison.Ordinal) : redacted;
 	}
+
+	/// <summary>What a site's origin is written as.</summary>
+	public const string OriginToken = "{origin}";
+
+	/// <summary>The origin of an http(s) URL, without a trailing slash; <see langword="null"/> for any other.</summary>
+	internal static string? Origin(Uri? baseUrl) =>
+		baseUrl is { Scheme: "http" or "https" } ? baseUrl.GetLeftPart(UriPartial.Authority) : null;
 
 	/// <summary>Parses a transcript into its sections, as <see cref="HttpSnapshotFormat.Parse"/> does.</summary>
 	/// <exception cref="FormatException">The text is not a transcript.</exception>
@@ -158,7 +172,7 @@ public sealed record HttpTranscript(string File, string Text, HttpFileFailure? F
 /// Runs <c>.http</c> files and snapshots every response. The snapshot belongs to the file, so a test and
 /// <c>snap http run</c> compare against the same <c>.snapshots/{path}.verified.responses</c>.
 /// </summary>
-public static class HttpFileSnapshot
+public static partial class HttpFileSnapshot
 {
 	/// <summary>The <c>.responses</c> format.</summary>
 	public static HttpSnapshotFormat Format => HttpSnapshot.Format;
@@ -256,7 +270,7 @@ public static class HttpFileSnapshot
 		var failure = result.Failure is { } f
 			? new HttpFileFailure(f.Line, HttpTranscript.Heading(f.Request), result.Redact(f.Message))
 			: null;
-		return new HttpTranscript(full, HttpTranscript.Render(result, options.Headers, options.Transcript == TranscriptMode.Shape), failure)
+		return new HttpTranscript(full, HttpTranscript.Render(result, options.Headers, options.Transcript == TranscriptMode.Shape, options.BaseUrl), failure)
 		{
 			// The text is already the shape, so it is compared like any other.
 			Mode = options.Transcript == TranscriptMode.Shape ? TranscriptMode.Compare : options.Transcript,

@@ -1,0 +1,5 @@
+# Compared by value: prices differ on every item, and the preview links to its own home.
+## GET {{host}}/api/catalog
+added   body $.items[*].badge
+changed body $.items[*].price
+changed body $.home "http://prod.test/catalog" -> "http://preview.test/catalog"

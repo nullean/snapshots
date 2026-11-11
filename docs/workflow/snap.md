@@ -111,3 +111,33 @@ failed (a connection refused, a timeout, an unresolved variable), 2 usage or a p
 a failure.
 
 These two are the only commands that do more than read and write files.
+
+## Comparing two sites
+
+```sh
+snap journey compare 'tests/Shop.Tests/journeys/**/*.journey' \
+  --baseline https://docs.example.com/ --target https://docs-preview.example.com/
+```
+
+runs each journey against the baseline site, seeds its transcript into the received tree (`{journey}.baseline.journey`,
+never checked in and never a snapshot), then runs it against the target and compares the two. What may differ is written
+in `{journey}.differences` next to the journey: see [expected differences](expected-differences.md). A difference no rule
+accounts for fails the run and the message says which rule would explain it; a rule that matched nothing fails too.
+
+`--reuse-baseline` runs the baseline site only for journeys that have no seeded baseline, so iterating on the target does
+not send to production again. `--record <file>` appends a rule for every unexpected difference to a file the journey's
+rules `include?`, instead of failing, and `--prune <file>` removes the stale rules of such a file: how an agent works
+through a preview and how a change that shipped stops being excused. The runs are the console runner's, so `@requires`,
+`@mutates`, `--read-only`, `--parallel`, `--junit` and the other options of `snap journey run` work the same, and exit
+codes are those of `run`, with a rules file that does not parse as 2.
+
+`snap http compare` does the same for `.http` files:
+
+```sh
+snap http compare 'tests/Shop.Tests/http/**/*.http' --baseline https://api.example.com --target https://api-preview.example.com
+```
+
+Each site's URL is `{{host}}` for its run (`--host-variable` names another), `--baseline-env` and `--target-env` pick an
+environment of `http-client.env.json` per site, and each site's origin is written as `{origin}` wherever it appears in a
+transcript. Both runs are written as [shapes](../formats/http.md#shapes-properties-without-values), so only properties
+added, dropped or retyped differ; `--values` compares values as well.

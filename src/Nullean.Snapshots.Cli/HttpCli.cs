@@ -2,6 +2,7 @@ using System.IO.Abstractions;
 using System.Text.RegularExpressions;
 using Nullean.Argh;
 using Nullean.HttpFileParser;
+using Nullean.Snapshots.Differences;
 using Nullean.Snapshots.Http;
 
 namespace Nullean.Snapshots.Cli;
@@ -120,6 +121,118 @@ internal sealed class HttpCli(
 		return exit;
 	}
 
+	/// <summary>
+	/// <c>snap http compare</c>: runs each <c>.http</c> file against the baseline site and the target, and compares the two
+	/// under the file's <c>.differences</c> rules. By default both are written as shapes, so only added, dropped or
+	/// retyped properties differ; <paramref name="values"/> compares values too.
+	/// </summary>
+	public async Task<int> CompareAsync(
+		IReadOnlyList<string> patterns,
+		string? baseline,
+		string? target,
+		CancellationToken cancellationToken,
+		string? baselineEnvironment = null,
+		string? targetEnvironment = null,
+		IReadOnlyList<string>? variables = null,
+		IReadOnlyList<string>? headers = null,
+		string hostVariable = "host",
+		bool values = false,
+		bool reuseBaseline = false,
+		string? record = null,
+		string? prune = null,
+		bool readOnly = false
+	)
+	{
+		if (patterns.Count == 0)
+		{
+			error.WriteLine("Error: name the .http files to compare: files or globs such as 'http/**/*.http'.");
+			return ExitCode.Usage;
+		}
+
+		if (!JourneyCli.TryParseSite("--baseline", baseline, out var baselineUri, out var problem) || !JourneyCli.TryParseSite("--target", target, out var targetUri, out problem))
+		{
+			error.WriteLine(problem);
+			return ExitCode.Usage;
+		}
+
+		var shared = new Dictionary<string, string>(StringComparer.Ordinal);
+		foreach (var variable in variables ?? [])
+		{
+			var equals = variable.IndexOf('=', StringComparison.Ordinal);
+			if (equals <= 0)
+			{
+				error.WriteLine($"Error: --var '{variable}' is not name=value.");
+				return ExitCode.Usage;
+			}
+
+			shared[variable[..equals].Trim()] = variable[(equals + 1)..];
+		}
+
+		var (files, missing) = Expand(patterns);
+		foreach (var pattern in missing)
+			error.WriteLine($"Error: no .http file matches '{pattern}'.");
+		if (missing.Count > 0)
+			return ExitCode.Usage;
+
+		var projects = new SnapshotProjectResolver(fileSystem);
+		var engine = new SnapshotEngine(fileSystem, k => k == SnapshotEnvironment.AcceptVariable ? null : getVariable(k), () => null,
+			(site, _) => JourneyCli.WithArtifactsReceived(fileSystem, projects.FromCallerFile(site.FilePath)));
+		var recordFile = record is null ? null : fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, record));
+		var pruneFile = prune is null ? null : fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, prune));
+		var exit = ExitCode.Ok;
+		foreach (var file in files)
+		{
+			var display = fileSystem.Path.GetRelativePath(_root, file).Replace('\\', '/');
+			var store = new SiteStore(
+				text => engine.SeedBaseline(text, HttpFileSnapshot.Format.Extension, file, null),
+				() => engine.ReadBaseline(HttpFileSnapshot.Format.Extension, file, null),
+				(text, compare) => engine.CompareSites(text, HttpFileSnapshot.Format, HttpRuleTargets.Instance, file, compare));
+			var options = new HttpCompareOptions
+			{
+				Baseline = baselineUri,
+				Target = targetUri,
+				BaselineEnvironment = baselineEnvironment,
+				TargetEnvironment = targetEnvironment,
+				HostVariable = hostVariable,
+				Values = values,
+				ReuseBaseline = reuseBaseline,
+				Record = recordFile,
+				Prune = pruneFile,
+				Run = new HttpFileSnapshotOptions { Variables = shared, Headers = headers ?? [], ReadOnly = readOnly },
+			};
+			SiteComparisonResult result;
+			try
+			{
+				result = await HttpFileSnapshot.CompareCoreAsync(file, options, run, store, cancellationToken).ConfigureAwait(false);
+			}
+			catch (Exception e) when (e is HttpFileParseException or ExpectedDifferencesException or InvalidOperationException)
+			{
+				error.WriteLine(e.Message);
+				exit = Math.Max(exit, ExitCode.Usage);
+				continue;
+			}
+			catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+			{
+				error.WriteLine($"Error: {display}: {e.Message}");
+				exit = Math.Max(exit, ExitCode.Io);
+				continue;
+			}
+
+			if (result.Recorded.Count > 0)
+				output.WriteLine($"Recorded {result.Recorded.Count} rule(s) for {display} in {fileSystem.Path.GetRelativePath(_root, recordFile!).Replace('\\', '/')}.");
+			if (result.Passed)
+				output.WriteLine($"ok   {display} ({result.Application.Explained.Count} expected difference(s))");
+			else
+			{
+				output.WriteLine(result.FailureMessage);
+				output.WriteLine();
+				exit = Math.Max(exit, ExitCode.Pending);
+			}
+		}
+
+		return exit;
+	}
+
 	/// <summary>Files as given, or every <c>*.http</c> below the root a glob matches, sorted.</summary>
 	private (List<string> Files, List<string> Missing) Expand(IReadOnlyList<string> patterns)
 	{
@@ -182,5 +295,46 @@ internal sealed class HttpCommands
 		var cli = new HttpCli(new FileSystem(), root ?? Directory.GetCurrentDirectory(), Console.Out, Console.Error,
 			HttpFileSnapshot.RunFileAsync, Environment.GetEnvironmentVariable);
 		return await cli.RunAsync(files, env, var, CancellationToken.None, header, variant, transcript, readOnly).ConfigureAwait(false);
+	}
+	/// <summary>
+	/// Run .http files against a baseline site and a target site and compare the two, so only differences nobody expected
+	/// fail. Expected ones are rules in {file}.differences next to the file (which may include? a file for one preview's
+	/// differences). Both runs are written as shapes unless --values is given. Exit codes: 0 every difference is expected,
+	/// 1 one is not (or a rule is stale, or a request failed), 2 usage, bad rules or a parse error, 3 a file could not be read.
+	/// </summary>
+	/// <param name="files">.http files or globs, relative to the root (e.g. 'tests/Shop.Tests/http/**/*.http').</param>
+	/// <param name="baseline">The site to take the baseline from. Each file reaches it as {{host}}. Required.</param>
+	/// <param name="target">The site to compare with it. Required.</param>
+	/// <param name="baselineEnv">The environment of http-client.env.json for the baseline run.</param>
+	/// <param name="targetEnv">The environment for the target run.</param>
+	/// <param name="var">A variable as name=value for both runs; beats file variables and the environment.</param>
+	/// <param name="header">Another response header to write besides content-type and location (repeatable).</param>
+	/// <param name="hostVariable">The variable that holds each site's URL. Default: host.</param>
+	/// <param name="values">Compare values as well as properties, instead of shapes.</param>
+	/// <param name="reuseBaseline">Use the baselines of an earlier run, and send to the baseline site only for files that have none.</param>
+	/// <param name="record">Append a rule for every unexpected difference to this file, which the file's rules must include? , instead of failing.</param>
+	/// <param name="prune">Remove the stale rules of this file (a rules file that is an include?), instead of failing for them.</param>
+	/// <param name="root">The folder files and globs are relative to. Defaults to the current folder.</param>
+	/// <param name="readOnly">Refuse any request that is not GET, HEAD or OPTIONS unless it carries '# @readonly'. Use it against a live site.</param>
+	public static async Task<int> Compare(
+		[Argument] string[] files,
+		string? baseline = null,
+		string? target = null,
+		string? baselineEnv = null,
+		string? targetEnv = null,
+		string[]? var = null,
+		string[]? header = null,
+		string hostVariable = "host",
+		bool values = false,
+		bool reuseBaseline = false,
+		string? record = null,
+		string? prune = null,
+		string? root = null,
+		bool readOnly = false
+	)
+	{
+		var cli = new HttpCli(new FileSystem(), root ?? Directory.GetCurrentDirectory(), Console.Out, Console.Error,
+			HttpFileSnapshot.RunFileAsync, Environment.GetEnvironmentVariable);
+		return await cli.CompareAsync(files, baseline, target, CancellationToken.None, baselineEnv, targetEnv, var, header, hostVariable, values, reuseBaseline, record, prune, readOnly).ConfigureAwait(false);
 	}
 }

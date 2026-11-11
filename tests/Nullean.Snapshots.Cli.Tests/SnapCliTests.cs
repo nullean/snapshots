@@ -44,6 +44,22 @@ public class SnapCliTests
 	private string Received(params string[] parts) => P([".artifacts", ".snapshots", "received", "Acme.Tests", .. parts]);
 
 	[Test]
+	public void SiteComparisonFilesAreNeverPending()
+	{
+		var received = P(".artifacts", ".snapshots", "received", "Acme.Tests", "journeys");
+		_fs.AddFile(_fs.Path.Combine(received, "shop.baseline.journey"), new("## get title\n> Shop\n"));
+		_fs.AddFile(_fs.Path.Combine(received, "shop.target.journey"), new("## get title\n> Store\n"));
+		_fs.AddFile(_fs.Path.Combine(received, "shop.baseline.responses"), new("## GET /\nstatus: 200 OK\n"));
+
+		var exit = Cli().Status(json: false);
+
+		exit.Should().Be(1, "the other pending snapshots are still pending");
+		_out.ToString().Should().NotContain("shop").And.NotContain("journeys");
+		Cli().Reject([], all: true).Should().Be(0);
+		_fs.FileExists(_fs.Path.Combine(received, "shop.baseline.journey")).Should().BeTrue("snap reject leaves a baseline alone");
+	}
+
+	[Test]
 	public void StatusListsPendingAndExitsOne()
 	{
 		Cli().Status(json: false).Should().Be(ExitCode.Pending);

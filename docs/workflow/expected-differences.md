@@ -82,6 +82,12 @@ A rule that explained no difference is **stale**, and a run with a stale rule fa
 not stay excused. `maybe` opts a rule out. Rules from `include` and from a folder's `.differences` (shared by many files, so
 one file not needing a rule says nothing) are exempt; rules in the file itself and in `include?` files are checked.
 
+## Running it
+
+`snap journey compare` and `snap http compare` run a file against two sites and apply these rules; see
+[comparing two sites](snap.md#comparing-two-sites). The agent's loop is: compare, `--record journeys/known/shop.differences`,
+read the lines it appended, run again with `--reuse-baseline` to confirm they pass.
+
 ## From the library
 
 ```csharp
@@ -91,6 +97,7 @@ var result = ExpectedDifferences.Apply(TreeDiffer.Instance.Diff(baseline, target
 // result.Unexplained, result.Explained, result.Stale; result.IsClean when nothing is left
 ```
 
-`ExpectedDifferences.Suggest` gives the rule lines that would explain a difference, and `ExpectedDifferences.Record`
+`JourneySnapshot.CompareAsync` and `HttpFileSnapshot.CompareAsync` run a file against both sites in a test and return a
+`SiteComparisonResult` (`Passed`, `FailureMessage`, what each rule did). `ExpectedDifferences.Suggest` gives the rule lines that would explain a difference, and `ExpectedDifferences.Record`
 appends them to an `include?` file (and to no other), under a heading per section, so an agent working through a preview
 can mark what it has seen. `ExpectedDifferences.Prune` removes the stale rules of such a file.

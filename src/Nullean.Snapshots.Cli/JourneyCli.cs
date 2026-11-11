@@ -2,6 +2,7 @@ using System.IO.Abstractions;
 using System.Text.RegularExpressions;
 using Nullean.Argh;
 using Nullean.Cdp.Journeys;
+using Nullean.Snapshots.Differences;
 using Nullean.Snapshots.Browser;
 using Nullean.Snapshots.Browser.Console;
 
@@ -86,39 +87,9 @@ internal sealed class JourneyCli(
 			return ExitCode.Usage;
 		}
 
-		var options = new JourneyRunOptions
-		{
-			Files = JourneyRunFile.FromPaths(_root, files),
-			BaseUrl = baseUri,
-			AllowedHosts = allow ?? [],
-			FileRoot = fileRoot is null ? null : fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, fileRoot)),
-			// As in a test: a journey that writes files gets its own folder next to its received transcript.
-			ArtifactsFor = f => artifacts is not null
-				? fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, artifacts))
-				: WritesFiles(f.Path) || args.ScreenshotOnFailure ? engine.ArtifactsDirectory(f.Path) : null,
-			Compare = mode == TranscriptMode.Off
-				? null
-				: (f, recorded) => engine.MatchFile(recorded.Text, JourneySnapshot.Format, f.Path, null, null, variant),
-			Variant = variant,
-			Load = path => Journey.Parse(fileSystem.File.ReadAllText(path), path),
-			Features = new HashSet<string>(args.Features, StringComparer.Ordinal),
-			BuildType = args.BuildType,
-			Env = args.Env,
-			ReadOnly = args.ReadOnly,
-			AllowMutations = args.AllowMutations,
-			WritableUrls = args.Writable,
-			Viewport = viewport,
-			UserAgent = args.UserAgent,
-			Headers = headers,
-			Tags = new HashSet<string>(args.Tags, StringComparer.Ordinal),
-			Parallel = args.Parallel,
-			AllowAllSkipped = args.AllowAllSkipped,
-			ScreenshotOnFailure = args.ScreenshotOnFailure,
-			Verbose = args.Verbose,
-			JUnitPath = args.JUnit,
-			Rerun = RerunCommand(baseUrl, variant, transcript, args),
-			ParseErrorExitCode = ExitCode.Usage,
-		};
+		var options = BuildOptions(JourneyRunFile.FromPaths(_root, files), baseUri, allow, fileRoot, artifacts, variant, args, engine, viewport, headers,
+			mode == TranscriptMode.Off ? null : (f, recorded) => engine.MatchFile(recorded.Text, JourneySnapshot.Format, f.Path, null, null, variant),
+			RerunCommand(baseUrl, variant, transcript, args));
 		var interactive = args.Interactive ?? ConsoleJourneyReporter.UseInteractive;
 		if (interactive && baseUri is not null)
 		{
@@ -130,6 +101,178 @@ internal sealed class JourneyCli(
 			.RunAsync(options, output, error, new DelegateExecutor(run, ensureReady), new ConsoleJourneyReporter(output, options, interactive), cancellationToken)
 			.ConfigureAwait(false);
 	}
+
+	/// <summary>
+	/// <c>snap journey compare</c>: runs each journey against the baseline site, seeding its transcript into the received
+	/// tree, then against the target, and compares the two under the journey's <c>.differences</c> rules. The runs are
+	/// the console runner's, so <c>@requires</c>, <c>@mutates</c>, read-only runs and parallelism are as in <c>run</c>.
+	/// </summary>
+	public async Task<int> CompareAsync(
+		IReadOnlyList<string> patterns,
+		string? baseline,
+		string? target,
+		CancellationToken cancellationToken,
+		IReadOnlyList<string>? allow = null,
+		string? fileRoot = null,
+		string? artifacts = null,
+		bool reuseBaseline = false,
+		string? record = null,
+		string? prune = null,
+		JourneyRunArgs? more = null
+	)
+	{
+		if (patterns.Count == 0)
+		{
+			error.WriteLine("Error: name the journeys to compare: files or globs such as 'journeys/**/*.journey'.");
+			return ExitCode.Usage;
+		}
+
+		if (!TryParseSite("--baseline", baseline, out var baselineUri, out var problem) || !TryParseSite("--target", target, out var targetUri, out problem))
+		{
+			error.WriteLine(problem);
+			return ExitCode.Usage;
+		}
+
+		var (files, missing) = Expand(patterns);
+		var lookalikes = missing.Where(LooksLikeOption).ToList();
+		foreach (var pattern in missing.Except(lookalikes))
+			error.WriteLine($"Error: no journey matches '{pattern}'.");
+		if (lookalikes.Count > 0)
+			error.WriteLine(OptionLookalikes(lookalikes));
+		if (missing.Count > 0)
+			return ExitCode.Usage;
+
+		var args = more ?? new JourneyRunArgs();
+		if (!TryParseViewport(args.Viewport, out var viewport, out problem) || !TryParseHeaders(args.Headers, out var headers, out problem))
+		{
+			error.WriteLine(problem);
+			return ExitCode.Usage;
+		}
+
+		var projects = new SnapshotProjectResolver(fileSystem);
+		var engine = new SnapshotEngine(fileSystem, k => k == SnapshotEnvironment.AcceptVariable ? null : getVariable(k), () => null,
+			(site, _) => WithArtifactsReceived(fileSystem, projects.FromCallerFile(site.FilePath)));
+		var runFiles = JourneyRunFile.FromPaths(_root, files);
+		var recordFile = record is null ? null : fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, record));
+		var pruneFile = prune is null ? null : fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, prune));
+		var executor = new DelegateExecutor(run, ensureReady);
+		var interactive = args.Interactive ?? ConsoleJourneyReporter.UseInteractive;
+
+		// Pass one: the baseline site, written into the received tree. Nothing is shown unless it did not finish.
+		var toSeed = reuseBaseline ? runFiles.Where(f => engine.ReadBaseline(JourneySnapshot.Format.Extension, f.Path, null) is null).ToList() : [.. runFiles];
+		if (toSeed.Count > 0)
+		{
+			var captured = new StringWriter();
+			var seedOptions = BuildOptions(toSeed, baselineUri, allow, fileRoot, artifacts, null, args, engine, viewport, headers,
+				(f, recorded) =>
+				{
+					// A baseline that stopped at a failing step is not one to compare with.
+					if (recorded.Failure is null)
+						_ = engine.SeedBaseline(recorded.Text, JourneySnapshot.Format.Extension, f.Path, null);
+					return new SnapshotResult(true, null, string.Empty, string.Empty, string.Empty);
+				}, string.Empty, seeding: true);
+			var seeded = await JourneyConsoleRunner
+				.RunAsync(seedOptions, captured, error, executor, new ConsoleJourneyReporter(captured, seedOptions, false), cancellationToken)
+				.ConfigureAwait(false);
+			if (seeded != JourneyExitCode.Ok)
+			{
+				output.WriteLine($"The run against the baseline {baselineUri} did not finish, so there is nothing to compare with:");
+				output.Write(captured.ToString());
+				return seeded;
+			}
+		}
+
+		// Pass two: the target, compared with what pass one wrote.
+		var usageErrors = 0;
+		SnapshotResult CompareOne(JourneyRunFile f, JourneyTranscript recorded)
+		{
+			try
+			{
+				var result = engine.CompareSites(recorded.Text, JourneySnapshot.Format, JourneyRuleTargets.Instance, f.Path,
+					new SiteComparisonOptions { Record = recordFile, Prune = pruneFile, Note = $"recorded against {targetUri}" });
+				if (result.Recorded.Count > 0)
+					output.WriteLine($"Recorded {result.Recorded.Count} rule(s) for {f.Id} in {fileSystem.Path.GetRelativePath(_root, recordFile!).Replace('\\', '/')}.");
+				return new SnapshotResult(result.Passed, result.FailureMessage, string.Empty, result.BaselinePath, result.TargetPath ?? string.Empty);
+			}
+			catch (Exception e) when (e is ExpectedDifferencesException or InvalidOperationException)
+			{
+				_ = Interlocked.Increment(ref usageErrors);
+				return new SnapshotResult(false, e.Message, string.Empty, string.Empty, string.Empty);
+			}
+		}
+
+		var options = BuildOptions(runFiles, targetUri, allow, fileRoot, artifacts, null, args, engine, viewport, headers, CompareOne,
+			$"snap journey compare {{id}}.journey --baseline {baselineUri} --target {targetUri} --reuse-baseline");
+		if (interactive)
+		{
+			output.WriteLine(ConsoleJourneyReporter.ContextBlock($"snap {Version}".TrimEnd(), [new ContextRow("Baseline", baselineUri.ToString()), new ContextRow("Target", targetUri.ToString())]));
+			output.WriteLine();
+		}
+
+		var exit = await JourneyConsoleRunner
+			.RunAsync(options, output, error, executor, new ConsoleJourneyReporter(output, options, interactive), cancellationToken)
+			.ConfigureAwait(false);
+		return usageErrors > 0 ? Math.Max(exit, ExitCode.Usage) : exit;
+	}
+
+	/// <summary>Reads a required <c>--baseline</c> or <c>--target</c>: an absolute http, https or file URL.</summary>
+	internal static bool TryParseSite(string flag, string? value, out Uri uri, out string problem)
+	{
+		problem = string.Empty;
+		uri = null!;
+		if (value is null)
+		{
+			problem = $"Error: {flag} is required: the URL of the site to {(flag == "--baseline" ? "take the baseline from" : "compare with it")}.";
+			return false;
+		}
+
+		if (Uri.TryCreate(value, UriKind.Absolute, out var parsed) && parsed.Scheme is "http" or "https" or "file")
+		{
+			uri = parsed;
+			return true;
+		}
+
+		problem = $"Error: {flag} '{value}' is not an absolute http, https or file URL.";
+		return false;
+	}
+
+	private JourneyRunOptions BuildOptions(
+		IReadOnlyList<JourneyRunFile> files, Uri? baseUri, IReadOnlyList<string>? allow, string? fileRoot, string? artifacts, string? variant,
+		JourneyRunArgs args, SnapshotEngine engine, JourneyViewport? viewport, IReadOnlyDictionary<string, string> headers,
+		Func<JourneyRunFile, JourneyTranscript, SnapshotResult>? compare, string rerun, bool seeding = false
+	) => new()
+	{
+		Files = files,
+		BaseUrl = baseUri,
+		AllowedHosts = allow ?? [],
+		FileRoot = fileRoot is null ? null : fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, fileRoot)),
+		// As in a test: a journey that writes files gets its own folder next to its received transcript.
+		ArtifactsFor = f => artifacts is not null
+			? fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, artifacts))
+			: WritesFiles(f.Path) || args.ScreenshotOnFailure ? engine.ArtifactsDirectory(f.Path) : null,
+		Compare = compare,
+		Variant = variant,
+		Load = path => Journey.Parse(fileSystem.File.ReadAllText(path), path),
+		Features = new HashSet<string>(args.Features, StringComparer.Ordinal),
+		BuildType = args.BuildType,
+		Env = args.Env,
+		ReadOnly = args.ReadOnly,
+		AllowMutations = args.AllowMutations,
+		WritableUrls = args.Writable,
+		Viewport = viewport,
+		UserAgent = args.UserAgent,
+		Headers = headers,
+		Tags = new HashSet<string>(args.Tags, StringComparer.Ordinal),
+		Parallel = args.Parallel,
+		// The baseline pass is not the run: a journey it skips is skipped in the comparison too, and it reports to no one.
+		AllowAllSkipped = seeding || args.AllowAllSkipped,
+		ScreenshotOnFailure = args.ScreenshotOnFailure,
+		Verbose = args.Verbose,
+		JUnitPath = seeding ? null : args.JUnit,
+		StepSummary = !seeding,
+		Rerun = rerun,
+		ParseErrorExitCode = ExitCode.Usage,
+	};
 
 	private static string Version =>
 		typeof(JourneyCli).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), inherit: false)
@@ -451,6 +594,101 @@ internal sealed class JourneyCommands
 				ScreenshotOnFailure = screenshotOnFailure,
 			};
 			return await cli.RunAsync(files, baseUrl, CancellationToken.None, allow, fileRoot, artifacts, variant, transcript, args).ConfigureAwait(false);
+		}
+		finally
+		{
+			if (browser.IsValueCreated && browser.Value.IsCompletedSuccessfully)
+				await browser.Value.Result.DisposeAsync().ConfigureAwait(false);
+		}
+	}
+	/// <summary>
+	/// Run journeys against a baseline site and a target site and compare the two transcripts, so only differences nobody
+	/// expected fail. Expected ones are rules in {journey}.differences next to the journey (which may include? a file for one
+	/// preview's differences). The baseline is seeded into the received tree, never a snapshot. Exit codes: 0 every difference
+	/// is expected, 1 a difference is not (or a rule is stale, or a step failed), 2 usage, bad rules or a journey error,
+	/// 3 Chrome could not start.
+	/// </summary>
+	/// <param name="files">Journey files or globs, relative to the root (e.g. 'tests/Shop.Tests/journeys/**/*.journey').</param>
+	/// <param name="baseline">The site to take the baseline from, such as https://docs.example.com/. Required.</param>
+	/// <param name="target">The site to compare with it, such as https://docs-preview.example.com/. Required.</param>
+	/// <param name="reuseBaseline">Use the baselines of an earlier run, and run the baseline site only for journeys that have none.</param>
+	/// <param name="record">Append a rule for every unexpected difference to this file, which the journey's rules must include? , instead of failing.</param>
+	/// <param name="prune">Remove the stale rules of this file (a rules file that is an include?), instead of failing for them.</param>
+	/// <param name="root">The folder files and globs are relative to. Defaults to the current folder.</param>
+	/// <param name="allow">-a, --allow, Another host pattern journeys may reach (repeatable): host, *.domain or *.</param>
+	/// <param name="fileRoot">The folder file:// URLs may point into, when a site is not a folder.</param>
+	/// <param name="artifacts">Where screenshot and network har stop write. Defaults to a folder per journey next to its received transcript.</param>
+	/// <param name="feature">A feature flag that is on (repeatable), for 'feature' blocks and '# @requires' lines.</param>
+	/// <param name="env">The environment's name, for 'env:' conditions.</param>
+	/// <param name="buildType">The build type, for 'build-type:' conditions.</param>
+	/// <param name="readOnly">Refuse every request that is not GET, HEAD or OPTIONS, and skip journeys marked '# @mutates'.</param>
+	/// <param name="allowMutations">Run journeys marked '# @mutates' on a read-only run.</param>
+	/// <param name="writable">URL glob a read-only run may write to anyway (repeatable): ** anything, * anything but /.</param>
+	/// <param name="userAgent">The user agent of the run.</param>
+	/// <param name="header">A request header every page sends (repeatable): "Name: value".</param>
+	/// <param name="viewport">The viewport every journey starts with: 1280x800.</param>
+	/// <param name="parallel">-p, How many journeys run at once, in one shared browser. Default: 4.</param>
+	/// <param name="tag">-t, Only journeys with one of these '# @tags' (repeatable).</param>
+	/// <param name="junit">Write a JUnit XML report of the comparison here.</param>
+	/// <param name="verbose">-v, List every skipped journey instead of collapsing a reason that many share.</param>
+	/// <param name="allowAllSkipped">Exit with 0 when every selected journey was skipped. Otherwise a run that checked nothing exits with 1.</param>
+	public static async Task<int> Compare(
+		[Argument] string[] files,
+		string? baseline = null,
+		string? target = null,
+		bool reuseBaseline = false,
+		string? record = null,
+		string? prune = null,
+		string? root = null,
+		string[]? allow = null,
+		string? fileRoot = null,
+		string? artifacts = null,
+		string[]? feature = null,
+		string? env = null,
+		string? buildType = null,
+		bool readOnly = false,
+		bool allowMutations = false,
+		string[]? writable = null,
+		string? userAgent = null,
+		string[]? header = null,
+		string? viewport = null,
+		int parallel = 4,
+		string[]? tag = null,
+		string? junit = null,
+		bool verbose = false,
+		bool allowAllSkipped = false
+	)
+	{
+		var browser = new Lazy<Task<Cdp.Browser>>(() => Cdp.Browser.LaunchAsync(), LazyThreadSafetyMode.ExecutionAndPublication);
+		try
+		{
+			var cli = new JourneyCli(
+				new FileSystem(),
+				root ?? Directory.GetCurrentDirectory(),
+				Console.Out,
+				Console.Error,
+				async (file, options, ct) => await JourneySnapshot.RunAsync(file, await browser.Value.ConfigureAwait(false), options, ct).ConfigureAwait(false),
+				Environment.GetEnvironmentVariable,
+				_ => browser.Value
+			);
+			var args = new JourneyRunArgs
+			{
+				Features = feature ?? [],
+				Env = env,
+				BuildType = buildType,
+				ReadOnly = readOnly,
+				AllowMutations = allowMutations,
+				Writable = writable ?? [],
+				UserAgent = userAgent,
+				Headers = header ?? [],
+				Viewport = viewport,
+				Parallel = parallel,
+				Tags = tag ?? [],
+				JUnit = junit,
+				Verbose = verbose,
+				AllowAllSkipped = allowAllSkipped,
+			};
+			return await cli.CompareAsync(files, baseline, target, CancellationToken.None, allow, fileRoot, artifacts, reuseBaseline, record, prune, args).ConfigureAwait(false);
 		}
 		finally
 		{
