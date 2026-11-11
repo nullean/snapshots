@@ -648,6 +648,17 @@ image or a transcript is not something to read in a source file.
   A transcript that differs after every step passed shows the comparison's own message as written, never reflowed.
 - **The exit code for a journey that cannot be parsed is an option.** `snap` documents 2 for it and docs-builder documents 1.
 
+## GitHub Actions reporting
+
+- **Annotations for failures only, capped.** An annotation shows on the pull request at the journey's failing line. A skip is
+  not a problem to fix, so it is one line in the summary and nothing else. GitHub shows ten error annotations per step, so the
+  eleventh failure becomes one warning that counts the rest.
+- **Detail depends on the size of the run.** A short run lists every journey in the summary and leaves failures expanded in the
+  log; a long run lists only the failures in the summary and folds each failure into a log group, because a run with many
+  journeys is read for what broke. Groups are collapsed by GitHub, so the annotation carries the error for those.
+- **On by detection, off by an option.** `GITHUB_ACTIONS` turns it on, and the tests clear it, so the output of the other
+  tests does not change in CI.
+
 ## Failure screenshots
 
 - **Off unless asked for.** A screenshot can show private data, so `ScreenshotOnFailure` and `--screenshot-on-failure` are opt-in,
