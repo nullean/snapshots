@@ -803,3 +803,9 @@ two sites. This change is the rules and what reads them; running the two sites i
   the crop most of the page, and then there is no zoom (more than half the image's area: the diff already shows it). The report names both files
   and draws the zoom, **enlarged smoothly in the terminal only**: a 1:1 crop of a few dozen pixels draws tiny on a screen with small pixels,
   so the terminal drawing fills a 60 by 12 cell box (bilinear, `AllowUpscale`), while the file on disk stays a plain crop.
+
+## The macOS browser job leaves a log (#64)
+
+- The job froze with no log, so the cause is unknown; this change only makes the next freeze readable. `dotnet test` gets `--timeout 6m` (the run ends itself, naming the tests still running, before the step's 10 minute
+  limit), `--output Detailed` (every test is listed as it finishes, so the last line is where it stopped) and a diagnostic log, uploaded with `if: always()`. TUnit ships no hang dump, and a
+  per-test `[Timeout]` would only guard tests that start; the global timeout covers a hang in the host. A runner that freezes as a whole answers nothing, and then only the uploaded log of an earlier step helps.
