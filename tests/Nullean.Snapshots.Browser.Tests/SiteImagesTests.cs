@@ -63,8 +63,54 @@ public class SiteImagesTests
 		difference.Summary.Should().StartWith("1 of 200 pixels differ (0.5");
 		difference.Regions.Should().ContainSingle().Which.Should().Be("x 5-5, y 4-4 (1x1): 1 pixel(s)");
 		difference.DiffPath.Should().Be(Path.Combine(Target, "nav.diff.png"));
-		var diff = Png.Decode(fs.File.ReadAllBytes(difference.DiffPath!));
+		var diff = Png.Decode(fs.File.ReadAllBytes(difference.DiffPath));
 		(diff.Width, diff.Height).Should().Be((20, 10));
+	}
+
+	private static bool HasBlue(byte[] png) =>
+		Png.Decode(png) is var image && Enumerable.Range(0, image.PixelCount).Any(
+			i => image.Pixels[i * 4] == 0 && image.Pixels[(i * 4) + 1] == 102 && image.Pixels[(i * 4) + 2] == 255
+		);
+
+	[Test]
+	public void TheDiffImageBoxesEachPlaceUnlessOptionsSayOtherwise()
+	{
+		var fs = Folders(("baseline", "nav.png", Solid(20, 10, 200)), ("target", "nav.png", Solid(20, 10, 200, (5, 4))));
+
+		var boxed = SiteImages.Compare(fs, Baseline, Target).Single();
+		HasBlue(fs.File.ReadAllBytes(boxed.DiffPath!)).Should().BeTrue();
+
+		var plain = SiteImages.Compare(fs, Baseline, Target, new ImageSnapshotOptions()).Single();
+		HasBlue(fs.File.ReadAllBytes(plain.DiffPath!)).Should().BeFalse("explicit options are the caller's: no boxes unless they ask");
+	}
+
+	[Test]
+	public void ABigPictureWithASmallChangeGetsAZoomNextToItsDiff()
+	{
+		var fs = Folders(("baseline", "nav.png", Solid(200, 100, 200)), ("target", "nav.png", Solid(200, 100, 200, (100, 50))));
+
+		var difference = SiteImages.Compare(fs, Baseline, Target).Single();
+
+		difference.ZoomPath.Should().Be(Path.Combine(Target, "nav.zoom.png"));
+		var zoom = Png.Decode(fs.File.ReadAllBytes(difference.ZoomPath));
+		(zoom.Width, zoom.Height).Should().Be((65, 65), "a crop at its own size, not enlarged");
+		SiteImages
+			.Compare(fs, Baseline, Target)
+			.Select(d => d.Name)
+			.Should()
+			.ContainSingle()
+			.Which
+			.Should()
+			.Be("nav.png", "neither the diff nor the zoom of an earlier run is a screenshot");
+	}
+
+	[Test]
+	public void ASmallPictureNeedsNoZoom()
+	{
+		var fs = Folders(("baseline", "nav.png", Solid(20, 10, 200)), ("target", "nav.png", Solid(20, 10, 200, (5, 4))));
+
+		SiteImages.Compare(fs, Baseline, Target).Single().ZoomPath.Should().BeNull();
+		fs.AllFiles.Should().NotContain(f => f.EndsWith(".zoom.png", StringComparison.Ordinal));
 	}
 
 	[Test]

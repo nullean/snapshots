@@ -114,7 +114,7 @@ public class PixelComparerTests
 	{
 		// A grey cluster on a black and white edge: (5, 4) has three grey neighbours in both images, so it is part of
 		// a shape rather than the edge's anti-aliasing, and its change counts.
-		RgbaImage Cluster(byte grey)
+		static RgbaImage Cluster(byte grey)
 		{
 			var image = TestImages.Solid(12, 9, 255, 255, 255);
 			for (var y = 0; y < 9; y++)

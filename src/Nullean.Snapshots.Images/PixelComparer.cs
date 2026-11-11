@@ -33,6 +33,86 @@ internal static class PixelComparer
 	/// <summary>Regions group differences that lie within cells of this size of each other.</summary>
 	private const int Cell = 8;
 
+	/// <summary>How far outside a region its outline is drawn.</summary>
+	internal const int OutlineMargin = 3;
+
+	/// <summary>How thick an outline is.</summary>
+	internal const int OutlineThickness = 2;
+
+	/// <summary>The most regions <see cref="Outline"/> draws around.</summary>
+	internal const int MaxOutlines = 100;
+
+	/// <summary>The outline colour: blue, which neither the red of a difference nor the yellow of anti-aliasing is.</summary>
+	internal static readonly (byte R, byte G, byte B) OutlineColour = (0, 102, 255);
+
+	/// <summary>
+	/// A copy of <paramref name="diff"/> with a rectangle around each of the first <see cref="MaxOutlines"/> of
+	/// <paramref name="regions"/>, <see cref="OutlineMargin"/> pixels outside it, clamped to the image.
+	/// </summary>
+	public static RgbaImage Outline(RgbaImage diff, IReadOnlyList<DiffRegion> regions)
+	{
+		var pixels = (byte[])diff.Pixels.Clone();
+
+		void Set(int x, int y)
+		{
+			var at = ((y * diff.Width) + x) * 4;
+			pixels[at] = OutlineColour.R;
+			pixels[at + 1] = OutlineColour.G;
+			pixels[at + 2] = OutlineColour.B;
+			pixels[at + 3] = 255;
+		}
+
+		foreach (var region in regions.Take(MaxOutlines))
+		{
+			int left = Math.Max(0, region.Left - OutlineMargin), top = Math.Max(0, region.Top - OutlineMargin);
+			int right = Math.Min(diff.Width - 1, region.Right + OutlineMargin), bottom = Math.Min(diff.Height - 1, region.Bottom + OutlineMargin);
+			for (var t = 0; t < OutlineThickness; t++)
+			{
+				int l = left + t, r = right - t, u = top + t, d = bottom - t;
+				if (l > r || u > d)
+					break;
+				for (var x = l; x <= r; x++)
+				{
+					Set(x, u);
+					Set(x, d);
+				}
+
+				for (var y = u; y <= d; y++)
+				{
+					Set(l, y);
+					Set(r, y);
+				}
+			}
+		}
+
+		return diff with { Pixels = pixels };
+	}
+
+	/// <summary>How much of the image around the changed places a zoom keeps.</summary>
+	internal const int ZoomPadding = 32;
+
+	/// <summary>
+	/// The diff cropped to all of <paramref name="regions"/> and <see cref="ZoomPadding"/> pixels around them, at its own size: not
+	/// enlarged, so every pixel is a pixel of the screenshot. <see langword="null"/> when there is no region, or the crop covers more
+	/// than half the image, where the diff image already shows it.
+	/// </summary>
+	public static RgbaImage? Zoom(RgbaImage diff, IReadOnlyList<DiffRegion> regions)
+	{
+		if (regions.Count == 0)
+			return null;
+		var left = Math.Max(0, regions.Min(r => r.Left) - ZoomPadding);
+		var top = Math.Max(0, regions.Min(r => r.Top) - ZoomPadding);
+		var right = Math.Min(diff.Width - 1, regions.Max(r => r.Right) + ZoomPadding);
+		var bottom = Math.Min(diff.Height - 1, regions.Max(r => r.Bottom) + ZoomPadding);
+		int width = right - left + 1, height = bottom - top + 1;
+		if ((long)width * height * 2 > (long)diff.Width * diff.Height)
+			return null;
+		var pixels = new byte[width * height * 4];
+		for (var y = 0; y < height; y++)
+			Buffer.BlockCopy(diff.Pixels, (((top + y) * diff.Width) + left) * 4, pixels, y * width * 4, width * 4);
+		return new RgbaImage(width, height, pixels);
+	}
+
 	public static PixelComparison Compare(RgbaImage verified, RgbaImage actual, double threshold, bool includeAntiAliasing, bool drawDiff)
 	{
 		if (verified.Width != actual.Width || verified.Height != actual.Height)

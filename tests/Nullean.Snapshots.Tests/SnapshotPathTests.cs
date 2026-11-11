@@ -6,6 +6,8 @@ namespace Nullean.Snapshots.Tests;
 
 public class SnapshotPathTests
 {
+	private static readonly int[] OneTwo = [1, 2];
+
 	private static readonly MockFileSystem Fs = new();
 	private static string P(params string[] parts) => Fs.Path.Combine([TestProject.Root, .. parts]);
 
@@ -63,7 +65,7 @@ public class SnapshotPathTests
 	{
 		SnapshotPath.ArgumentsHash([]).Should().BeEmpty();
 		SnapshotPath.ArgumentsHash([1, "a", null, 1.5]).Should().Be("c51fda38");
-		SnapshotPath.ArgumentsHash([new[] { 1, 2 }]).Should().Be(SnapshotPath.ArgumentsHash([new List<int> { 1, 2 }]));
+		SnapshotPath.ArgumentsHash([OneTwo]).Should().Be(SnapshotPath.ArgumentsHash([new List<int> { 1, 2 }]));
 		SnapshotPath.ArgumentsHash(["1"]).Should().NotBe(SnapshotPath.ArgumentsHash([1]));
 	}
 

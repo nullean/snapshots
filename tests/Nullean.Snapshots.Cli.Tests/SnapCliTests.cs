@@ -5,13 +5,20 @@ using Nullean.Snapshots.Cli;
 
 namespace Nullean.Snapshots.Cli.Tests;
 
-public class SnapCliTests
+public class SnapCliTests : IDisposable
 {
 	private static readonly string Root = OperatingSystem.IsWindows() ? @"C:\repo" : "/repo";
 
 	private readonly MockFileSystem _fs = new();
 	private readonly StringWriter _out = new();
 	private readonly StringWriter _err = new();
+
+	public void Dispose()
+	{
+		_out.Dispose();
+		_err.Dispose();
+		GC.SuppressFinalize(this);
+	}
 
 	private string P(params string[] parts) => _fs.Path.Combine([Root, .. parts]);
 

@@ -257,7 +257,7 @@ public class JourneyCompareTests
 	{
 		var result = await Real("nav");
 
-		result.Passed.Should().BeTrue(result.FailureMessage);
+		result.Passed.Should().BeTrue("{0}", result.FailureMessage);
 		result.Application.Explained.Should().ContainSingle();
 	}
 
@@ -280,9 +280,9 @@ public class JourneyCompareTests
 	}
 	// Screenshots: one folder per site, a diff image for each picture that differs
 
-	private static byte[] Picture(bool dot)
+	private static byte[] Picture(bool dot, int width = 16, int height = 8)
 	{
-		var pixels = new byte[16 * 8 * 4];
+		var pixels = new byte[width * height * 4];
 		for (var i = 0; i < pixels.Length; i += 4)
 		{
 			pixels[i] = pixels[i + 1] = pixels[i + 2] = 200;
@@ -291,11 +291,11 @@ public class JourneyCompareTests
 
 		if (dot)
 		{
-			pixels[(((3 * 16) + 5) * 4) + 1] = 0;
-			pixels[(((3 * 16) + 5) * 4) + 2] = 0;
+			pixels[(((3 * width) + 5) * 4) + 1] = 0;
+			pixels[(((3 * width) + 5) * 4) + 2] = 0;
 		}
 
-		return Images.Png.Encode(new Images.RgbaImage(16, 8, pixels));
+		return Images.Png.Encode(new Images.RgbaImage(width, height, pixels));
 	}
 
 	private static Run WithRule(Run run)
@@ -342,6 +342,28 @@ public class JourneyCompareTests
 			.And
 			.Contain("shop.target.artifacts/nav.diff.png");
 		run.P.Fs.AllFiles.Should().Contain(f => f.EndsWith("shop.target.artifacts" + Path.DirectorySeparatorChar + "nav.diff.png", StringComparison.Ordinal));
+	}
+
+	[Test]
+	public async Task ABigPictureWithASmallChangeIsReportedWithItsZoomToo()
+	{
+		var run = WithRule(new Run());
+		run.Pictures["prod.test"] = [("nav.png", Picture(false, 200, 100))];
+		run.Pictures["preview.test"] = [("nav.png", Picture(true, 200, 100))];
+
+		(await run.Compare()).Should().Be(0);
+
+		run
+			.Output
+			.Should()
+			.Contain("      diff: ")
+			.And
+			.Contain("shop.target.artifacts/nav.diff.png")
+			.And
+			.Contain("      zoom: ")
+			.And
+			.Contain("shop.target.artifacts/nav.zoom.png");
+		run.P.Fs.AllFiles.Should().Contain(f => f.EndsWith("nav.zoom.png", StringComparison.Ordinal));
 	}
 
 	[Test]
@@ -421,7 +443,7 @@ public class JourneyCompareTests
 	{
 		var result = await Real("shot");
 
-		result.Passed.Should().BeTrue(result.FailureMessage);
+		result.Passed.Should().BeTrue("{0}", result.FailureMessage);
 		var difference = JourneySnapshot.CompareScreenshots("compare-journeys/shot.journey").Should().ContainSingle().Subject;
 		difference.Name.Should().Be("nav.png");
 		difference.DiffPath.Should().NotBeNull();

@@ -28,16 +28,16 @@ public class LineDiffTests
 
 	// Regression: DiffPlex's own line chunker counted the empty piece after the trailing newline as a line, so an
 	// appended line showed up as a changed last line.
+	private static readonly string[][] AppendedHunks = [["@@ line 1 @@", " a", "+b"]];
+	private static readonly string[][] ChangedHunks = [["@@ line 2 @@", " 2", " 3", " 4", "-5", "+FIVE", " 6", " 7", " 8"]];
+	private static readonly string[][] AddedToEmptyHunks = [["@@ line 1 @@", "+x", "+y"]];
+
 	[Test]
-	public void AppendedLineIsOnlyAnAddition() =>
-		LineDiff.Hunks("a\n", "a\nb\n").Should().BeEquivalentTo(new[] { new[] { "@@ line 1 @@", " a", "+b" } }, o => o.WithStrictOrdering());
+	public void AppendedLineIsOnlyAnAddition() => LineDiff.Hunks("a\n", "a\nb\n").Should().BeEquivalentTo(AppendedHunks, o => o.WithStrictOrdering());
 
 	[Test]
 	public void ChangeIsShownWithThreeLinesOfContext() =>
-		LineDiff
-			.Hunks("1\n2\n3\n4\n5\n6\n7\n8\n9\n", "1\n2\n3\n4\nFIVE\n6\n7\n8\n9\n")
-			.Should()
-			.BeEquivalentTo(new[] { new[] { "@@ line 2 @@", " 2", " 3", " 4", "-5", "+FIVE", " 6", " 7", " 8" } }, o => o.WithStrictOrdering());
+		LineDiff.Hunks("1\n2\n3\n4\n5\n6\n7\n8\n9\n", "1\n2\n3\n4\nFIVE\n6\n7\n8\n9\n").Should().BeEquivalentTo(ChangedHunks, o => o.WithStrictOrdering());
 
 	[Test]
 	public void FarApartChangesAreSeparateHunks()
@@ -49,8 +49,7 @@ public class LineDiffTests
 	}
 
 	[Test]
-	public void EverythingAddedToEmptyText() =>
-		LineDiff.Hunks("", "x\ny\n").Should().BeEquivalentTo(new[] { new[] { "@@ line 1 @@", "+x", "+y" } }, o => o.WithStrictOrdering());
+	public void EverythingAddedToEmptyText() => LineDiff.Hunks("", "x\ny\n").Should().BeEquivalentTo(AddedToEmptyHunks, o => o.WithStrictOrdering());
 
 	[Test]
 	public void LongLinesAreCut()

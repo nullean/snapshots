@@ -9,7 +9,7 @@ public class HtmlSnapshotTests
 	/// <summary>Random HTML from a small grammar: nested elements, attributes, and text with characters that need escaping.</summary>
 	private static readonly Gen<string> Html = Gen.Recursive<string>((depth, inner) =>
 	{
-		var text = Gen.String[Gen.Char["ab <>&\"'{}"], 0, 6].Select(System.Net.WebUtility.HtmlEncode);
+		var text = Gen.String[Gen.Char["ab <>&\"'{}"], 0, 6].Select(s => System.Net.WebUtility.HtmlEncode(s));
 		if (depth >= 3)
 			return text;
 		var attribute = Gen.Select(Gen.OneOf("class", "id", "hx-get", "data-x"), Gen.String[Gen.Char["xyz"], 0, 3]).Select((n, v) => $" {n}=\"{v}\"");

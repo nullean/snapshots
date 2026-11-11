@@ -38,7 +38,7 @@ public class TUnitIdentityTests
 	{
 		var project = new SnapshotProjectResolver(new FileSystem()).FromMetadata(typeof(TUnitIdentityTests).Assembly);
 		project.Should().NotBeNull();
-		project!.Name.Should().Be("Nullean.Snapshots.Tests");
+		project.Name.Should().Be("Nullean.Snapshots.Tests");
 		project.SnapshotsDirectory.Should().Be(Path.Combine(project.Directory, ".snapshots"));
 		project.ReceivedDirectory.Replace('\\', '/').Should().EndWith("/.artifacts/.snapshots/received/Nullean.Snapshots.Tests");
 		File.Exists(Path.Combine(project.Directory, "Nullean.Snapshots.Tests.csproj")).Should().BeTrue();

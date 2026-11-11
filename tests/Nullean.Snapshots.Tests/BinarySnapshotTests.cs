@@ -174,7 +174,7 @@ public class BinarySnapshotTests
 				? BinarySnapshotComparison.Match
 				: new(
 					new SnapshotComparison(false, [["bytes differ"]]),
-					[new SnapshotAttachment("Diff", undeclared ? "oops.bin" : "diff.bin", new byte[] { 9, 9 })]
+					[new SnapshotAttachment("Diff", undeclared ? "oops.bin" : "diff.bin", "\t\t"u8.ToArray())]
 				);
 	}
 }

@@ -115,7 +115,7 @@ public class ExpectTests
 		var result = await HttpFileRunner.RunAsync(file, options: Host(server));
 
 		result.Failure.Should().NotBeNull();
-		result.Failure!.Line.Should().Be(2);
+		result.Failure.Line.Should().Be(2);
 		result.Failure.Message.Should().Be("@expect status 200 failed: the response was 401 Unauthorized");
 		result.Failure.Request.Name.Should().Be("secure");
 		result
@@ -188,7 +188,7 @@ public class ExpectTests
 		var result = await HttpFileRunner.RunAsync(file, options: Host(server, readOnly: true));
 
 		result.Failure.Should().NotBeNull();
-		result.Failure!.Line.Should().Be(5);
+		result.Failure.Line.Should().Be(5);
 		result
 			.Failure
 			.Message

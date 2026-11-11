@@ -374,7 +374,7 @@ public class HttpSiteCompareTests
 	{
 		var result = await Real("catalog");
 
-		result.Passed.Should().BeTrue(result.FailureMessage);
+		result.Passed.Should().BeTrue("{0}", result.FailureMessage);
 		result.Application.Explained.Should().ContainSingle().Which.Difference.Path.Should().Be("$[0].body.items[0].badge");
 	}
 
@@ -397,8 +397,8 @@ public class HttpSiteCompareTests
 	{
 		var result = await Real("catalog-values", values: true);
 
-		result.Passed.Should().BeTrue(result.FailureMessage);
-		result.Application.Explained.Should().HaveCount(4, "a badge, two prices and the home link; the self link is equal once both origins are {origin}");
+		result.Passed.Should().BeTrue("{0}", result.FailureMessage);
+		result.Application.Explained.Should().HaveCount(4, "a badge, two prices and the home link; the self link is equal once both origins are {{origin}}");
 		TestContext.Current!.Output.WriteLine(result.BaselinePath);
 		File.ReadAllText(result.BaselinePath).Should().Contain("\"self\": \"{origin}/api/catalog\"").And.NotContain(TestServer.Shared.Host);
 	}
