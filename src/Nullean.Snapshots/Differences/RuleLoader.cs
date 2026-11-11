@@ -49,6 +49,12 @@ public static class RuleLoader
 	/// <summary>The extension of a rules file, with its dot.</summary>
 	public const string Extension = ".differences";
 
+	/// <summary>
+	/// The name of a rules file that applies to every journey and <c>.http</c> file in its folder and below: a hidden file,
+	/// <c>.differences</c>, in any folder from the file's own up to the repository root.
+	/// </summary>
+	public const string FolderFile = ".differences";
+
 	private const int MaxDepth = 16;
 
 	/// <summary>The rules file next to <paramref name="file"/>: <c>shop.journey</c> has <c>shop.differences</c>.</summary>
@@ -69,7 +75,9 @@ public static class RuleLoader
 	}
 
 	/// <summary>
-	/// Loads <paramref name="sidecarPath"/> if it exists, and what it includes. A <c>//path</c> in an include is
+	/// Loads the <see cref="FolderFile"/>s from the repository root down to the sidecar's folder (the nearest last), then
+	/// <paramref name="sidecarPath"/> if it exists, and what each includes. A folder file's rules apply to many files, so,
+	/// like an <c>include</c>'s, one file not needing a rule does not make it stale. A <c>//path</c> in an include is
 	/// relative to <paramref name="repositoryRoot"/>, any other path to the file that includes it.
 	/// </summary>
 	/// <exception cref="ExpectedDifferencesException">A file cannot be read, is outside the repository or a link, is missing (for <c>include</c>), includes itself, or has a line that is not a rule.</exception>
@@ -77,10 +85,17 @@ public static class RuleLoader
 	{
 		ArgumentNullException.ThrowIfNull(fs);
 		var root = fs.Path.TrimEndingDirectorySeparator(fs.Path.GetFullPath(repositoryRoot));
-		var scoped = new ScopedFileSystem.ScopedFileSystem(fs, new ScopedFileSystemOptions(root));
+		var scoped = new ScopedFileSystem.ScopedFileSystem(fs, new ScopedFileSystemOptions(root) { AllowedHiddenFileNames = [FolderFile] });
 		var errors = new List<string>();
 		var rules = new List<DifferenceRule>();
 		var files = new List<RuleFileInfo>();
+		var folders = new List<string>();
+		for (var folder = fs.Path.GetDirectoryName(fs.Path.GetFullPath(sidecarPath)); folder is not null && IsInside(fs, root, folder); folder = fs.Path.GetDirectoryName(folder))
+			folders.Insert(0, folder);
+		foreach (var folder in folders)
+			Visit(fs, scoped, root, fs.Path.Combine(folder, FolderFile), RuleOrigin.Shared, null, optional: true, [], rules, files, errors);
+		// A folder without a rules file is the usual case, not something to list.
+		files.RemoveAll(f => !f.Exists);
 		Visit(fs, scoped, root, sidecarPath, RuleOrigin.Sidecar, null, optional: true, [], rules, files, errors);
 		if (errors.Count > 0)
 			throw new ExpectedDifferencesException(errors);

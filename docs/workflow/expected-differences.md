@@ -24,6 +24,11 @@ maybe added body $..debug                 # may be absent on some runs
 The file for `journeys/shop.journey` is `journeys/shop.differences`, and for `http/orders.http` it is
 `http/orders.differences`. A missing file means no rules.
 
+A file named `.differences` in a folder applies to every journey and `.http` file in that folder and below, from the
+repository root down, the nearest last, and the file's own rules after them. It is how a whole folder of journeys shares
+`ignore url` or a known banner without a line in each one, and how any journey can be compared with no edits at all. Rules in a
+folder file can `include?` a file too.
+
 ## Reading a file
 
 - A line is `[maybe] verb [target] [old -> new]`. A `#` starting a word, followed by a space, starts a comment;
@@ -74,8 +79,8 @@ Moving a line from it into the journey's file, or into a shared one, makes it pe
 ## Rules that match nothing
 
 A rule that explained no difference is **stale**, and a run with a stale rule fails, so a difference that shipped does
-not stay excused. `maybe` opts a rule out. Rules from `include` (shared by many files, so one file not needing a rule
-says nothing) are exempt; rules in the file itself and in `include?` files are checked.
+not stay excused. `maybe` opts a rule out. Rules from `include` and from a folder's `.differences` (shared by many files, so
+one file not needing a rule says nothing) are exempt; rules in the file itself and in `include?` files are checked.
 
 ## From the library
 
