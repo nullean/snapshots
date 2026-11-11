@@ -12,7 +12,7 @@ namespace Nullean.Snapshots.TUnit;
 /// <param name="folder">The folder, relative to the test project: <c>journeys</c>.</param>
 /// <param name="pattern">The files to yield: <c>*.journey</c>.</param>
 [AttributeUsage(AttributeTargets.Method | AttributeTargets.Parameter, AllowMultiple = false)]
-public class SnapshotFilesAttribute(string folder, string pattern) : DataSourceGeneratorAttribute<TestDataRow<SnapshotFile>>
+public class SnapshotFilesAttribute(string folder, string pattern) : UntypedDataSourceGeneratorAttribute
 {
 	private static readonly ConcurrentDictionary<Assembly, IReadOnlyList<(string Folder, string Pattern)>> Claims = new();
 
@@ -23,7 +23,7 @@ public class SnapshotFilesAttribute(string folder, string pattern) : DataSourceG
 	public string Pattern { get; } = pattern;
 
 	/// <inheritdoc />
-	protected override IEnumerable<Func<TestDataRow<SnapshotFile>>> GenerateDataSources(DataGeneratorMetadata dataGeneratorMetadata)
+	protected override IEnumerable<Func<object?[]?>> GenerateDataSources(DataGeneratorMetadata dataGeneratorMetadata)
 	{
 		ArgumentNullException.ThrowIfNull(dataGeneratorMetadata);
 		var assembly = dataGeneratorMetadata.TestInformation?.Class.Type.Assembly ??
@@ -31,12 +31,14 @@ public class SnapshotFilesAttribute(string folder, string pattern) : DataSourceG
 		var files = Files(assembly, SnapshotFile.Find(assembly, Folder, Pattern));
 		if (files.Count == 0)
 			throw new InvalidOperationException($"No {Pattern} files under {(Folder.Length == 0 ? "the project" : Folder)}.");
-		// A TestDataRow shows its data expression (the parameter's name) unless it is given a display name: keep Run(basket/empty).
+		// A TestDataRow shows its data expression (the parameter's name) unless it is given a display name: keep Run(basket/empty). The row
+		// is an untyped one holding the TestDataRow, which TUnit unwraps into the parameter: a typed source of TestDataRow<SnapshotFile>
+		// makes TUnit's analyzer reject every consumer's `SnapshotFile` parameter (TUnit0001), though it runs.
 		var method = dataGeneratorMetadata.TestInformation?.Name ?? "Run";
 		foreach (var file in files)
 		{
 			var tags = file.Tags(assembly);
-			yield return () => new TestDataRow<SnapshotFile>(file, DisplayName: $"{method}({file.Name})", Categories: tags.Count == 0 ? null : [.. tags]);
+			yield return () => [new TestDataRow<SnapshotFile>(file, DisplayName: $"{method}({file.Name})", Categories: tags.Count == 0 ? null : [.. tags])];
 		}
 	}
 

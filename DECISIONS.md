@@ -803,3 +803,12 @@ two sites. This change is the rules and what reads them; running the two sites i
   the crop most of the page, and then there is no zoom (more than half the image's area: the diff already shows it). The report names both files
   and draws the zoom, **enlarged smoothly in the terminal only**: a 1:1 crop of a few dozen pixels draws tiny on a screen with small pixels,
   so the terminal drawing fills a 60 by 12 cell box (bilinear, `AllowUpscale`), while the file on disk stays a plain crop.
+
+## File data sources and TUnit's analyzer (#71)
+
+- **`[SnapshotFiles]`, `[HttpFiles]` and `[JourneyFiles]` are untyped data sources.** They were `DataSourceGeneratorAttribute<TestDataRow<SnapshotFile>>`, and TUnit's analyzer
+  (TUnit0001, an error by default) compares that type argument with a test's `SnapshotFile` parameter and rejects every consumer's test, though TUnit unwraps the
+  row at runtime. They now derive from `UntypedDataSourceGeneratorAttribute` and yield `[new TestDataRow<SnapshotFile>(...)]`: the analyzer cannot see the
+  element type, and TUnit still takes the display name (`Run(basket/empty)`) and the `@tags` categories from the row (checked with a consumer project at default
+  severity, and by filtering on a category). Our own tests had hidden it behind `dotnet_diagnostic.TUnit0001.severity = none`; that is gone, so with
+  `TreatWarningsAsErrors` this repository's tests fail to build if the analyzer ever objects again. The skills no longer tell users to suppress it.
