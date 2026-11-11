@@ -666,3 +666,38 @@ image or a transcript is not something to read in a source file.
   where it printed `ok   <key>`, and every run ends with the totals. It now honours `@requires` and `@mutates`, runs four
   journeys at a time, and a run where every journey was skipped exits with 1 unless `--allow-all-skipped`. The ids are paths
   relative to the root, because a journey of a `snap` run is a file, not a snapshot key; the failure message still names the key.
+
+## Expected differences
+
+Rules, in a checked-in `*.differences` file, for what may differ between two runs of one journey or `.http` file against
+two sites. This change is the rules and what reads them; running the two sites is a separate one.
+
+- **A rule says what changed, in the transcript's own terms.** `added`, `removed`, `changed`, `ignore`, then a target the format
+  reads: an accessibility selector or `url`/`text` for journeys, `status`, `header`, `body PATH` for `.http`. The core owns the
+  grammar, sections, includes, matching of verbs to difference kinds, staleness, suggestion, record and prune; a format owns what
+  a target means (`RuleTargets`, one `IRuleTarget` per rule). Sections are the transcript's top-level items, headed by `step` or
+  `request`, so a rule's `## heading` is a glob over that.
+- **The sidecar only, no folder-level file.** `shop.differences` next to `shop.journey` is the one file read on its own. A
+  folder-wide file would make "this rule matched nothing" meaningless per file; shared rules come in with `include`.
+- **A rule that matches nothing is stale, and stale fails, except `maybe` and shared rules.** The run reports what is gone so an
+  excuse does not outlive the difference. A rule from an `include` is shared by many files and cannot be judged by one of them;
+  rules in the sidecar and in `include?` files can.
+- **Ephemeral differences have their own file.** `include?` may be absent, so the differences of one preview live in a file that
+  can be checked in on the pull request that needs them, deleted at release, or never checked in. Promoting a difference is moving
+  its line. `Record` writes only to a declared `include?` of the run (anything else is an error: a file nothing reads would make
+  the next run pass for no reason), and `Prune` removes only stale rules of such a file.
+- **Everything is read through `Nullean.ScopedFileSystem`, scoped to the git root.** An include cannot leave the repository and a
+  symbolic link is refused, both as errors that name the include line; `include?` means "may be missing", not "may be outside".
+  The scoped file system answers `false` for a file it refuses rather than throwing, so the loader checks the path is under the
+  root first and asks the unscoped file system whether a "missing" file is really there. `//path` is the git root (found by the
+  `.git` walk-up); a plain path is relative to the including file. An include path is read as text, not tokens, so `//` is not a
+  regular expression.
+- **A suggestion is the most general rule that is honest.** An index in a body path becomes `[*]` (the next run's array has other
+  lengths), a changed text over 80 characters or with a newline carries no values and a comment instead, and a changed node is
+  named by its role, with the old and new values after it. `added heading` does not excuse an attribute appearing on a heading;
+  that needs `added heading [selected]`.
+- **A renamed node matches by its old or its new name.** A rule for `link "What*"` must find the link whether the difference
+  was found against the baseline's name or the target's.
+- **Tested** with a CsCheck property per format (the suggested rule for every difference of two random trees explains that
+  difference and leaves nothing stale), and by mutating the engine (sections ignored, shared rules going stale, `maybe`
+  ignored, the repository scope check removed), each failing tests.
