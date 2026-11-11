@@ -64,6 +64,11 @@ status: 404 Not Found
 - Then a blank line and the body, decoded:
   - JSON (`application/json` or any `+json` type) pretty-printed and compared as a tree: keys in any order, numbers by
     value. Invalid JSON is written as text.
+  - A server-sent event stream (`text/event-stream`, what an MCP server answers with) as `events:` and one block per event, a blank line
+    between them: `event:`, `id:` and `retry:` lines, then `data:` with its JSON pretty-printed on the lines after it (compared as a tree, so a
+    changed field is `body[0].data.result.n`, and `IgnorePaths` and `body $[*].data...` rules reach it) or text after `data:` when it is not JSON,
+    such as `[DONE]`. A stream with a comment line, a repeated field, empty data or several lines of data that is not JSON is quoted as text, below.
+    A [shape](#shapes-properties-without-values) of a stream is `text: text/event-stream`.
   - Any other text (`text/*`, XML, JavaScript, form posts, anything with a charset) with `> ` before every line, so a
     body can never start a section.
   - Anything else as `binary: 2048 bytes, image/png`.
@@ -104,6 +109,22 @@ transcript.Should().MatchHttpFileSnapshot();
 `HttpFileTest.RunAsync(file, options)` does both, and `[HttpFiles(folder)]` (Nullean.Snapshots.TUnit) yields a test
 case per file, `http` by default. A folder that needs other setup gets its own class with a more specific folder, as
 with [journeys](browser.md#setup-per-folder).
+
+## Volatile values
+
+`HttpFileTest.RunAsync`, `MatchHttpFileSnapshot` and `MatchHttpSnapshot` take the same `SnapshotOptions` as every other assertion (scrubbers are text and
+run on the whole transcript) and a `TreeDiffOptions` for the trees. The paths are rooted at the sections of the file, so a score in every hit of every
+response is `$[*].body.hits[*].score`:
+
+```csharp
+await HttpFileTest.RunAsync(
+	file,
+	new() { Client = client },
+	diff: new TreeDiffOptions { IgnorePaths = ["$[*].body.hits[*].score"] }
+);
+```
+
+A value that is ignored must still be present and of the same kind; use [shape mode](#shapes-properties-without-values) to compare only the structure.
 
 A URL starting with `/` resolves against the client's `BaseAddress`, so one file runs in memory against a
 `WebApplicationFactory` client and against a real host through `{{host}}`. Give `host` an empty value in the

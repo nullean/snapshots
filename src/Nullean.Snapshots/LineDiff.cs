@@ -16,6 +16,23 @@ public static class LineDiff
 	// leaves an empty last piece that DiffPlex would count as a line. Empty text has no lines at all.
 	private static readonly CustomFunctionChunker Chunker = new(SplitLines);
 
+	/// <summary>The lines only in <paramref name="expected"/> and the lines only in <paramref name="actual"/>, in order.</summary>
+	internal static (IReadOnlyList<string> Removed, IReadOnlyList<string> Added) ChangedLines(string expected, string actual)
+	{
+		var result = Differ.Instance.CreateDiffs(expected, actual, ignoreWhiteSpace: false, ignoreCase: false, Chunker);
+		var removed = new List<string>();
+		var added = new List<string>();
+		foreach (var block in result.DiffBlocks)
+		{
+			for (var i = 0; i < block.DeleteCountA; i++)
+				removed.Add(result.PiecesOld[block.DeleteStartA + i]);
+			for (var i = 0; i < block.InsertCountB; i++)
+				added.Add(result.PiecesNew[block.InsertStartB + i]);
+		}
+
+		return (removed, added);
+	}
+
 	/// <summary>
 	/// Diffs two texts line by line and returns one hunk per group of nearby changes. Each hunk is its header line
 	/// followed by lines prefixed with a space (context), <c>-</c> (only in <paramref name="expected"/>) or <c>+</c>

@@ -9,7 +9,7 @@
 | `snap` or `snap review` | each pending snapshot with its diff; accept, reject, skip or quit | 1 while any are left |
 | `snap status [--json]` | lists pending snapshots | 1 when there are any |
 | `snap diff <key>` | the line diff of one snapshot | 0 |
-| `snap accept <key…> \| --all` | writes them as verified, deletes the received files; an [inline snapshot](../formats/inline.md) is written into its test's source | 0, or 1 when an inline one cannot be |
+| `snap accept <key…> \| --all [--include-stale]` | writes them as verified, deletes the received files; an [inline snapshot](../formats/inline.md) is written into its test's source; `--all` leaves [stale](#stale-received-files) ones | 0, or 1 when an inline one cannot be or a stale one was left |
 | `snap reject <key…> \| --all` | deletes the received files | 0 |
 | `snap orphans [--json] [--delete]` | verified files the last test run did not use | 1 when there are any |
 
@@ -47,6 +47,17 @@ A pending PNG snapshot is **drawn** on a terminal that can show images (Kitty, G
 blocks as the fallback): the zoom of its diff if the test asked for one (`ZoomOnChanges`), else the diff image, with the changed
 pixels in red; for a new snapshot, or when the sizes differ, the received picture itself. The paths are listed as before, so
 nothing changes when the terminal cannot show images, or with its output redirected.
+
+## Stale received files
+
+A test run that passes a test deletes that test's received file, and a run that fails it writes the file again. A received file that is **older than the
+start of its project's latest test run** was therefore left over from an earlier run: the code changed back, or a filtered run never ran that test again.
+After a mutation run (break the product code, run the tests, revert), the received files hold the mutated output, and accepting them would overwrite good
+verified files.
+
+`snap status`, `snap diff` and `snap review` mark such files `(stale)` (`"stale": true` in `--json`). `snap accept --all` leaves them alone, lists them and
+exits 1; run the tests again, accept them by key (`snap accept <key>`), or pass `--include-stale`. The check needs the run manifest a test process writes
+into the received folder, so a project that has not run its tests with this version has no stale files, as before.
 
 ## Orphans
 

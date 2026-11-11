@@ -45,8 +45,6 @@ One page's accessibility tree, from Nullean.Cdp, as `.verified.aria`:
 
 ## Gotchas
 
-- TUnit 1.78's analyzer rejects `[JourneyFiles]` on a `SnapshotFile` parameter (error `TUnit0001`). The cases run fine:
-  add `<NoWarn>$(NoWarn);TUnit0001</NoWarn>` to the test project.
 - The journey's verified file is keyed by the journey path (`.snapshots/journeys/shop.verified.journey`), not the test.
   `MatchAriaSnapshot` is keyed by the test method; pass `name` for several in one test.
 - `[JourneyFiles]` throws `InvalidOperationException` when the folder has no `*.journey` files. A class with a more
