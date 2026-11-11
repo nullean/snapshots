@@ -45,23 +45,62 @@ public partial class TreeDifferProperties
 			print: Show
 		);
 
-	// 3: emptiness is symmetric, and swapping sides swaps missing for unexpected.
+	// 3a: emptiness is symmetric: nothing differs one way exactly when nothing differs the other.
+	[Test]
+	public void EmptinessIsSymmetric() => Pair.Sample(p => Diff(p.A, p.B).Count == 0 == (Diff(p.B, p.A).Count == 0), print: Show);
+
+	// 3b: swapping sides swaps missing for unexpected. Only where no alignment is ambiguous: sequences of scalars, whose items always pair
+	// by position. Container items in a sequence can tie (see EqualItemsThatTieAreAlignedFromTheFront), and then what is missing or
+	// unexpected inside the ones that pair depends on which side is verified.
 	[Test]
 	public void SwappingSidesSwapsMissingAndUnexpected() =>
-		Pair.Sample(p =>
-		{
-			var forward = Diff(p.A, p.B);
-			var backward = Diff(p.B, p.A);
+		SwapPair.Sample(
+			p =>
+			{
+				var forward = Diff(p.A, p.B);
+				var backward = Diff(p.B, p.A);
 
-			int Count(IReadOnlyList<TreeDifference> d, DifferenceKind k) => d.Count(x => x.Kind == k);
+				int Count(IReadOnlyList<TreeDifference> d, DifferenceKind k) => d.Count(x => x.Kind == k);
 
-			var forwardEmpty = forward.Count == 0;
-			var backwardEmpty = backward.Count == 0;
-			return forwardEmpty == backwardEmpty && Count(forward, DifferenceKind.Missing) - Count(forward, DifferenceKind.Unexpected) == Count(
-				backward,
-				DifferenceKind.Unexpected
-			) - Count(backward, DifferenceKind.Missing);
-		});
+				return Count(forward, DifferenceKind.Missing) - Count(forward, DifferenceKind.Unexpected) == Count(backward, DifferenceKind.Unexpected) - Count(
+					backward,
+					DifferenceKind.Missing
+				);
+			},
+			print: Show
+		);
+
+	// Where the alignment is not unique: [[], []] and [[0], []] have two best alignments, the longest common subsequence of equal items
+	// reads from the front, and the verified side is the one that is read. So the same pair reads one difference one way (the first array
+	// gained an item) and two the other (an item went and an item came). Documented here rather than hidden: a nightly property that
+	// claimed otherwise failed on about one random case in 80,000.
+	[Test]
+	public void EqualItemsThatTieAreAlignedFromTheFront()
+	{
+		var empty = new SeqNode([]);
+		var one = new SeqNode([new ScalarNode(ScalarKind.Int, "0")]);
+		var a = new SeqNode([empty, empty]);
+		var b = new SeqNode([one, empty]);
+
+		Diff(a, b).Select(d => (d.Kind, d.Path)).Should().Equal([(DifferenceKind.Unexpected, "$[0][0]")]);
+		Diff(b, a).Select(d => (d.Kind, d.Path)).Should().Equal([(DifferenceKind.Missing, "$[0]"), (DifferenceKind.Unexpected, "$[1]")]);
+	}
+
+	/// <summary>Trees whose sequences hold only scalars, so a sequence's alignment is never ambiguous in a way that reaches inside its items.</summary>
+	private static readonly Gen<Node> ScalarSequenceTree = Gen.Recursive<Node>((depth, inner) =>
+	{
+		if (depth >= 5)
+			return TreeGen.Scalar.Select(s => (Node)s);
+		var map = Gen.Select(TreeGen.Key, inner).Array[0, 6].Select(TreeGen.Map);
+		var seq = TreeGen.Scalar.Array[0, 6].Select(items => (Node)new SeqNode([.. items]));
+		return Gen.Frequency((3, TreeGen.Scalar.Select(s => (Node)s)), (2, map), (2, seq));
+	});
+
+	private static readonly Gen<(Node A, Node B)> SwapPair = Gen.OneOf(
+		ScalarSequenceTree.Select(t => (t, t)),
+		ScalarSequenceTree.Select(t => (t, TreeGen.ReverseKeys(t))),
+		Gen.Select(ScalarSequenceTree, ScalarSequenceTree)
+	);
 
 	// 4: k edits on distinct keys of a map give exactly k differences, each at the edited key.
 	[Test]
@@ -224,6 +263,8 @@ public partial class TreeDifferProperties
 		);
 
 	// 13: every reported path resolves in the tree it names, and the rendered lines are plain and capped.
+	// A missing node's actual path says where it would be, in a paired item that sits elsewhere in the actual tree: the place is
+	// not there (that is what missing means), so what must resolve is the node it would be in.
 	[Test]
 	public void PathsResolveAndMessagesArePlain() =>
 		Pair.Sample(p =>
@@ -232,7 +273,9 @@ public partial class TreeDifferProperties
 			var resolves = diff.All(
 				d => d.Kind == DifferenceKind.Unexpected
 					? NodePath.Resolve(p.B, d.Path) is not null
-					: NodePath.Resolve(p.A, d.Path) is not null && (d.ActualPath is null || NodePath.Resolve(p.B, d.ActualPath) is not null)
+					: NodePath.Resolve(p.A, d.Path) is not null &&
+						(d.ActualPath is null ||
+							(d.Kind == DifferenceKind.Missing ? ParentResolves(p.B, d.ActualPath) : NodePath.Resolve(p.B, d.ActualPath) is not null))
 			);
 			var message = SnapshotMessages.Describe(new SnapshotComparison(diff.Count == 0, TreeDifferences.Describe(diff, "verified.json")));
 			var lines = message.Split('\n');
@@ -276,6 +319,12 @@ public partial class TreeDifferProperties
 			_ = Diff(p.A, p.B, new TreeDiffOptions { CellCap = 1 });
 			return true;
 		});
+
+	private static bool ParentResolves(Node root, string path)
+	{
+		var segments = NodePath.Parse(path);
+		return segments.Count > 0 && NodePath.Resolve(root, NodePath.Format(segments.Take(segments.Count - 1))) is not null;
+	}
 
 	private static string Show((Node A, Node B) p) => TreeGen.ToJson(p.A) + "  vs  " + TreeGen.ToJson(p.B);
 

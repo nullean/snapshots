@@ -76,6 +76,21 @@ public class PngTests
 			catch (FormatException) { }
 		});
 
+	/// <summary>
+	/// A damaged file the property found (seed bqz3vPzmX2Vd): its zlib stream makes the runtime throw ZLibException, an IOException,
+	/// where most corrupt streams throw InvalidDataException. That escaped the decoder on every operating system.
+	/// </summary>
+	[Test]
+	public void ACorruptZlibStreamThatThrowsZLibExceptionIsAFormatException()
+	{
+		const string damaged =
+			"iVBORw0KGgoAAAANSUhEUgAAAAUAAAADCAYAAABbNsX4AAAASklEQVR4IAE/AMD/ABEx1ZNN0QOvu/sKac7+UTi74C4JAuGJnvN/j18Q6wiKBuFkGj3J0oFeAry9UNotpoFlH1w24V1yjobbOwJhr3kdKm7/Q8MAAAAASUVORK5CYII=";
+
+		var decode = () => Png.Decode(Convert.FromBase64String(damaged));
+
+		decode.Should().Throw<FormatException>().WithMessage("Corrupt PNG: the image data does not decompress.");
+	}
+
 	[Test]
 	public void ColourManagementChunksAreIgnored()
 	{

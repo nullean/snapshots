@@ -36,7 +36,21 @@ jobs:
 
       - run: dotnet build -c Release
 
+      # The Chrome-driven tests are not properties, and on macOS they are the main suspect for the runner freezing (see ci.yml), which
+      # has cancelled this job most nights: there they are left to ci.yml's own browser job. Every other test project runs on every OS,
+      # one at a time, so a failure names its project.
       - name: Test with 10,000 iterations per property
-        run: dotnet test -c Release --no-build
+        timeout-minutes: 20
+        shell: bash
+        run: |
+          failed=0
+          for project in tests/*/*.csproj; do
+            if [ "$RUNNER_OS" = "macOS" ] && [ "$(basename "$project")" = "Nullean.Snapshots.Browser.Tests.csproj" ]; then
+              echo "Skipping $project here: it runs in ci.yml's browser-macos job."
+              continue
+            fi
+            dotnet test -c Release --no-build --project "$project" || failed=1
+          done
+          exit $failed
         env:
           CsCheck_Iter: 10000
