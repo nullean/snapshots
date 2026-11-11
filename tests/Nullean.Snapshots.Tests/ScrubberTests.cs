@@ -15,6 +15,43 @@ public partial class ScrubberTests
 
 	private static readonly Gen<string> Text = Volatile.Array[0, 8].Select(parts => string.Join(" ", parts));
 
+	// #39: paths.
+
+	[Test]
+	[Arguments("/work/repo", "see /work/repo/docs/a.md here", "see {repo}/docs/a.md here")]
+	[Arguments("/work/repo/", "/work/repo", "{repo}")]
+	[Arguments("/work/repo", "\"/work/repo/a\", '/work/repo/b'", "\"{repo}/a\", '{repo}/b'")]
+	[Arguments("/work/repo", "/work/repository/a /var/work/repo/a x/work/repo", "/work/repository/a /var/work/repo/a x/work/repo")]
+	[Arguments("C:\\work\\repo", "C:\\work\\repo\\docs\\a.md failed", "{repo}/docs/a.md failed")]
+	[Arguments("C:/work/repo", "C:\\work\\repo\\docs\\a.md", "{repo}/docs/a.md")]
+	[Arguments("/work/repo", "{\"path\":\"/work/repo/a/b\"}", "{\"path\":\"{repo}/a/b\"}")]
+	public void PathReplacesTheRootAndNormalisesTheRest(string root, string text, string expected) =>
+		Scrubbers.Path(root, "{repo}")(text).Should().Be(expected);
+
+	[Test]
+	public void PathMatchesTheJsonEscapedWindowsForm() =>
+		Scrubbers.Path("C:\\work\\repo", "{repo}")("{\"file\":\"C:\\\\work\\\\repo\\\\docs\\\\a.md\"}").Should().Be("{\"file\":\"{repo}/docs/a.md\"}");
+
+	[Test]
+	public void PathRejectsAnEmptyRoot()
+	{
+		var act = () => Scrubbers.Path("/", "x");
+		act.Should().Throw<ArgumentException>();
+	}
+
+	[Test]
+	public void TempDirectoryScrubsTheTempFolder()
+	{
+		var temp = System.IO.Path.GetTempPath().TrimEnd(System.IO.Path.DirectorySeparatorChar);
+		var file = System.IO.Path.Combine(temp, "a", "b.txt");
+
+		Scrubbers.TempDirectory()($"wrote {file} ok").Should().Be("wrote {temp}/a/b.txt ok");
+	}
+
+	[Test]
+	public void PathIsIdempotent() =>
+		Gen.String[Gen.Char["ab/\\ ."], 0, 20].Sample(t => Scrubbers.Path("/a/b", "{r}")(Scrubbers.Path("/a/b", "{r}")(t)) == Scrubbers.Path("/a/b", "{r}")(t));
+
 	[Test]
 	public void GuidsAreIdempotent() => Text.Sample(t => Scrubbers.Guids(Scrubbers.Guids(t)) == Scrubbers.Guids(t));
 

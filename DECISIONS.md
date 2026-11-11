@@ -803,3 +803,12 @@ two sites. This change is the rules and what reads them; running the two sites i
   the crop most of the page, and then there is no zoom (more than half the image's area: the diff already shows it). The report names both files
   and draws the zoom, **enlarged smoothly in the terminal only**: a 1:1 crop of a few dozen pixels draws tiny on a screen with small pixels,
   so the terminal drawing fills a 60 by 12 cell box (bilinear, `AllowUpscale`), while the file on disk stays a plain crop.
+
+## Path scrubbers (#39)
+
+- **`Scrubbers.Path(root, replacement)` and `Scrubbers.TempDirectory()`**, returning `Func<string, string>` like `Scrubbers.Regex`; they do not number what they replace, since the replacement is a name the
+  reader gave (`{repo}`).
+- A root matches only as a whole folder name, in either separator, with the JSON-escaped `\\` form too, and what follows it up to whitespace, a quote or `<>|*?:` is the rest of the path, written with `/`.
+  Text after the path is never touched, so a backslash elsewhere in a message survives. Case is ignored on Windows only, as the file system does.
+- `TempDirectory` also scrubs the resolved temp folder, because macOS reports `/var/folders` and `/private/var/folders` for the same place. A drive-letter path from an in-memory file system is
+  a different problem (the text names a folder that does not exist here); it is documented as a `Path("C:/docs", "/docs")` call, not guessed.
