@@ -218,8 +218,8 @@ internal sealed class JourneyCli(
 		return true;
 	}
 
-	/// <summary>Reads <c>--transcript</c>: <c>compare</c> (the default) or <c>off</c>.</summary>
-	internal static bool TryParseTranscript(string? value, out TranscriptMode mode, out string problem)
+	/// <summary>Reads <c>--transcript</c>: <c>compare</c> (the default), <c>off</c>, or <c>shape</c> where <paramref name="allowShape"/>.</summary>
+	internal static bool TryParseTranscript(string? value, out TranscriptMode mode, out string problem, bool allowShape = false)
 	{
 		problem = string.Empty;
 		mode = TranscriptMode.Compare;
@@ -231,7 +231,15 @@ internal sealed class JourneyCli(
 			return true;
 		}
 
-		problem = $"Error: --transcript '{value}' is not 'compare' or 'off'.";
+		if (allowShape && value.Equals("shape", StringComparison.OrdinalIgnoreCase))
+		{
+			mode = TranscriptMode.Shape;
+			return true;
+		}
+
+		problem = allowShape
+			? $"Error: --transcript '{value}' is not 'compare', 'off' or 'shape'."
+			: $"Error: --transcript '{value}' is not 'compare' or 'off'.";
 		return false;
 	}
 

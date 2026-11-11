@@ -46,8 +46,11 @@ internal static class HttpResponseText
 		return set;
 	}
 
-	/// <summary>Appends <paramref name="section"/>, separated from what came before by a blank line.</summary>
-	internal static void Append(StringBuilder text, HttpResponseSection section, IReadOnlySet<string> chosen)
+	/// <summary>
+	/// Appends <paramref name="section"/>, separated from what came before by a blank line. With <paramref name="shape"/>
+	/// a JSON body is written as its <see cref="TreeShape"/> and a text body as its media type alone.
+	/// </summary>
+	internal static void Append(StringBuilder text, HttpResponseSection section, IReadOnlySet<string> chosen, bool shape = false)
 	{
 		if (text.Length > 0)
 			text.Append('\n');
@@ -73,10 +76,10 @@ internal static class HttpResponseText
 		if (section.Body.Length == 0)
 			return;
 		text.Append('\n');
-		AppendBody(text, section);
+		AppendBody(text, section, shape);
 	}
 
-	private static void AppendBody(StringBuilder text, HttpResponseSection section)
+	private static void AppendBody(StringBuilder text, HttpResponseSection section, bool shape)
 	{
 		var kind = Classify(section.MediaType, section.CharSet);
 		if (kind == BodyKind.Binary)
@@ -93,13 +96,20 @@ internal static class HttpResponseText
 		{
 			try
 			{
-				text.Append(JsonTree.Pretty(body));
+				text.Append(shape ? JsonTree.Write(TreeShape.Project(JsonTree.Parse(body))) : JsonTree.Pretty(body));
 				return;
 			}
 			catch (FormatException)
 			{
 				// Invalid JSON is still text: quoted below, so it can be read and compared.
 			}
+		}
+
+		if (shape)
+		{
+			// Text is content, not structure: its media type is all a shape can say about it.
+			text.Append("text: ").Append(OneLine(section.MediaType is { Length: > 0 } type ? type : "unknown")).Append('\n');
+			return;
 		}
 
 		AppendQuoted(text, body);
@@ -206,8 +216,8 @@ internal static class HttpResponseText
 	}
 
 	/// <summary>
-	/// Parses the text into a sequence of sections, <c>{request, status, headers, body | text | binary}</c>, with empty
-	/// parts left out.
+	/// Parses the text into a sequence of sections, <c>{request, status, headers, body | text | text-type | binary}</c>,
+	/// with empty parts left out.
 	/// </summary>
 	/// <exception cref="FormatException">The text is not in this format; the message starts with the line.</exception>
 	internal static SeqNode Parse(string text)
@@ -295,6 +305,13 @@ internal static class HttpResponseText
 			}
 
 			return new(ScalarNode.String("text"), ScalarNode.String(string.Join('\n', quoted), new SourceSpan(firstLine, 1)));
+		}
+
+		if (body[0].StartsWith("text: ", StringComparison.Ordinal))
+		{
+			if (body.Length > 1)
+				throw new FormatException($"Line {firstLine + 1}: a text body in a shape is one line, 'text: {{media type}}'.");
+			return new(ScalarNode.String("text-type"), ScalarNode.String(body[0][6..], new SourceSpan(firstLine, 7)));
 		}
 
 		if (body[0].StartsWith("binary: ", StringComparison.Ordinal))

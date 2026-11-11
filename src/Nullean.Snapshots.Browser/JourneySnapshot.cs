@@ -158,6 +158,8 @@ public static class JourneySnapshot
 	{
 		ArgumentException.ThrowIfNullOrEmpty(journeyFile);
 		options ??= new JourneySnapshotOptions();
+		if (options.Transcript == TranscriptMode.Shape)
+			throw new ArgumentException("TranscriptMode.Shape applies to .http runs; a journey's transcript has no values to reduce to a shape.", nameof(options));
 		var full = Path.GetFullPath(journeyFile);
 		var journey = Journey.Load(full);
 		var result = await JourneyRunner.RunAsync(journey, browser, new JourneyOptions

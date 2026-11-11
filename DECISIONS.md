@@ -658,3 +658,26 @@ image or a transcript is not something to read in a source file.
   where it printed `ok   <key>`, and every run ends with the totals. It now honours `@requires` and `@mutates`, runs four
   journeys at a time, and a run where every journey was skipped exits with 1 unless `--allow-all-skipped`. The ids are paths
   relative to the root, because a journey of a `snap` run is a file, not a snapshot key; the failure message still names the key.
+
+## Shape mode
+
+- **A projection of the transcript, not a comparison option.** `TranscriptMode.Shape` (and `HttpSnapshotOptions.Shape`) changes
+  what is written, so the verified file is itself the shape and the existing `HttpSnapshotFormat` compares it unchanged. An
+  option on the differ would have kept values in the verified file, where a diff of them is noise a reviewer has to read past,
+  and would have needed a second way to say "these two trees are equal". The run's transcript has `Mode = Compare`.
+- **`TreeShape` lives in core** (`Trees/TreeShape.cs`) beside `Node`: it is a function on trees, and the site compare will
+  project journey and `.http` trees with it. Strings become `"string"`, booleans `false`, integers `1`, floats `1.0`, `null`
+  stays; keys are sorted, so the order a server happened to write them in never shows.
+- **An array collapses to its distinct shapes.** One entry per scalar kind, one merged map for the maps, one merged array for the
+  arrays. Item counts never show; which properties any item had does. `null` is absorbed by a value of another kind
+  (a nullable field), because keeping both would make a field that is sometimes null a different shape on every run.
+  Maps whose shared keys disagree about kind stay separate entries rather than lose a kind; which entry such an item joins
+  depends on item order, and only in that case. An empty array stays `[]`.
+- **Text is not shape.** A text body is written `text: {media type}` and parses as `text-type`, a key of its own, so a JSON
+  string and the same text are still different things, as in a plain transcript.
+- **Journeys reject it.** `JourneySnapshot.RunAsync` throws for `TranscriptMode.Shape`: an accessibility tree's names and
+  text are its content, and reducing them to kinds would leave nothing. Differences that are expected between two sites
+  are expressed as rules instead.
+- Tested by CsCheck properties (idempotent; changing values but not kinds changes nothing; key order changes nothing; one
+  added root property is exactly one difference), and by mutating the projection (no map merge, strings keeping their value),
+  which fails them.
