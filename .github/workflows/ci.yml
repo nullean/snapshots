@@ -122,9 +122,23 @@ jobs:
       - name: Build
         run: dotnet build tests/Nullean.Snapshots.Browser.Tests -c Release
 
+      # A freeze here left no log (#64). --timeout ends the run itself, before the step's limit, and says which tests were still running;
+      # --output Detailed lists every test as it finishes, so the last line shows where it stopped, and the diagnostic log is uploaded
+      # even when the step is cancelled. A runner that freezes completely still answers nothing, and then the log shows how far it got.
       - name: Test
         timeout-minutes: 10
-        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests
+        run: >
+          dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests
+          --timeout 6m --output Detailed
+          --diagnostic --diagnostic-verbosity Information --diagnostic-output-directory "$GITHUB_WORKSPACE/.artifacts/diagnostics"
+
+      - name: Upload the diagnostic log
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-macos-diagnostics
+          path: .artifacts/diagnostics
+          if-no-files-found: ignore
 
   # Native AOT cannot cross-compile between operating systems, so each RID packs on a matching runner.
   aot-pack:
