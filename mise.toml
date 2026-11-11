@@ -12,6 +12,10 @@ dotnet = ["""{{ read_file(path='global.json') | split(pat='"version"') | nth(n=1
 gh = "latest"
 zizmor = "1"
 
+[tasks.setup]
+description = "Restore the local .NET tools (curb)"
+run = "dotnet tool restore"
+
 [tasks.build]
 description = "Build the solution"
 run = "dotnet build -c Release"
@@ -42,18 +46,24 @@ done
 ls .artifacts/package-output
 '''
 
+[tasks.format]
+description = "Format the repository with curb"
+depends = ["setup"]
+run = "dotnet curb format ."
+
 [tasks.check]
-description = "Fail on workflow findings (zizmor)"
-run = "zizmor --min-severity medium ."
+description = "Fail on formatting drift (curb) and on workflow findings (zizmor)"
+depends = ["setup"]
+run = ["dotnet curb check .", "zizmor --min-severity medium ."]
 
 [tasks.docs]
 description = "Build the docs as CI does, apply the theme and landing page, and serve them (needs docs-builder, see scripts/docs.sh)"
 run = "scripts/docs.sh"
 
 [tasks.ci]
-description = "What CI's build job runs on every push: build, test, then pack the libraries"
+description = "What CI's build job runs on every push: build, test, pack the libraries, then the curb formatting check"
 depends = ["test"]
-run = [{ task = "pack" }]
+run = [{ task = "pack" }, "dotnet tool restore && dotnet curb check ."]
 
 [tasks.release]
 description = "Open the release-drafter draft; `mise run release publish` publishes it, which releases"
