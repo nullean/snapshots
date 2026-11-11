@@ -42,7 +42,7 @@ html.Should().MatchInlineHtmlSnapshot("""<p>Hi</p>""");
 
 ## Gotchas
 
-- `Select` prints the matched element's children, not the element. A selector that matches nothing throws
+- `Select` prints the children of every matching element (in document order, a match inside another match once), not the elements; `SelectFirst` keeps only the first. A selector that matches nothing throws
   `InvalidOperationException`, it does not fail the assertion.
 - Two `MatchHtmlSnapshot` calls in one test need distinct `name` values, or the second throws
   `InvalidOperationException`.
