@@ -266,13 +266,13 @@ public sealed class ConsoleJourneyReporter : IJourneyReporter
 		_ = text.AppendLine();
 		var foot = new StringBuilder();
 		if (failure?.Url is { Length: > 0 } stoppedOn)
-			_ = foot.AppendLine(CultureInfo.InvariantCulture, $"  {Ansi.Dim("page".PadRight(10))}{Ansi.Cyan(stoppedOn)}");
+			_ = foot.AppendLine(CultureInfo.InvariantCulture, $"  {Ansi.Dim("page".PadRight(11))}{Ansi.Cyan(stoppedOn)}");
 		else if (_pages.TryGetValue(outcome.File.Id, out var page))
-			_ = foot.AppendLine(CultureInfo.InvariantCulture, $"  {Ansi.Dim("last open".PadRight(10))}{Ansi.Cyan(page.ToString())}");
+			_ = foot.AppendLine(CultureInfo.InvariantCulture, $"  {Ansi.Dim("last open".PadRight(11))}{Ansi.Cyan(page.ToString())}");
 		if (failure?.ScreenshotPath is { } screenshot)
-			_ = foot.AppendLine(CultureInfo.InvariantCulture, $"  {Ansi.Dim("screenshot".PadRight(10))}{screenshot}");
+			_ = foot.AppendLine(CultureInfo.InvariantCulture, $"  {Ansi.Dim("screenshot".PadRight(11))}{screenshot}");
 		if (rerun is not null)
-			_ = foot.AppendLine(CultureInfo.InvariantCulture, $"  {Ansi.Dim("rerun".PadRight(10))}{rerun}");
+			_ = foot.AppendLine(CultureInfo.InvariantCulture, $"  {Ansi.Dim("rerun".PadRight(11))}{rerun}");
 		return (text.ToString(), foot.ToString());
 	}
 
