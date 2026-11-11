@@ -30,7 +30,6 @@ internal sealed class ConsolePrompt : ISnapPrompt
 
 	/// <summary>Colour only on a terminal, and never when <c>NO_COLOR</c> is set or the terminal is dumb.</summary>
 	public static bool UseColor =>
-		!Console.IsOutputRedirected
-		&& string.IsNullOrEmpty(Environment.GetEnvironmentVariable("NO_COLOR"))
-		&& Environment.GetEnvironmentVariable("TERM") != "dumb";
+		!Console.IsOutputRedirected && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("NO_COLOR")) && Environment.GetEnvironmentVariable("TERM") !=
+			"dumb";
 }

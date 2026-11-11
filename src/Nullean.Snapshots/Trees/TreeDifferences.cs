@@ -33,8 +33,8 @@ public static class TreeDifferences
 
 	private static string Describe(TreeDifference d, string file) => d.Kind switch
 	{
-		DifferenceKind.Changed when d is { Expected: ScalarNode { Kind: ScalarKind.String } e, Actual: ScalarNode { Kind: ScalarKind.String } a }
-			&& (IsLong(e.Canonical) || IsLong(a.Canonical)) => StringChange(e.Canonical, a.Canonical) + Location(d.Expected, file),
+		DifferenceKind.Changed when d is { Expected: ScalarNode { Kind: ScalarKind.String } e, Actual: ScalarNode { Kind: ScalarKind.String } a } &&
+			(IsLong(e.Canonical) || IsLong(a.Canonical)) => StringChange(e.Canonical, a.Canonical) + Location(d.Expected, file),
 		DifferenceKind.Changed => $"expected {Value(d.Expected)}   actual {Value(d.Actual)}{Location(d.Expected, file)}",
 		DifferenceKind.TypeChanged =>
 			$"expected ({Kind(d.Expected)}) {Value(d.Expected)}   actual ({Kind(d.Actual)}) {Value(d.Actual)}{Location(d.Expected, file)}",

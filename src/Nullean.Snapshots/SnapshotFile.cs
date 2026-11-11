@@ -24,9 +24,10 @@ public sealed record SnapshotFile(string Path, string Name)
 	public static IReadOnlyList<SnapshotFile> Find(Assembly testAssembly, string folder, string pattern)
 	{
 		ArgumentNullException.ThrowIfNull(testAssembly);
-		var project = Resolver.FromAssembly(testAssembly)
-			?? throw new InvalidOperationException(
-				$"{testAssembly.GetName().Name} has no Nullean.Snapshots project metadata; reference Nullean.Snapshots from the test project.");
+		var project = Resolver.FromAssembly(testAssembly) ??
+			throw new InvalidOperationException(
+				$"{testAssembly.GetName().Name} has no Nullean.Snapshots project metadata; reference Nullean.Snapshots from the test project."
+			);
 		return Find(new FileSystem(), project.Directory, folder, pattern);
 	}
 
@@ -39,9 +40,10 @@ public sealed record SnapshotFile(string Path, string Name)
 	public IReadOnlyList<string> Tags(Assembly testAssembly)
 	{
 		ArgumentNullException.ThrowIfNull(testAssembly);
-		var project = Resolver.FromAssembly(testAssembly)
-			?? throw new InvalidOperationException(
-				$"{testAssembly.GetName().Name} has no Nullean.Snapshots project metadata; reference Nullean.Snapshots from the test project.");
+		var project = Resolver.FromAssembly(testAssembly) ??
+			throw new InvalidOperationException(
+				$"{testAssembly.GetName().Name} has no Nullean.Snapshots project metadata; reference Nullean.Snapshots from the test project."
+			);
 		return ReadTags(new FileSystem(), System.IO.Path.Combine(project.Directory, Path));
 	}
 
@@ -73,8 +75,9 @@ public sealed record SnapshotFile(string Path, string Name)
 	}
 
 	private static bool IsTagName(string tag) =>
-		tag.Length > 0 && (char.IsAsciiLetterLower(tag[0]) || char.IsAsciiDigit(tag[0])) &&
-		tag.All(c => char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c is '.' or '_' or '-');
+		tag.Length > 0 && (char.IsAsciiLetterLower(tag[0]) || char.IsAsciiDigit(tag[0])) && tag.All(
+			c => char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c is '.' or '_' or '-'
+		);
 
 	internal static IReadOnlyList<SnapshotFile> Find(IFileSystem fs, string projectDirectory, string folder, string pattern)
 	{
@@ -84,12 +87,19 @@ public sealed record SnapshotFile(string Path, string Name)
 		var root = trimmed.Length == 0 ? projectDirectory : fs.Path.Combine([projectDirectory, .. trimmed.Split('/')]);
 		if (!fs.Directory.Exists(root))
 			return [];
-		return [.. fs.Directory.EnumerateFiles(root, pattern, SearchOption.AllDirectories)
-			.Select(f => (Within: fs.Path.GetRelativePath(root, f).Replace('\\', '/'), File: f))
-			.Where(f => !f.Within.Split('/')[..^1].Any(part => part is "bin" or "obj" or "node_modules" || part.StartsWith('.')))
-			.Select(f => new SnapshotFile(
-				fs.Path.GetRelativePath(projectDirectory, f.File).Replace('\\', '/'),
-				f.Within[..^fs.Path.GetExtension(f.Within).Length]))
-			.OrderBy(f => f.Path, StringComparer.Ordinal)];
+		return [
+			.. fs
+				.Directory
+				.EnumerateFiles(root, pattern, SearchOption.AllDirectories)
+				.Select(f => (Within: fs.Path.GetRelativePath(root, f).Replace('\\', '/'), File: f))
+				.Where(f => !f.Within.Split('/')[..^1].Any(part => part is "bin" or "obj" or "node_modules" || part.StartsWith('.')))
+				.Select(
+					f => new SnapshotFile(
+						fs.Path.GetRelativePath(projectDirectory, f.File).Replace('\\', '/'),
+						f.Within[..^fs.Path.GetExtension(f.Within).Length]
+					)
+				)
+				.OrderBy(f => f.Path, StringComparer.Ordinal)
+		];
 	}
 }

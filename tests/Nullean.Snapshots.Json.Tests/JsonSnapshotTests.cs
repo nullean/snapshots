@@ -15,8 +15,10 @@ public class JsonSnapshotTests
 
 	[Test]
 	public void PrettyKeepsOrderNumbersAndUnicode() =>
-		JsonSnapshot.Pretty("""{"b":1.50,"a":[1e3,"é <tag> 'q'"],"c":{}}""").Should().Be(
-			"{\n  \"b\": 1.50,\n  \"a\": [\n    1e3,\n    \"é <tag> 'q'\"\n  ],\n  \"c\": {}\n}\n");
+		JsonSnapshot
+			.Pretty("""{"b":1.50,"a":[1e3,"é <tag> 'q'"],"c":{}}""")
+			.Should()
+			.Be("{\n  \"b\": 1.50,\n  \"a\": [\n    1e3,\n    \"é <tag> 'q'\"\n  ],\n  \"c\": {}\n}\n");
 
 	[Test]
 	public void DuplicatePropertiesAreAnError()
@@ -73,44 +75,53 @@ public class JsonSnapshotTests
 	public void PathsQuoteKeysThatAreNotIdentifiers()
 	{
 		Lines("""{"a b":{"c.d":[1]}}""", """{"a b":{"c.d":[2]}}""").Should().Be("""$["a b"]["c.d"][0]   expected 1   actual 2   (verified.json:1:16)""");
-		NodePath.Parse("""$["a b"]["c.d"][0].e""").Should().Equal(
-			PathSegment.ForKey("a b"), PathSegment.ForKey("c.d"), PathSegment.ForIndex(0), PathSegment.ForKey("e"));
+		NodePath
+			.Parse("""$["a b"]["c.d"][0].e""")
+			.Should()
+			.Equal(PathSegment.ForKey("a b"), PathSegment.ForKey("c.d"), PathSegment.ForIndex(0), PathSegment.ForKey("e"));
 	}
 
 	[Test]
 	public void ChangedItemFieldIsReportedByItsPath() =>
-		Lines(
-				"""{"items":[{"id":1,"name":"beats"},{"id":2,"name":"kibana"}]}""",
-				"""{"items":[{"id":1,"name":"beats"},{"id":2,"name":"Kibana"}]}""")
-			.Should().Be("""$.items[1].name   expected "kibana"   actual "Kibana"   (verified.json:1:50)""");
+		Lines("""{"items":[{"id":1,"name":"beats"},{"id":2,"name":"kibana"}]}""", """{"items":[{"id":1,"name":"beats"},{"id":2,"name":"Kibana"}]}""")
+			.Should()
+			.Be("""$.items[1].name   expected "kibana"   actual "Kibana"   (verified.json:1:50)""");
 
 	[Test]
 	public void InsertedItemShiftsTheActualIndex() =>
-		Lines(
-				"""[{"id":1,"v":"a"},{"id":2,"v":"b"}]""",
-				"""[{"id":0,"v":"new"},{"id":1,"v":"a"},{"id":2,"v":"B"}]""")
-			.Should().Be(
+		Lines("""[{"id":1,"v":"a"},{"id":2,"v":"b"}]""", """[{"id":0,"v":"new"},{"id":1,"v":"a"},{"id":2,"v":"B"}]""")
+			.Should()
+			.Be(
 				"""
 				$[0]                     unexpected in actual
 				$[1].v (actual $[2].v)   expected "b"   actual "B"   (verified.json:1:31)
-				""".ReplaceLineEndings("\n"));
+				""".ReplaceLineEndings(
+					"\n"
+				)
+			);
 
 	[Test]
 	public void MissingUnexpectedAndTypeChanges() =>
-		Lines("""{"a":1,"b":"1","c":[1]}""", """{"b":1,"c":{"x":1},"d":null}""").Should().Be(
-			"""
+		Lines("""{"a":1,"b":"1","c":[1]}""", """{"b":1,"c":{"x":1},"d":null}""")
+			.Should()
+			.Be(
+				"""
 			$.a   missing in actual   (verified.json:1:6)
 			$.b   expected (string) "1"   actual (int) 1   (verified.json:1:12)
 			$.c   expected (sequence) […1 items]   actual (map) {…1 keys}   (verified.json:1:20)
 			$.d   unexpected in actual
-			""".ReplaceLineEndings("\n"));
+			""".ReplaceLineEndings(
+					"\n"
+				)
+			);
 
 	[Test]
 	public void KeyOrderOnlyWhenItMatters()
 	{
 		Diff("""{"a":1,"b":2}""", """{"b":2,"a":1}""").Should().BeEmpty();
 		Lines("""{"a":1,"b":2}""", """{"b":2,"a":1}""", new TreeDiffOptions { MapOrder = MapOrder.Significant })
-			.Should().Be("$   key order changed: expected [a, b]   actual [b, a]   (verified.json:1:1)");
+			.Should()
+			.Be("$   key order changed: expected [a, b]   actual [b, a]   (verified.json:1:1)");
 	}
 
 	[Test]
@@ -118,10 +129,10 @@ public class JsonSnapshotTests
 	{
 		var options = new TreeDiffOptions { IgnorePaths = ["$.meta.generatedAt", "$..id", "$.items[*].etag"] };
 		Diff(
-				"""{"meta":{"generatedAt":"x","v":1},"items":[{"id":1,"etag":"a","n":1}],"deep":{"id":5}}""",
-				"""{"meta":{"generatedAt":"y","v":1},"items":[{"id":2,"etag":"b","n":1}],"deep":{"id":6}}""",
-				options)
-			.Should().BeEmpty();
+			"""{"meta":{"generatedAt":"x","v":1},"items":[{"id":1,"etag":"a","n":1}],"deep":{"id":5}}""",
+			"""{"meta":{"generatedAt":"y","v":1},"items":[{"id":2,"etag":"b","n":1}],"deep":{"id":6}}""",
+			options
+		).Should().BeEmpty();
 		Diff("""{"items":[1,2]}""", """{"items":[1,2,3]}""", new TreeDiffOptions { IgnorePaths = ["$.items[*]"] }).Should().BeEmpty();
 	}
 
@@ -134,13 +145,14 @@ public class JsonSnapshotTests
 
 	[Test]
 	public void MovedItemsAreMissingPlusUnexpected() =>
-		Diff("""["a","b","c"]""", """["c","a","b"]""").Select(d => (d.Kind, d.Path)).Should().Equal(
-			(DifferenceKind.Unexpected, "$[0]"), (DifferenceKind.Missing, "$[2]"));
+		Diff("""["a","b","c"]""", """["c","a","b"]""")
+			.Select(d => (d.Kind, d.Path))
+			.Should()
+			.Equal((DifferenceKind.Unexpected, "$[0]"), (DifferenceKind.Missing, "$[2]"));
 
 	[Test]
 	public void LongStringsShowTheFirstDifferingLine() =>
-		Lines("""{"t":"one\ntwo\nthree"}""", """{"t":"one\nTWO\nthree"}""")
-			.Should().Be("""$.t   line 2: expected "two"   actual "TWO"   (verified.json:1:6)""");
+		Lines("""{"t":"one\ntwo\nthree"}""", """{"t":"one\nTWO\nthree"}""").Should().Be("""$.t   line 2: expected "two"   actual "TWO"   (verified.json:1:6)""");
 
 	[Test]
 	public void InvalidVerifiedFileIsADifferenceNotACrash()
@@ -162,33 +174,47 @@ public class JsonAssertionTests
 
 	[Test]
 	public void BeJsonFailureMessage() =>
-		Message(() => """{"items":[{"id":1,"name":"Kibana"}],"extra":true}""".Should()
-				.BeJson("""{"items":[{"id":1,"name":"kibana"},{"id":2,"name":"beats"}]}""", because: "the catalog is stable"))
-			.Should().MatchSnapshot();
+		Message(
+			() => """{"items":[{"id":1,"name":"Kibana"}],"extra":true}""".Should().BeJson(
+				"""{"items":[{"id":1,"name":"kibana"},{"id":2,"name":"beats"}]}""",
+				because: "the catalog is stable"
+			)
+		).Should().MatchSnapshot();
 
 	[Test]
-	public void BeJsonOnInvalidJson() =>
-		Message(() => "{".Should().BeJson("{}")).Should().StartWith("Expected valid JSON, but: ");
+	public void BeJsonOnInvalidJson() => Message(() => "{".Should().BeJson("{}")).Should().StartWith("Expected valid JSON, but: ");
 
 	[Test]
 	public void SnapshotOfAnObjectThroughSourceGeneratedMetadata()
 	{
 		var p = new TestProject { Identity = TestProject.TUnitLike() };
-		var message = WithEngine(p, () =>
-			new Product(2, "Kibana", ["ui"]).Should().MatchJsonSnapshot(TestJsonContext.Default.Product, callerFilePath: p.TestFile, callerMemberName: "RendersTable"));
+		var message = WithEngine(
+			p,
+			() => new Product(2, "Kibana", ["ui"])
+				.Should()
+				.MatchJsonSnapshot(TestJsonContext.Default.Product, callerFilePath: p.TestFile, callerMemberName: "RendersTable")
+		);
 		message.Should().StartWith("JSON snapshot is new");
-		p.Read(p.ReceivedFile("Rendering/HtmlTests/RendersTable", "json")).Should().Be(
-			"{\n  \"Id\": 2,\n  \"Name\": \"Kibana\",\n  \"Tags\": [\n    \"ui\"\n  ]\n}\n");
+		p
+			.Read(p.ReceivedFile("Rendering/HtmlTests/RendersTable", "json"))
+			.Should()
+			.Be("{\n  \"Id\": 2,\n  \"Name\": \"Kibana\",\n  \"Tags\": [\n    \"ui\"\n  ]\n}\n");
 	}
 
 	[Test]
 	public void SnapshotMismatchMessage()
 	{
 		var p = new TestProject { Identity = TestProject.TUnitLike() };
-		p.Fs.AddFile(p.VerifiedFile("Rendering/HtmlTests/RendersTable", "json"), new(JsonSnapshot.Pretty(
-			"""{"Id":2,"Name":"kibana","Tags":["ui","search"],"Owner":{"Team":"platform"}}""")));
-		var message = WithEngine(p, () =>
-			new Product(2, "Kibana", ["ui"]).Should().MatchJsonSnapshot(TestJsonContext.Default.Product, callerFilePath: p.TestFile, callerMemberName: "RendersTable"));
+		p.Fs.AddFile(
+			p.VerifiedFile("Rendering/HtmlTests/RendersTable", "json"),
+			new(JsonSnapshot.Pretty("""{"Id":2,"Name":"kibana","Tags":["ui","search"],"Owner":{"Team":"platform"}}"""))
+		);
+		var message = WithEngine(
+			p,
+			() => new Product(2, "Kibana", ["ui"])
+				.Should()
+				.MatchJsonSnapshot(TestJsonContext.Default.Product, callerFilePath: p.TestFile, callerMemberName: "RendersTable")
+		);
 		message.Should().MatchSnapshot();
 	}
 
@@ -198,8 +224,12 @@ public class JsonAssertionTests
 		var p = new TestProject { Identity = TestProject.TUnitLike() };
 		var verified = p.VerifiedFile("Rendering/HtmlTests/RendersTable", "json");
 		p.Fs.AddFile(verified, new("{\n  \"Tags\": [\"ui\"], \"Name\": \"Kibana\", \"Id\": 2.0\n}\n"));
-		var message = WithEngine(p, () =>
-			new Product(2, "Kibana", ["ui"]).Should().MatchJsonSnapshot(TestJsonContext.Default.Product, callerFilePath: p.TestFile, callerMemberName: "RendersTable"));
+		var message = WithEngine(
+			p,
+			() => new Product(2, "Kibana", ["ui"])
+				.Should()
+				.MatchJsonSnapshot(TestJsonContext.Default.Product, callerFilePath: p.TestFile, callerMemberName: "RendersTable")
+		);
 		message.Should().BeNull();
 		p.Read(verified).Should().Be("{\n  \"Tags\": [\"ui\"], \"Name\": \"Kibana\", \"Id\": 2.0\n}\n");
 	}
@@ -209,8 +239,14 @@ public class JsonAssertionTests
 	{
 		var p = new TestProject { Identity = TestProject.TUnitLike() };
 		p.Fs.AddFile(p.VerifiedFile("Rendering/HtmlTests/RendersTable", "json"), new("""{"id":1,"at":"2026-01-01"}"""));
-		var message = WithEngine(p, () => """{"id":1,"at":"2026-11-03"}""".Should()
-			.MatchJsonSnapshot(new TreeDiffOptions { IgnorePaths = ["$.at"] }, callerFilePath: p.TestFile, callerMemberName: "RendersTable"));
+		var message = WithEngine(
+			p,
+			() => """{"id":1,"at":"2026-11-03"}""".Should().MatchJsonSnapshot(
+				new TreeDiffOptions { IgnorePaths = ["$.at"] },
+				callerFilePath: p.TestFile,
+				callerMemberName: "RendersTable"
+			)
+		);
 		message.Should().BeNull();
 	}
 

@@ -25,7 +25,8 @@ internal sealed class TestProject
 			artifacts
 				? Fs.Path.Combine(Root, ".artifacts", ".snapshots", "received", "Acme.Tests")
 				: Fs.Path.Combine(directory, "obj", "snapshots", "received"),
-			Root);
+			Root
+		);
 		Engine = new SnapshotEngine(Fs, k => Environment.GetValueOrDefault(k), () => new Provider(this), (_, _) => Project);
 	}
 
@@ -33,8 +34,14 @@ internal sealed class TestProject
 
 	public SnapshotCallSite Site(string member = "RendersTable", int line = 10) => new(TestFile, member, line);
 
-	public SnapshotResult Match(string actual, string? name = null, SnapshotOptions? options = null, string member = "RendersTable", int line = 10, string? because = null) =>
-		Engine.Match(actual, SnapshotFormats.Text, Site(member, line), name, options, because);
+	public SnapshotResult Match(
+		string actual,
+		string? name = null,
+		SnapshotOptions? options = null,
+		string member = "RendersTable",
+		int line = 10,
+		string? because = null
+	) => Engine.Match(actual, SnapshotFormats.Text, Site(member, line), name, options, because);
 
 	public SnapshotResult MatchFile(string actual, string sourceFile, SnapshotOptions? options = null, string? because = null) =>
 		Engine.MatchFile(actual, SnapshotFormats.Text, sourceFile, options, because);
@@ -60,13 +67,19 @@ internal sealed class TestProject
 	public string ReceivedFile(string keyWithinProject, string extension = "txt") =>
 		SnapshotPath.File(Fs, Project.ReceivedDirectory, keyWithinProject, SnapshotPath.ReceivedInfix, extension);
 
-	public void AddVerified(string keyWithinProject, string content) =>
-		Fs.AddFile(VerifiedFile(keyWithinProject), new MockFileData(content));
+	public void AddVerified(string keyWithinProject, string content) => Fs.AddFile(VerifiedFile(keyWithinProject), new MockFileData(content));
 
 	public string Read(string path) => Fs.File.ReadAllText(path);
 
 	public static SnapshotTestIdentity TUnitLike(string className = "HtmlTests", string method = "RendersTable", params object?[] arguments) =>
-		new($"{className}.{method}({string.Join(",", arguments)})", className, method, arguments, null, $"/Acme.Tests/Acme.Tests.Rendering/{className}/{method}");
+		new(
+			$"{className}.{method}({string.Join(",", arguments)})",
+			className,
+			method,
+			arguments,
+			null,
+			$"/Acme.Tests/Acme.Tests.Rendering/{className}/{method}"
+		);
 
 	private sealed class Provider(TestProject owner) : ISnapshotTestIdentityProvider
 	{

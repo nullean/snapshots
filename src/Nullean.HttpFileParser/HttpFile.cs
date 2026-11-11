@@ -226,8 +226,17 @@ public sealed class HttpFileBody
 public sealed class HttpFileRequest
 {
 	internal HttpFileRequest(
-		int index, string? name, int line, string requestLine, string method, Template url, string? version,
-		IReadOnlyList<HttpFileHeader> headers, HttpFileBody? body, HttpFileDirectives directives)
+		int index,
+		string? name,
+		int line,
+		string requestLine,
+		string method,
+		Template url,
+		string? version,
+		IReadOnlyList<HttpFileHeader> headers,
+		HttpFileBody? body,
+		HttpFileDirectives directives
+	)
 	{
 		Index = index;
 		Name = name;

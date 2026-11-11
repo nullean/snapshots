@@ -94,7 +94,11 @@ internal sealed class TestServer : IAsyncDisposable
 			switch (path)
 			{
 				case "/login" when request.HttpMethod == "POST":
-					Json(response, 200, $$"""{"token":"{{Token}}","user":{"name":"ada","roles":["admin","dev"]},"echo":{{(body.Length == 0 ? "null" : body)}}}""");
+					Json(
+						response,
+						200,
+						$$"""{"token":"{{Token}}","user":{"name":"ada","roles":["admin","dev"]},"echo":{{(body.Length == 0 ? "null" : body)}}}"""
+					);
 					break;
 				case "/secure":
 					if (request.Headers["Authorization"] == "Bearer " + Token)
@@ -126,7 +130,11 @@ internal sealed class TestServer : IAsyncDisposable
 				case "/echo":
 					var echo = request.Headers["X-Echo"] ?? "";
 					response.Headers["X-Echo-Back"] = echo;
-					Json(response, 200, $$"""{"method":"{{request.HttpMethod}}","header":"{{echo}}","q":"{{request.QueryString["q"]}}","cookie":"{{request.Headers["Cookie"]}}","contentType":"{{request.ContentType}}","body":{{System.Text.Json.JsonSerializer.Serialize(body)}}}""");
+					Json(
+						response,
+						200,
+						$$"""{"method":"{{request.HttpMethod}}","header":"{{echo}}","q":"{{request.QueryString["q"]}}","cookie":"{{request.Headers["Cookie"]}}","contentType":"{{request.ContentType}}","body":{{System.Text.Json.JsonSerializer.Serialize(body)}}}"""
+					);
 					break;
 				case "/slow":
 					Thread.Sleep(2000);
@@ -187,9 +195,7 @@ internal sealed class TestServer : IAsyncDisposable
 		{
 			await _loop;
 		}
-		catch (ObjectDisposedException)
-		{
-		}
+		catch (ObjectDisposedException) { }
 		_stop.Dispose();
 	}
 }

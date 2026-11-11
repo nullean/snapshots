@@ -39,26 +39,53 @@ public class JourneyCompareTests
 		public List<(string Host, string? Artifacts, bool ScreenshotOnFailure)> Runs { get; } = [];
 
 		public Task<int> Compare(
-			string? baseline = "http://prod.test/", string? target = "http://preview.test/", bool reuse = false, string? record = null, string? prune = null,
+			string? baseline = "http://prod.test/",
+			string? target = "http://preview.test/",
+			bool reuse = false,
+			string? record = null,
+			string? prune = null,
 			params string[] patterns
 		) => CompareWith(baseline, target, reuse, record, prune, "report", false, patterns);
 
 		public Task<int> CompareWith(
-			string? baseline, string? target, bool reuse, string? record, string? prune, string imageDiff, bool screenshotOnFailure, params string[] patterns
+			string? baseline,
+			string? target,
+			bool reuse,
+			string? record,
+			string? prune,
+			string imageDiff,
+			bool screenshotOnFailure,
+			params string[] patterns
 		) =>
-			new JourneyCli(P.Fs, P.Project.Directory, Out, Err, (file, options, _) =>
-			{
-				Ran.Add(options.BaseUrl!.Host);
-				Runs.Add((options.BaseUrl.Host, options.ArtifactsDirectory, options.ScreenshotOnFailure));
-				if (options.ArtifactsDirectory is { } folder && Pictures.TryGetValue(options.BaseUrl.Host, out var pictures))
+			new JourneyCli(
+				P.Fs,
+				P.Project.Directory,
+				Out,
+				Err,
+				(file, options, _) =>
 				{
-					foreach (var (name, png) in pictures)
-						P.Fs.AddFile(P.Fs.Path.Combine(folder, name), new MockFileData(png));
-				}
+					Ran.Add(options.BaseUrl!.Host);
+					Runs.Add((options.BaseUrl.Host, options.ArtifactsDirectory, options.ScreenshotOnFailure));
+					if (options.ArtifactsDirectory is { } folder && Pictures.TryGetValue(options.BaseUrl.Host, out var pictures))
+					{
+						foreach (var (name, png) in pictures)
+							P.Fs.AddFile(P.Fs.Path.Combine(folder, name), new MockFileData(png));
+					}
 
-				return Task.FromResult((options.BaseUrl.Host == "prod.test" ? Prod! : Preview!)(file));
-			}, _ => null).CompareAsync(patterns.Length == 0 ? ["journeys/shop.journey"] : patterns, baseline, target, CancellationToken.None,
-				reuseBaseline: reuse, record: record, prune: prune, more: new JourneyRunArgs { Interactive = false, ScreenshotOnFailure = screenshotOnFailure }, imageDiff: imageDiff);
+					return Task.FromResult((options.BaseUrl.Host == "prod.test" ? Prod! : Preview!)(file));
+				},
+				_ => null
+			).CompareAsync(
+				patterns.Length == 0 ? ["journeys/shop.journey"] : patterns,
+				baseline,
+				target,
+				CancellationToken.None,
+				reuseBaseline: reuse,
+				record: record,
+				prune: prune,
+				more: new JourneyRunArgs { Interactive = false, ScreenshotOnFailure = screenshotOnFailure },
+				imageDiff: imageDiff
+			);
 
 		public string Output => Out.ToString().Replace("\r\n", "\n", StringComparison.Ordinal);
 
@@ -72,12 +99,25 @@ public class JourneyCompareTests
 
 		(await run.Compare()).Should().Be(1);
 
-		run.Output.Should().Contain("1 unexplained difference(s)").And.Contain("  ## snapshot -c -s nav\n  added link \"What's new\"")
-			.And.Contain("0 passed, 1 failed, 0 skipped");
+		run
+			.Output
+			.Should()
+			.Contain("1 unexplained difference(s)")
+			.And
+			.Contain("  ## snapshot -c -s nav\n  added link \"What's new\"")
+			.And
+			.Contain("0 passed, 1 failed, 0 skipped");
 		run.Ran.Should().Equal("prod.test", "preview.test");
-		run.P.Fs.AllFiles.Should().Contain(f => f.EndsWith("shop.baseline.journey", StringComparison.Ordinal))
-			.And.Contain(f => f.EndsWith("shop.target.journey", StringComparison.Ordinal))
-			.And.NotContain(f => f.Contains(".received.", StringComparison.Ordinal), "nothing is pending for snap status");
+		run
+			.P
+			.Fs
+			.AllFiles
+			.Should()
+			.Contain(f => f.EndsWith("shop.baseline.journey", StringComparison.Ordinal))
+			.And
+			.Contain(f => f.EndsWith("shop.target.journey", StringComparison.Ordinal))
+			.And
+			.NotContain(f => f.Contains(".received.", StringComparison.Ordinal), "nothing is pending for snap status");
 	}
 
 	[Test]
@@ -109,7 +149,12 @@ public class JourneyCompareTests
 
 		(await run.Compare()).Should().Be(1);
 
-		run.Output.Should().StartWith("The run against the baseline http://prod.test/ did not finish, so there is nothing to compare with:").And.Contain("no element matches.");
+		run
+			.Output
+			.Should()
+			.StartWith("The run against the baseline http://prod.test/ did not finish, so there is nothing to compare with:")
+			.And
+			.Contain("no element matches.");
 		run.Ran.Should().Equal("prod.test");
 		run.P.Fs.AllFiles.Should().NotContain(f => f.Contains(".baseline.", StringComparison.Ordinal), "a partial baseline is never seeded");
 	}
@@ -147,7 +192,10 @@ public class JourneyCompareTests
 		(await run.Compare(reuse: true)).Should().Be(0);
 
 		run.Output.Should().Contain("Recorded 1 rule(s) for journeys/shop in journeys/known/shop.differences.");
-		run.P.Read(run.P.Fs.Path.Combine(run.P.Project.Directory, "journeys", "known", "shop.differences")).Should()
+		run
+			.P
+			.Read(run.P.Fs.Path.Combine(run.P.Project.Directory, "journeys", "known", "shop.differences"))
+			.Should()
 			.Be("# recorded against http://preview.test/\n## snapshot -c -s nav\nadded link \"What's new\"\n");
 	}
 
@@ -156,7 +204,13 @@ public class JourneyCompareTests
 	{
 		var run = new Run { Preview = file => new JourneyTranscript(file, ProdNav, null) };
 		run.P.Fs.AddFile(run.Rules, new MockFileData("include? known.differences\n"));
-		run.P.Fs.AddFile(run.P.Fs.Path.Combine(run.P.Project.Directory, "journeys", "known.differences"), new MockFileData("## snapshot*\nadded link \"What's new\"\n"));
+		run
+			.P
+			.Fs
+			.AddFile(
+				run.P.Fs.Path.Combine(run.P.Project.Directory, "journeys", "known.differences"),
+				new MockFileData("## snapshot*\nadded link \"What's new\"\n")
+			);
 
 		(await run.Compare(prune: "journeys/known.differences")).Should().Be(0);
 
@@ -174,8 +228,14 @@ public class JourneyCompareTests
 		run.P.Fs.AddFile(run.Rules, new MockFileData("nonsense\n"));
 		(await run.Compare()).Should().Be(2);
 
-		run.Error.Should().Contain("Error: --baseline is required").And.Contain("--target 'not a url' is not an absolute http, https or file URL")
-			.And.Contain("no journey matches 'journeys/nope.journey'");
+		run
+			.Error
+			.Should()
+			.Contain("Error: --baseline is required")
+			.And
+			.Contain("--target 'not a url' is not an absolute http, https or file URL")
+			.And
+			.Contain("no journey matches 'journeys/nope.journey'");
 		run.Output.Should().Contain("'nonsense' is not a verb");
 	}
 
@@ -186,7 +246,10 @@ public class JourneyCompareTests
 	private static Task<Differences.SiteComparisonResult> Real(string journey)
 	{
 		LiveJourneyTests.RequireChrome();
-		return JourneySnapshot.CompareAsync($"compare-journeys/{journey}.journey", new JourneyCompareOptions { Baseline = LiveJourneyTests.Site, Target = Preview });
+		return JourneySnapshot.CompareAsync(
+			$"compare-journeys/{journey}.journey",
+			new JourneyCompareOptions { Baseline = LiveJourneyTests.Site, Target = Preview }
+		);
 	}
 
 	[Test]
@@ -251,8 +314,14 @@ public class JourneyCompareTests
 		(await run.Compare()).Should().Be(0);
 
 		run.Runs.Select(r => Path.GetFileName(r.Artifacts)).Should().Equal("shop.baseline.artifacts", "shop.target.artifacts");
-		run.P.Fs.AllFiles.Should().Contain(f => f.EndsWith("shop.baseline.artifacts" + Path.DirectorySeparatorChar + "nav.png", StringComparison.Ordinal))
-			.And.Contain(f => f.EndsWith("shop.target.artifacts" + Path.DirectorySeparatorChar + "nav.png", StringComparison.Ordinal));
+		run
+			.P
+			.Fs
+			.AllFiles
+			.Should()
+			.Contain(f => f.EndsWith("shop.baseline.artifacts" + Path.DirectorySeparatorChar + "nav.png", StringComparison.Ordinal))
+			.And
+			.Contain(f => f.EndsWith("shop.target.artifacts" + Path.DirectorySeparatorChar + "nav.png", StringComparison.Ordinal));
 	}
 
 	[Test]
@@ -262,10 +331,16 @@ public class JourneyCompareTests
 
 		(await run.Compare()).Should().Be(0);
 
-		run.Output.Should().Contain("1 screenshot(s) differ between the baseline and the target (not a failure: --image-diff fail makes it one):")
-			.And.Contain("journeys/shop  nav.png: 1 of 128 pixels differ")
-			.And.Contain("x 5-5, y 3-3 (1x1): 1 pixel(s)")
-			.And.Contain("shop.target.artifacts/nav.diff.png");
+		run
+			.Output
+			.Should()
+			.Contain("1 screenshot(s) differ between the baseline and the target (not a failure: --image-diff fail makes it one):")
+			.And
+			.Contain("journeys/shop  nav.png: 1 of 128 pixels differ")
+			.And
+			.Contain("x 5-5, y 3-3 (1x1): 1 pixel(s)")
+			.And
+			.Contain("shop.target.artifacts/nav.diff.png");
 		run.P.Fs.AllFiles.Should().Contain(f => f.EndsWith("shop.target.artifacts" + Path.DirectorySeparatorChar + "nav.diff.png", StringComparison.Ordinal));
 	}
 
@@ -278,7 +353,16 @@ public class JourneyCompareTests
 
 		(await run.Compare()).Should().Be(0);
 
-		run.Output.Should().Contain("      diff: ").And.Contain("shop.target.artifacts/nav.diff.png").And.Contain("      zoom: ").And.Contain("shop.target.artifacts/nav.zoom.png");
+		run
+			.Output
+			.Should()
+			.Contain("      diff: ")
+			.And
+			.Contain("shop.target.artifacts/nav.diff.png")
+			.And
+			.Contain("      zoom: ")
+			.And
+			.Contain("shop.target.artifacts/nav.zoom.png");
 		run.P.Fs.AllFiles.Should().Contain(f => f.EndsWith("nav.zoom.png", StringComparison.Ordinal));
 	}
 
@@ -323,7 +407,12 @@ public class JourneyCompareTests
 		(await run.Compare(reuse: true)).Should().Be(0);
 
 		run.Ran.Should().Equal("prod.test", "preview.test", "preview.test");
-		run.Output.Split("screenshot(s) differ between").Length.Should().Be(3, "the reused baseline's picture is still there to compare with, so both runs report it");
+		run
+			.Output
+			.Split("screenshot(s) differ between")
+			.Length
+			.Should()
+			.Be(3, "the reused baseline's picture is still there to compare with, so both runs report it");
 	}
 
 	[Test]

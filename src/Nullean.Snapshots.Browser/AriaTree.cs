@@ -126,9 +126,11 @@ public static class AriaTree
 				var equals = attr.IndexOf('=', StringComparison.Ordinal);
 				if (attr.Length == 0 || equals == 0)
 					throw new FormatException($"Line {number}: an attribute has no name.");
-				attrs.Add(equals < 0
-					? new(ScalarNode.String(attr), ScalarNode.Bool(true, attrSpan))
-					: new(ScalarNode.String(attr[..equals]), ScalarNode.String(attr[(equals + 1)..], attrSpan)));
+				attrs.Add(
+					equals < 0
+						? new(ScalarNode.String(attr), ScalarNode.Bool(true, attrSpan))
+						: new(ScalarNode.String(attr[..equals]), ScalarNode.String(attr[(equals + 1)..], attrSpan))
+				);
 			}
 
 			fields["attrs"] = new MapNode(attrs, attrSpan);
@@ -161,6 +163,7 @@ public static class AriaTree
 	private static void Print(StringBuilder text, MapNode node, int depth)
 	{
 		Node? Field(string key) => node.Entries.FirstOrDefault(e => e.Key.Canonical == key).Value;
+
 		text.Append(' ', depth * 2).Append("- ").Append(((ScalarNode)Field("role")!).Canonical);
 		if (Field("name") is ScalarNode name)
 		{
@@ -184,7 +187,12 @@ public static class AriaTree
 		if (Field("attrs") is MapNode attrs)
 		{
 			text.Append(" [");
-			text.AppendJoin(", ", attrs.Entries.Select(a => a.Value is ScalarNode { Kind: ScalarKind.Bool } ? a.Key.Canonical : $"{a.Key.Canonical}={((ScalarNode)a.Value).Canonical}"));
+			text.AppendJoin(
+				", ",
+				attrs.Entries.Select(
+					a => a.Value is ScalarNode { Kind: ScalarKind.Bool } ? a.Key.Canonical : $"{a.Key.Canonical}={((ScalarNode)a.Value).Canonical}"
+				)
+			);
 			text.Append(']');
 		}
 

@@ -39,16 +39,12 @@ public static class LineDiff
 		{
 			// Merge following blocks while their leading context would overlap this hunk's trailing context.
 			var last = i;
-			while (last + 1 < blocks.Count
-				&& blocks[last + 1].DeleteStartA - (blocks[last].DeleteStartA + blocks[last].DeleteCountA) <= 2 * context)
+			while (last + 1 < blocks.Count && blocks[last + 1].DeleteStartA - (blocks[last].DeleteStartA + blocks[last].DeleteCountA) <= 2 * context)
 				last++;
 
 			var oldStart = Math.Max(0, blocks[i].DeleteStartA - context);
 			var newStart = blocks[i].InsertStartB - (blocks[i].DeleteStartA - oldStart);
-			var lines = new List<string>
-			{
-				$"@@ line {(oldLines.Count == 0 ? newStart : oldStart) + 1} @@"
-			};
+			var lines = new List<string> { $"@@ line {(oldLines.Count == 0 ? newStart : oldStart) + 1} @@" };
 
 			var oldPos = oldStart;
 			for (var b = i; b <= last; b++)
@@ -82,6 +78,5 @@ public static class LineDiff
 		return text[..end].Split('\n');
 	}
 
-	private static string Cap(string line) =>
-		line.Length <= MaxLineLength ? line : string.Concat(line.AsSpan(0, MaxLineLength), "…");
+	private static string Cap(string line) => line.Length <= MaxLineLength ? line : string.Concat(line.AsSpan(0, MaxLineLength), "…");
 }

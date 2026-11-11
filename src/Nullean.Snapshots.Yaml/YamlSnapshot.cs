@@ -62,8 +62,7 @@ public static partial class YamlSnapshot
 	}
 
 	/// <summary>Compares two YAML texts as trees.</summary>
-	public static SnapshotComparison Compare(string expected, string actual, TreeDiffOptions? options = null) =>
-		FormatWith(options).Compare(expected, actual);
+	public static SnapshotComparison Compare(string expected, string actual, TreeDiffOptions? options = null) => FormatWith(options).Compare(expected, actual);
 
 	private static Node ReadNode(IParser parser, Dictionary<string, Node> anchors)
 	{
@@ -110,8 +109,11 @@ public static partial class YamlSnapshot
 			var keyEvent = parser.Current!;
 			var keyNode = ReadNode(parser, anchors);
 			if (keyNode is not ScalarNode key)
-				throw new FormatException($"Only scalar keys are supported; the key at {Span(keyEvent.Start)} is a {(keyNode is MapNode ? "mapping" : "sequence")}.");
-			var merge = keyEvent is Scalar { Value: "<<", Style: ScalarStyle.Plain or ScalarStyle.Any } s && (s.Tag is null || s.Tag == "!!merge" || s.Tag == TagPrefix + "merge");
+				throw new FormatException(
+					$"Only scalar keys are supported; the key at {Span(keyEvent.Start)} is a {(keyNode is MapNode ? "mapping" : "sequence")}."
+				);
+			var merge = keyEvent is Scalar { Value: "<<", Style: ScalarStyle.Plain or ScalarStyle.Any } s &&
+				(s.Tag is null || s.Tag == "!!merge" || s.Tag == TagPrefix + "merge");
 			parser.MoveNext();
 			raw.Add((key, ReadNode(parser, anchors), merge));
 		}
@@ -281,11 +283,11 @@ internal sealed class YamlSnapshotFormat(TreeDiffOptions? options) : TreeSnapsho
 					all.Add(new TreeDifference(DifferenceKind.Unexpected, prefix, null, a[i]));
 				else
 				{
-					all.AddRange(Differ.Diff(e[i], a[i], Options).Select(d => d with
-					{
-						Path = prefix + d.Path[1..],
-						ActualPath = d.ActualPath is null ? null : prefix + d.ActualPath[1..],
-					}));
+					all.AddRange(
+						Differ.Diff(e[i], a[i], Options).Select(
+							d => d with { Path = prefix + d.Path[1..], ActualPath = d.ActualPath is null ? null : prefix + d.ActualPath[1..], }
+						)
+					);
 				}
 			}
 
@@ -297,6 +299,5 @@ internal sealed class YamlSnapshotFormat(TreeDiffOptions? options) : TreeSnapsho
 			: new SnapshotComparison(false, TreeDifferences.Describe(differences, "verified." + Extension));
 	}
 
-	private static IReadOnlyList<Node> Documents((Node Root, int Documents) stream) =>
-		stream.Documents >= 2 ? ((SeqNode)stream.Root).Items : [stream.Root];
+	private static IReadOnlyList<Node> Documents((Node Root, int Documents) stream) => stream.Documents >= 2 ? ((SeqNode)stream.Root).Items : [stream.Root];
 }

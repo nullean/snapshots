@@ -27,7 +27,10 @@ public static class TerminalPicture
 		{
 			Capabilities ??= Task.Run(async () => await TerminalImageDetector.DetectAsync().ConfigureAwait(false)).GetAwaiter().GetResult();
 			var width = System.Console.IsOutputRedirected || System.Console.WindowWidth <= 20 ? 100 : Math.Min(System.Console.WindowWidth, 110);
-			var renderer = new TerminalImageRenderer(Capabilities, new TerminalImageRenderOptions { MaxColumns = Math.Min(maxColumns, width - 2), MaxRows = maxRows, AllowUpscale = enlarge });
+			var renderer = new TerminalImageRenderer(
+				Capabilities,
+				new TerminalImageRenderOptions { MaxColumns = Math.Min(maxColumns, width - 2), MaxRows = maxRows, AllowUpscale = enlarge }
+			);
 			return renderer.RenderPng(png, output);
 		}
 #pragma warning disable CA1031 // A picture is a convenience: whatever goes wrong drawing it, the text around it stands.

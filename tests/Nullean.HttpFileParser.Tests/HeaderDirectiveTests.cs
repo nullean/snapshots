@@ -8,8 +8,7 @@ public class HeaderDirectiveTests
 	private static HttpFileContext Context(string? buildType = null, string? env = null, params string[] features) =>
 		new(new HashSet<string>(features, StringComparer.Ordinal), buildType, env);
 
-	private static HttpFileParseException Parse(string text) =>
-		Assert.Throws<HttpFileParseException>(() => HttpFile.Parse(text));
+	private static HttpFileParseException Parse(string text) => Assert.Throws<HttpFileParseException>(() => HttpFile.Parse(text));
 
 	[Test]
 	public void Metadata_FileWithoutDirectives_IsEmpty()
@@ -23,7 +22,8 @@ public class HeaderDirectiveTests
 	[Test]
 	public void Metadata_AllDirectives_AreParsed()
 	{
-		var file = HttpFile.Parse("""
+		var file = HttpFile.Parse(
+			"""
 			# @tags mcp smoke
 			# @requires navigation-preview !env:prod build-type:assembler,codex
 			# @monitor schedule=10 locations=germany,us_east
@@ -32,7 +32,8 @@ public class HeaderDirectiveTests
 			@host = https://example.test
 
 			GET {{host}}/
-			""");
+			"""
+		);
 
 		var m = file.Metadata;
 		m.Tags.Should().Equal("mcp", "smoke");
@@ -47,13 +48,15 @@ public class HeaderDirectiveTests
 	[Test]
 	public void Metadata_HeaderInABlockOfItsOwn_DoesNotMakeItARequestlessError()
 	{
-		var file = HttpFile.Parse("""
+		var file = HttpFile.Parse(
+			"""
 			# @tags mcp
 			# @requires !env:prod
 
 			### health
 			GET https://example.test/health
-			""");
+			"""
+		);
 
 		file.Metadata.Tags.Should().Equal("mcp");
 		file.Requests.Should().ContainSingle().Which.Name.Should().Be("health");
@@ -62,13 +65,15 @@ public class HeaderDirectiveTests
 	[Test]
 	public void Metadata_PerRequestDirectivesStillWork()
 	{
-		var file = HttpFile.Parse("""
+		var file = HttpFile.Parse(
+			"""
 			# @tags mcp
 
 			### one
 			# @readonly
 			POST https://example.test/mcp
-			""");
+			"""
+		);
 
 		file.Requests[0].Directives.ReadOnly.Should().BeTrue();
 		file.Metadata.Tags.Should().Equal("mcp");
@@ -90,7 +95,15 @@ public class HeaderDirectiveTests
 
 		m.Unmet(Context("assembler")).Should().BeNull("an unknown environment is not prod, so the negated condition holds");
 		m.Unmet(Context("assembler", "prod")).Should().NotBeNull().And.Subject.ToString().Should().Be("!env:prod");
-		m.Unmet(Context(env: "edge")).Should().NotBeNull().And.Subject.ToString().Should().Be("build-type:assembler", "an unknown build type matches no plain condition");
+		m
+			.Unmet(Context(env: "edge"))
+			.Should()
+			.NotBeNull()
+			.And
+			.Subject
+			.ToString()
+			.Should()
+			.Be("build-type:assembler", "an unknown build type matches no plain condition");
 	}
 
 	[Test]
@@ -121,15 +134,22 @@ public class HeaderDirectiveTests
 	[Test]
 	public void Directive_InALaterBlock_BelongsInTheHeader()
 	{
-		var errors = Parse("""
+		var errors = Parse(
+			"""
 			GET https://example.test/one
 
 			###
 			# @requires !env:prod
 			GET https://example.test/two
-			""").Errors;
+			"""
+		).Errors;
 
-		errors.Should().ContainSingle().Which.Should().Match<HttpFileError>(e => e.Line == 4 && e.Message.StartsWith("@requires belongs in the header", StringComparison.Ordinal));
+		errors
+			.Should()
+			.ContainSingle()
+			.Which
+			.Should()
+			.Match<HttpFileError>(e => e.Line == 4 && e.Message.StartsWith("@requires belongs in the header", StringComparison.Ordinal));
 	}
 
 	[Test]

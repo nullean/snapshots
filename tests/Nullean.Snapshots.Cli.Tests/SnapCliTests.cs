@@ -97,10 +97,14 @@ public class SnapCliTests : IDisposable
 	public void DiffShowsHunks()
 	{
 		Cli().Diff("RendersTable").Should().Be(ExitCode.Ok);
-		_out.ToString().Replace("\r\n", "\n", StringComparison.Ordinal).Should().Be(
-			"--- tests/Acme.Tests/.snapshots/Rendering/HtmlTests/RendersTable.verified.txt\n" +
-			"+++ .artifacts/.snapshots/received/Acme.Tests/Rendering/HtmlTests/RendersTable.received.txt\n" +
-			"@@ line 1 @@\n a\n-b\n+B\n c\n");
+		_out
+			.ToString()
+			.Replace("\r\n", "\n", StringComparison.Ordinal)
+			.Should()
+			.Be(
+				"--- tests/Acme.Tests/.snapshots/Rendering/HtmlTests/RendersTable.verified.txt\n" +
+					"+++ .artifacts/.snapshots/received/Acme.Tests/Rendering/HtmlTests/RendersTable.received.txt\n" + "@@ line 1 @@\n a\n-b\n+B\n c\n"
+			);
 	}
 
 	[Test]
@@ -152,8 +156,12 @@ public class SnapCliTests : IDisposable
 		Cli().Status(json: true).Should().Be(ExitCode.Pending);
 		using (var document = JsonDocument.Parse(_out.ToString()))
 		{
-			document.RootElement.EnumerateArray().Select(e => e.GetProperty("key").GetString())
-				.Should().Contain(["Acme.Tests/journeys/checkout", "Acme.Tests/landing"]);
+			document
+				.RootElement
+				.EnumerateArray()
+				.Select(e => e.GetProperty("key").GetString())
+				.Should()
+				.Contain(["Acme.Tests/journeys/checkout", "Acme.Tests/landing"]);
 		}
 
 		Cli().Accept(["checkout", "Acme.Tests/landing"], all: false).Should().Be(ExitCode.Ok);
@@ -223,8 +231,10 @@ public class SnapCliTests : IDisposable
 	}
 
 	private void Manifest(params string[] files) =>
-		_fs.File.WriteAllText(Received(ReceivedMarker.FileName.Replace("project", "manifest", StringComparison.Ordinal)),
-			"# verified files touched by the test run that started 2026-11-03T15:00:00Z\n" + string.Concat(files.Select(f => f + "\n")));
+		_fs.File.WriteAllText(
+			Received(ReceivedMarker.FileName.Replace("project", "manifest", StringComparison.Ordinal)),
+			"# verified files touched by the test run that started 2026-11-03T15:00:00Z\n" + string.Concat(files.Select(f => f + "\n"))
+		);
 
 	[Test]
 	public void OrphansAreVerifiedFilesTheLastRunDidNotTouch()
@@ -339,8 +349,12 @@ public class SnapCliTests : IDisposable
 		AddBinary();
 		Cli().Status(json: true).Should().Be(ExitCode.Pending);
 		using var document = JsonDocument.Parse(_out.ToString());
-		document.RootElement.EnumerateArray().Select(e => e.GetProperty("key").GetString())
-			.Should().Equal("Acme.Tests/Rendering/ChartTests/Draws", New, Changed, Obj);
+		document
+			.RootElement
+			.EnumerateArray()
+			.Select(e => e.GetProperty("key").GetString())
+			.Should()
+			.Equal("Acme.Tests/Rendering/ChartTests/Draws", New, Changed, Obj);
 	}
 
 	[Test]
@@ -348,11 +362,16 @@ public class SnapCliTests : IDisposable
 	{
 		AddBinary();
 		Cli().Diff("ChartTests/Draws").Should().Be(ExitCode.Ok);
-		_out.ToString().Replace("\r\n", "\n", StringComparison.Ordinal).Should().Be(
-			"--- tests/Acme.Tests/.snapshots/Rendering/ChartTests/Draws.verified.png  (11 bytes)\n" +
-			"+++ .artifacts/.snapshots/received/Acme.Tests/Rendering/ChartTests/Draws.received.png  (14 bytes)\n" +
-			"Binary snapshot: no line diff, open the files to compare.\n" +
-			"    .artifacts/.snapshots/received/Acme.Tests/Rendering/ChartTests/Draws.received-diff.png\n");
+		_out
+			.ToString()
+			.Replace("\r\n", "\n", StringComparison.Ordinal)
+			.Should()
+			.Be(
+				"--- tests/Acme.Tests/.snapshots/Rendering/ChartTests/Draws.verified.png  (11 bytes)\n" +
+					"+++ .artifacts/.snapshots/received/Acme.Tests/Rendering/ChartTests/Draws.received.png  (14 bytes)\n" +
+					"Binary snapshot: no line diff, open the files to compare.\n" +
+					"    .artifacts/.snapshots/received/Acme.Tests/Rendering/ChartTests/Draws.received-diff.png\n"
+			);
 	}
 
 	[Test]
@@ -360,8 +379,13 @@ public class SnapCliTests : IDisposable
 	{
 		AddBinary(withVerified: false);
 		Cli().Diff("ChartTests/Draws").Should().Be(ExitCode.Ok);
-		_out.ToString().Replace("\r\n", "\n", StringComparison.Ordinal).Should().StartWith(
-			"--- (new snapshot, no verified file)\n+++ .artifacts/.snapshots/received/Acme.Tests/Rendering/ChartTests/Draws.received.png  (14 bytes)\n");
+		_out
+			.ToString()
+			.Replace("\r\n", "\n", StringComparison.Ordinal)
+			.Should()
+			.StartWith(
+				"--- (new snapshot, no verified file)\n+++ .artifacts/.snapshots/received/Acme.Tests/Rendering/ChartTests/Draws.received.png  (14 bytes)\n"
+			);
 	}
 
 	[Test]

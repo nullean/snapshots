@@ -33,12 +33,27 @@ public class HttpCliTests
 			P.Fs.AddDirectory(P.Project.ReceivedDirectory);
 		}
 
-		public Task<int> Invoke(string[] patterns, string? environment = null, string[]? variables = null, string[]? headers = null, string? variant = null, string? transcript = null, bool readOnly = false) =>
-			new HttpCli(P.Fs, P.Project.Directory, Out, Err, (file, options, _) =>
-			{
-				Ran.Add((file, options));
-				return Task.FromResult(Transcript!(file));
-			}, k => Env.GetValueOrDefault(k)).RunAsync(patterns, environment, variables, CancellationToken.None, headers, variant, transcript, readOnly);
+		public Task<int> Invoke(
+			string[] patterns,
+			string? environment = null,
+			string[]? variables = null,
+			string[]? headers = null,
+			string? variant = null,
+			string? transcript = null,
+			bool readOnly = false
+		) =>
+			new HttpCli(
+				P.Fs,
+				P.Project.Directory,
+				Out,
+				Err,
+				(file, options, _) =>
+				{
+					Ran.Add((file, options));
+					return Task.FromResult(Transcript!(file));
+				},
+				k => Env.GetValueOrDefault(k)
+			).RunAsync(patterns, environment, variables, CancellationToken.None, headers, variant, transcript, readOnly);
 
 		public string Output => Out.ToString().Replace("\r\n", "\n", StringComparison.Ordinal);
 
@@ -115,9 +130,10 @@ public class HttpCliTests
 	public async Task TheTranscriptFlagOffNeedsNoVerifiedFileAndStillReportsAFailedRequest()
 	{
 		var run = new Run();
-		run.Transcript = file => file.EndsWith("basket.http", StringComparison.Ordinal)
-			? new HttpTranscript(file, Good, new HttpFileFailure(1, "GET {{host}}/b", "The connection was refused."))
-			: new HttpTranscript(file, Changed, null);
+		run.Transcript =
+			file => file.EndsWith("basket.http", StringComparison.Ordinal)
+				? new HttpTranscript(file, Good, new HttpFileFailure(1, "GET {{host}}/b", "The connection was refused."))
+				: new HttpTranscript(file, Changed, null);
 
 		(await run.Invoke(["http/**/*.http"], transcript: "off")).Should().Be(1);
 
@@ -135,9 +151,13 @@ public class HttpCliTests
 		(await run.Invoke(["http/shop.http"], transcript: "maybe")).Should().Be(2);
 		(await run.Invoke(["http/shop.http"], variant: "no/slash")).Should().Be(2);
 
-		run.Error.Should().Be(
-			"Error: --transcript 'maybe' is not 'compare', 'off' or 'shape'.\n" +
-			"Error: --variant 'no/slash' must be a name of letters, digits, '.', '-' and '_', without a leading or trailing dot.\n");
+		run
+			.Error
+			.Should()
+			.Be(
+				"Error: --transcript 'maybe' is not 'compare', 'off' or 'shape'.\n" +
+					"Error: --variant 'no/slash' must be a name of letters, digits, '.', '-' and '_', without a leading or trailing dot.\n"
+			);
 		run.Ran.Should().BeEmpty();
 	}
 
@@ -162,13 +182,16 @@ public class HttpCliTests
 		(await run.Invoke(["http/**/*.http"], "dev", ["host=http://localhost:5000", "token=a=b"], ["X-Request-Id"])).Should().Be(0);
 
 		run.Output.Should().Be("ok   Acme.Tests/http/nested/basket\nok   Acme.Tests/http/shop\n");
-		run.Ran.Should().AllSatisfy(r =>
-		{
-			r.Options.Environment.Should().Be("dev");
-			r.Options.Client.Should().BeNull("the CLI uses the runner's own client");
-			r.Options.Variables.Should().BeEquivalentTo(new Dictionary<string, string> { ["host"] = "http://localhost:5000", ["token"] = "a=b" });
-			r.Options.Headers.Should().Equal("X-Request-Id");
-		});
+		run
+			.Ran
+			.Should()
+			.AllSatisfy(r =>
+			{
+				r.Options.Environment.Should().Be("dev");
+				r.Options.Client.Should().BeNull("the CLI uses the runner's own client");
+				r.Options.Variables.Should().BeEquivalentTo(new Dictionary<string, string> { ["host"] = "http://localhost:5000", ["token"] = "a=b" });
+				r.Options.Headers.Should().Equal("X-Request-Id");
+			});
 	}
 
 	[Test]
@@ -178,8 +201,11 @@ public class HttpCliTests
 
 		await run.Invoke(["**/*.http"]);
 
-		run.Ran.Select(r => run.P.Fs.Path.GetRelativePath(run.P.Project.Directory, r.File).Replace('\\', '/'))
-			.Should().Equal("http/nested/basket.http", "http/shop.http");
+		run
+			.Ran
+			.Select(r => run.P.Fs.Path.GetRelativePath(run.P.Project.Directory, r.File).Replace('\\', '/'))
+			.Should()
+			.Equal("http/nested/basket.http", "http/shop.http");
 	}
 
 	[Test]
@@ -230,12 +256,14 @@ public class HttpCliTests
 		(await run.Invoke(["http/shop.http"], variables: ["=x"])).Should().Be(2);
 		(await run.Invoke(["http/missing.http", "http/*.nope"])).Should().Be(2);
 
-		run.Error.Should().Be(
-			"Error: name the .http files to run: files or globs such as 'http/**/*.http'.\n" +
-			"Error: --var 'novalue' is not name=value.\n" +
-			"Error: --var '=x' is not name=value.\n" +
-			"Error: no .http file matches 'http/missing.http'.\n" +
-			"Error: no .http file matches 'http/*.nope'.\n");
+		run
+			.Error
+			.Should()
+			.Be(
+				"Error: name the .http files to run: files or globs such as 'http/**/*.http'.\n" + "Error: --var 'novalue' is not name=value.\n" +
+					"Error: --var '=x' is not name=value.\n" + "Error: no .http file matches 'http/missing.http'.\n" +
+					"Error: no .http file matches 'http/*.nope'.\n"
+			);
 		run.Ran.Should().BeEmpty();
 	}
 
@@ -244,9 +272,7 @@ public class HttpCliTests
 	{
 		var run = new Run();
 		run.P.Fs.AddFile(run.P.VerifiedFile("http/shop", "responses"), new MockFileData(Good));
-		run.Transcript = file => file.EndsWith("basket.http", StringComparison.Ordinal)
-			? throw ParseError()
-			: new HttpTranscript(file, Good, null);
+		run.Transcript = file => file.EndsWith("basket.http", StringComparison.Ordinal) ? throw ParseError() : new HttpTranscript(file, Good, null);
 
 		(await run.Invoke(["http/**/*.http"])).Should().Be(2);
 
@@ -259,9 +285,10 @@ public class HttpCliTests
 	{
 		var run = new Run();
 		run.P.Fs.AddFile(run.P.VerifiedFile("http/shop", "responses"), new MockFileData(Good));
-		run.Transcript = file => file.EndsWith("basket.http", StringComparison.Ordinal)
-			? throw new IOException("The process cannot access the file.")
-			: new HttpTranscript(file, Good, null);
+		run.Transcript =
+			file => file.EndsWith("basket.http", StringComparison.Ordinal)
+				? throw new IOException("The process cannot access the file.")
+				: new HttpTranscript(file, Good, null);
 
 		(await run.Invoke(["http/**/*.http"])).Should().Be(3);
 

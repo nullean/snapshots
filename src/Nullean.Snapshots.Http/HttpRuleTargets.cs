@@ -40,7 +40,8 @@ public sealed class HttpRuleTargets : RuleTargets
 				}
 			default:
 				throw new FormatException(
-					$"'{string.Join(' ', target.Select(t => t.Raw))}' is not a target: status, header NAME, body [PATH], text, binary or request.");
+					$"'{string.Join(' ', target.Select(t => t.Raw))}' is not a target: status, header NAME, body [PATH], text, binary or request."
+				);
 		}
 	}
 
@@ -58,9 +59,7 @@ public sealed class HttpRuleTargets : RuleTargets
 			case "headers" when facts.Path.Count >= 2:
 				return [$"header {facts.Path[1].Key}"];
 			case "headers":
-				return facts.Node is MapNode { Entries.Count: > 0 } headers
-					? [.. headers.Entries.Select(e => "header " + e.Key.Canonical)]
-					: ["header *"];
+				return facts.Node is MapNode { Entries.Count: > 0 } headers ? [.. headers.Entries.Select(e => "header " + e.Key.Canonical)] : ["header *"];
 			case "body":
 				// An index in a suggestion is any index: the next run's array will not be the same length.
 				var path = new StringBuilder("$");

@@ -24,7 +24,10 @@ internal static class UserSecrets
 	{
 		foreach (var attribute in assembly.GetCustomAttributesData())
 		{
-			if (attribute.AttributeType.FullName == AttributeName && attribute.ConstructorArguments.Count == 1 && attribute.ConstructorArguments[0].Value is string id)
+			if (
+				attribute.AttributeType.FullName == AttributeName && attribute.ConstructorArguments.Count == 1 &&
+				attribute.ConstructorArguments[0].Value is string id
+			)
 				return id;
 		}
 		return null;
@@ -70,7 +73,10 @@ internal static class UserSecrets
 		var path = Path.Combine(root, id, "secrets.json");
 		if (!File.Exists(path))
 			return result;
-		using var document = JsonDocument.Parse(File.ReadAllBytes(path), new JsonDocumentOptions { AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip });
+		using var document = JsonDocument.Parse(
+			File.ReadAllBytes(path),
+			new JsonDocumentOptions { AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip }
+		);
 		Flatten(document.RootElement, null, result);
 		return result;
 	}

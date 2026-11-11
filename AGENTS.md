@@ -14,8 +14,9 @@ mise install       # once, and after the SDK in global.json changes
 mise run build     # dotnet build -c Release
 mise run test      # build, then every test project one at a time, as CI does
 mise run pack      # build, then pack the libraries into .artifacts/package-output
-mise run ci        # what CI's build job runs: build, test, pack
-mise run check     # zizmor on the workflows
+mise run ci        # what CI's build job runs: build, test, pack, curb check
+mise run format    # format the repository with curb
+mise run check     # curb formatting check and zizmor on the workflows
 mise run docs      # scripts/docs.sh: build and serve the docs (needs docs-builder)
 mise run release   # show the release draft; `mise run release publish` releases
 ```

@@ -43,6 +43,5 @@ internal sealed class SnapCommands
 	/// <param name="root">The folder to search from. Defaults to the current folder.</param>
 	public static int Orphans(bool json = false, bool delete = false, string? root = null) => Cli(root).Orphans(json, delete);
 
-	private static SnapCli Cli(string? root) =>
-		new(new FileSystem(), root ?? Directory.GetCurrentDirectory(), Console.Out, Console.Error);
+	private static SnapCli Cli(string? root) => new(new FileSystem(), root ?? Directory.GetCurrentDirectory(), Console.Out, Console.Error);
 }

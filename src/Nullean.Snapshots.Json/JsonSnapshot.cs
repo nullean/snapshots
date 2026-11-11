@@ -26,8 +26,7 @@ public static class JsonSnapshot
 	public static string Pretty(string json) => JsonTree.Pretty(json);
 
 	/// <summary>Compares two JSON texts as trees.</summary>
-	public static SnapshotComparison Compare(string expected, string actual, TreeDiffOptions? options = null) =>
-		FormatWith(options).Compare(expected, actual);
+	public static SnapshotComparison Compare(string expected, string actual, TreeDiffOptions? options = null) => FormatWith(options).Compare(expected, actual);
 }
 
 internal sealed class JsonSnapshotFormat(TreeDiffOptions? options) : TreeSnapshotFormat(options)

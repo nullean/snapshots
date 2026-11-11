@@ -11,11 +11,23 @@ public class HttpFormatTests
 	private static readonly IReadOnlySet<string> Defaults = HttpResponseText.Chosen(null);
 
 	private static HttpResponseSection Section(
-		string heading, int status = 200, string? reason = "OK", string? body = null, string? mediaType = "application/json",
-		string? charSet = "utf-8", params (string Name, string Value)[] headers
+		string heading,
+		int status = 200,
+		string? reason = "OK",
+		string? body = null,
+		string? mediaType = "application/json",
+		string? charSet = "utf-8",
+		params (string Name, string Value)[] headers
 	) =>
-		new(heading, status, reason, [.. headers.Select(h => new KeyValuePair<string, string>(h.Name, h.Value))],
-			body is null ? [] : Encoding.UTF8.GetBytes(body), mediaType, charSet);
+		new(
+			heading,
+			status,
+			reason,
+			[.. headers.Select(h => new KeyValuePair<string, string>(h.Name, h.Value))],
+			body is null ? [] : Encoding.UTF8.GetBytes(body),
+			mediaType,
+			charSet
+		);
 
 	private static string Render(IReadOnlySet<string>? chosen = null, params HttpResponseSection[] sections)
 	{
@@ -27,15 +39,20 @@ public class HttpFormatTests
 
 	private static string Render(params HttpResponseSection[] sections) => Render(null, sections);
 
-	private static readonly HttpResponseSection Login = Section("login: POST {{host}}/api/login",
+	private static readonly HttpResponseSection Login = Section(
+		"login: POST {{host}}/api/login",
 		body: /*lang=json,strict*/ """{"token":"abc","user":{"name":"ada"}}""",
-		headers: [("Content-Type", "application/json; charset=utf-8"), ("Date", "Tue, 03 Nov 2026 10:00:00 GMT")]);
+		headers: [("Content-Type", "application/json; charset=utf-8"), ("Date", "Tue, 03 Nov 2026 10:00:00 GMT")]
+	);
 
 	private static readonly HttpResponseSection Orders = Section("GET {{host}}/api/orders", 404, "Not Found", mediaType: null, charSet: null);
 
 	[Test]
 	public void RendersTheDocumentedShape() =>
-		Render(Login, Orders).Should().Be("""
+		Render(Login, Orders)
+			.Should()
+			.Be(
+				"""
 			## login: POST {{host}}/api/login
 			status: 200 OK
 			content-type: application/json; charset=utf-8
@@ -50,18 +67,36 @@ public class HttpFormatTests
 			## GET {{host}}/api/orders
 			status: 404 Not Found
 
-			""".Replace("\r\n", "\n", StringComparison.Ordinal));
+			""".Replace(
+					"\r\n",
+					"\n",
+					StringComparison.Ordinal
+				)
+			);
 
 	[Test]
 	public void HeadersAreChosenLowerCasedSortedAndJoined()
 	{
 		var chosen = HttpResponseText.Chosen(["X-Request-Id", "VARY", "Authorization", "Set-Cookie", "cookie", "Proxy-Authorization"]);
-		var text = Render(chosen, Section("GET /", body: null, headers:
-		[
-			("Vary", "Accept"), ("X-Request-Id", "r-1"), ("Location", "/next"), ("Vary", "Origin"), ("Authorization", "Bearer secret"),
-			("Set-Cookie", "session=secret"), ("Cookie", "a=secret"), ("Proxy-Authorization", "Basic secret"), ("Content-Encoding", "gzip"),
-			("Server", "Kestrel"),
-		]));
+		var text = Render(
+			chosen,
+			Section(
+				"GET /",
+				body: null,
+				headers: [
+					("Vary", "Accept"),
+					("X-Request-Id", "r-1"),
+					("Location", "/next"),
+					("Vary", "Origin"),
+					("Authorization", "Bearer secret"),
+					("Set-Cookie", "session=secret"),
+					("Cookie", "a=secret"),
+					("Proxy-Authorization", "Basic secret"),
+					("Content-Encoding", "gzip"),
+					("Server", "Kestrel"),
+				]
+			)
+		);
 
 		text.Should().Be("## GET /\nstatus: 200 OK\nlocation: /next\nvary: Accept, Origin\nx-request-id: r-1\n");
 		text.Should().NotContain("secret", "credential headers are never written, even when chosen");
@@ -122,7 +157,13 @@ public class HttpFormatTests
 	{
 		var comparison = HttpSnapshot.Format.Compare(Render(Orders), Render(Orders with { StatusCode = 500, ReasonPhrase = "Internal Server Error" }));
 
-		comparison.Differences.Should().ContainSingle().Which.Single().Should()
+		comparison
+			.Differences
+			.Should()
+			.ContainSingle()
+			.Which
+			.Single()
+			.Should()
 			.Be("$[0].status   expected \"404 Not Found\"   actual \"500 Internal Server Error\"   (verified.responses:2:9)");
 	}
 
@@ -194,38 +235,66 @@ public class HttpFormatTests
 
 	[Test]
 	public void ABodyThatIsNeitherJsonNorQuotedIsAFormatError() =>
-		FluentActions.Invoking(() => HttpSnapshot.Format.Parse("## GET /\nstatus: 200\n\nhello"))
-			.Should().Throw<FormatException>().Which.Message.Should().StartWith("Line 4: the body is not valid JSON, quoted text ('> ') or 'binary: '.");
+		FluentActions
+			.Invoking(() => HttpSnapshot.Format.Parse("## GET /\nstatus: 200\n\nhello"))
+			.Should()
+			.Throw<FormatException>()
+			.Which
+			.Message
+			.Should()
+			.StartWith("Line 4: the body is not valid JSON, quoted text ('> ') or 'binary: '.");
 
 	[Test]
 	public void AnInvalidVerifiedFileIsADifference() =>
-		HttpSnapshot.Format.Compare("garbage", Render(Orders)).Differences.Single().Single()
-			.Should().Be("The verified file is not valid HTTP: Line 1: a section starts with '## ' and the request.");
+		HttpSnapshot
+			.Format
+			.Compare("garbage", Render(Orders))
+			.Differences
+			.Single()
+			.Single()
+			.Should()
+			.Be("The verified file is not valid HTTP: Line 1: a section starts with '## ' and the request.");
 
 	private static readonly Gen<string> Words = Gen.String[Gen.Char["ab #>:{}\"-\n"], 0, 12];
 
-	private static readonly Gen<HttpResponseSection> Sections =
+	private static readonly Gen<HttpResponseSection> Sections = Gen.Select(
+		Gen.OneOf(Gen.Const("GET {{host}}/a"), Gen.Const("login: POST /api/login HTTP/1.1"), Gen.String[Gen.Char["ab /#:"], 1, 10]),
+		Gen.Int[100, 599],
+		Gen.Int[0, 2].Select(
+			i =>
+				i switch
+				{
+					0 => null,
+					1 => "OK",
+					_ => "Not Found"
+				}
+		),
 		Gen.Select(
-			Gen.OneOf(Gen.Const("GET {{host}}/a"), Gen.Const("login: POST /api/login HTTP/1.1"), Gen.String[Gen.Char["ab /#:"], 1, 10]),
-			Gen.Int[100, 599],
-			Gen.Int[0, 2].Select(i => i switch { 0 => null, 1 => "OK", _ => "Not Found" }),
-			Gen.Select(Gen.OneOf(Gen.Const("Content-Type"), Gen.Const("Location"), Gen.Const("X-Id"), Gen.Const("Vary")), Gen.String[Gen.Char["ab ,;="], 0, 6])
-				.Array[0, 4],
-			Gen.Int[0, 3],
-			Words)
-		.Select(t =>
+			Gen.OneOf(Gen.Const("Content-Type"), Gen.Const("Location"), Gen.Const("X-Id"), Gen.Const("Vary")),
+			Gen.String[Gen.Char["ab ,;="], 0, 6]
+		).Array[0, 4],
+		Gen.Int[0, 3],
+		Words
+	).Select(t =>
+	{
+		var (heading, status, reason, headers, kind, words) = t;
+		(string body, string mediaType) = kind switch
 		{
-			var (heading, status, reason, headers, kind, words) = t;
-			(string body, string mediaType) = kind switch
-			{
-				0 => (string.Empty, "text/plain"),
-				1 => (words, "text/plain"),
-				2 => (System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string> { ["w"] = words, ["n"] = "1" }), "application/json"),
-				_ => (words, "application/octet-stream"),
-			};
-			return new HttpResponseSection(heading.Trim().Replace("\n", " ", StringComparison.Ordinal) is { Length: > 0 } h ? h : "GET /", status, reason,
-				[.. headers.Select(x => new KeyValuePair<string, string>(x.Item1, x.Item2))], Encoding.UTF8.GetBytes(body), mediaType, kind == 3 ? null : "utf-8");
-		});
+			0 => (string.Empty, "text/plain"),
+			1 => (words, "text/plain"),
+			2 => (System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string> { ["w"] = words, ["n"] = "1" }), "application/json"),
+			_ => (words, "application/octet-stream"),
+		};
+		return new HttpResponseSection(
+			heading.Trim().Replace("\n", " ", StringComparison.Ordinal) is { Length: > 0 } h ? h : "GET /",
+			status,
+			reason,
+			[.. headers.Select(x => new KeyValuePair<string, string>(x.Item1, x.Item2))],
+			Encoding.UTF8.GetBytes(body),
+			mediaType,
+			kind == 3 ? null : "utf-8"
+		);
+	});
 
 	[Test]
 	public void RenderThenParseGivesEverySection() =>
@@ -243,8 +312,12 @@ public class HttpFormatTests
 					new(ScalarNode.String("request"), ScalarNode.String(s.Heading)),
 					new(ScalarNode.String("status"), ScalarNode.String(s.ReasonPhrase is null ? $"{s.StatusCode}" : $"{s.StatusCode} {s.ReasonPhrase}")),
 				};
-				var headers = s.Headers.GroupBy(h => h.Key.ToLowerInvariant())
-					.Select(g => new KeyValuePair<ScalarNode, Node>(ScalarNode.String(g.Key), ScalarNode.String(string.Join(", ", g.Select(h => h.Value.Trim())))))
+				var headers = s
+					.Headers
+					.GroupBy(h => h.Key.ToLowerInvariant())
+					.Select(
+						g => new KeyValuePair<ScalarNode, Node>(ScalarNode.String(g.Key), ScalarNode.String(string.Join(", ", g.Select(h => h.Value.Trim()))))
+					)
 					.ToList();
 				if (headers.Count > 0)
 					expected.Add(new(ScalarNode.String("headers"), new MapNode(headers)));
@@ -271,6 +344,5 @@ public class HttpFormatTests
 			HttpSnapshot.Format.Compare(text, text).IsMatch.Should().BeTrue();
 		});
 
-	private static string Field(MapNode section, string key) =>
-		((ScalarNode)section.Entries.Single(e => e.Key.Canonical == key).Value).Canonical;
+	private static string Field(MapNode section, string key) => ((ScalarNode)section.Entries.Single(e => e.Key.Canonical == key).Value).Canonical;
 }

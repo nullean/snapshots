@@ -10,7 +10,8 @@ namespace Nullean.Snapshots.Browser.Tests;
 /// </summary>
 internal sealed class RunOptionsServer : IAsyncDisposable
 {
-	private const string Page = """
+	private const string Page =
+		"""
 		<!doctype html><title>Run</title><link rel="icon" href="data:,">
 		<button id="save" onclick="fetch('/save', { method: 'POST', body: 'x' })">Save</button>
 		""";
@@ -64,9 +65,7 @@ internal sealed class RunOptionsServer : IAsyncDisposable
 				await context.Response.OutputStream.WriteAsync(Encoding.UTF8.GetBytes(Page));
 				context.Response.Close();
 			}
-			catch (Exception e) when (e is HttpListenerException or ObjectDisposedException or IOException)
-			{
-			}
+			catch (Exception e) when (e is HttpListenerException or ObjectDisposedException or IOException) { }
 		}
 	}
 

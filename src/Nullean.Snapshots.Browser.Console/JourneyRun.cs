@@ -12,13 +12,16 @@ public sealed record JourneyRunFile(string Id, string Path)
 
 	/// <summary>The journeys at <paramref name="paths"/>, each called by its path relative to <paramref name="root"/> without the extension.</summary>
 	public static IReadOnlyList<JourneyRunFile> FromPaths(string root, IEnumerable<string> paths) =>
-		[.. paths
-			.Select(p => new JourneyRunFile(
-				System.IO.Path.GetRelativePath(root, p).Replace('\\', '/') is var relative && relative.EndsWith(".journey", StringComparison.Ordinal)
-					? relative[..^".journey".Length]
-					: relative,
-				p))
-			.OrderBy(f => f.Id, StringComparer.Ordinal)];
+		[
+			.. paths.Select(
+				p => new JourneyRunFile(
+					System.IO.Path.GetRelativePath(root, p).Replace('\\', '/') is var relative && relative.EndsWith(".journey", StringComparison.Ordinal)
+						? relative[..^".journey".Length]
+						: relative,
+					p
+				)
+			).OrderBy(f => f.Id, StringComparer.Ordinal)
+		];
 }
 
 /// <summary>The exit codes of <see cref="JourneyConsoleRunner"/>.</summary>

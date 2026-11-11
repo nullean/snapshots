@@ -26,176 +26,188 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 
 	private readonly string _root = fileSystem.Path.TrimEndingDirectorySeparator(fileSystem.Path.GetFullPath(root));
 
-	public int Status(bool json) => Run(pending =>
-	{
-		if (json)
+	public int Status(bool json) =>
+		Run(pending =>
 		{
-			output.WriteLine(Json(pending));
-			return pending.Count == 0 ? ExitCode.Ok : ExitCode.Pending;
-		}
+			if (json)
+			{
+				output.WriteLine(Json(pending));
+				return pending.Count == 0 ? ExitCode.Ok : ExitCode.Pending;
+			}
 
-		if (pending.Count == 0)
+			if (pending.Count == 0)
+			{
+				output.WriteLine("No pending snapshots.");
+				return ExitCode.Ok;
+			}
+
+			output.WriteLine($"{pending.Count} pending snapshot(s):");
+			var width = pending.Max(p => p.Key.Length);
+			foreach (var p in pending)
+				output.WriteLine($"  {(p.IsNew ? "new    " : "changed")}  {p.Key.PadRight(width)}  .{p.Extension}");
+			output.WriteLine("Review with 'snap diff <key>', then 'snap accept <key>' or 'snap reject <key>' (or --all).");
+			return ExitCode.Pending;
+		});
+
+	public int Diff(string pattern) =>
+		Run((pending, fs) =>
 		{
-			output.WriteLine("No pending snapshots.");
+			if (Select(pending, [pattern], all: false) is not { } selected)
+				return ExitCode.Usage;
+			if (selected.Count > 1)
+			{
+				error.WriteLine($"'{pattern}' matches {selected.Count} snapshots; diff takes one:");
+				foreach (var p in selected)
+					error.WriteLine("  " + p.Key);
+				return ExitCode.Usage;
+			}
+
+			WriteDiff(fs, selected[0], color: false);
 			return ExitCode.Ok;
-		}
+		});
 
-		output.WriteLine($"{pending.Count} pending snapshot(s):");
-		var width = pending.Max(p => p.Key.Length);
-		foreach (var p in pending)
-			output.WriteLine($"  {(p.IsNew ? "new    " : "changed")}  {p.Key.PadRight(width)}  .{p.Extension}");
-		output.WriteLine("Review with 'snap diff <key>', then 'snap accept <key>' or 'snap reject <key>' (or --all).");
-		return ExitCode.Pending;
-	});
-
-	public int Diff(string pattern) => Run((pending, fs) =>
-	{
-		if (Select(pending, [pattern], all: false) is not { } selected)
-			return ExitCode.Usage;
-		if (selected.Count > 1)
+	public int Accept(IReadOnlyList<string> patterns, bool all) =>
+		Run((pending, fs) =>
 		{
-			error.WriteLine($"'{pattern}' matches {selected.Count} snapshots; diff takes one:");
-			foreach (var p in selected)
-				error.WriteLine("  " + p.Key);
-			return ExitCode.Usage;
-		}
+			if (Select(pending, patterns, all) is not { } selected)
+				return ExitCode.Usage;
+			foreach (var snapshot in selected.Where(s => s.Inline is null))
+				AcceptOne(fs, snapshot);
+			// An edit that cannot be made leaves its snapshot pending, so the command exits 1 as 'snap status' would.
+			return AcceptInline(fs, [.. selected.Where(s => s.Inline is not null)]) == 0 ? ExitCode.Ok : ExitCode.Pending;
+		});
 
-		WriteDiff(fs, selected[0], color: false);
-		return ExitCode.Ok;
-	});
-
-	public int Accept(IReadOnlyList<string> patterns, bool all) => Run((pending, fs) =>
-	{
-		if (Select(pending, patterns, all) is not { } selected)
-			return ExitCode.Usage;
-		foreach (var snapshot in selected.Where(s => s.Inline is null))
-			AcceptOne(fs, snapshot);
-		// An edit that cannot be made leaves its snapshot pending, so the command exits 1 as 'snap status' would.
-		return AcceptInline(fs, [.. selected.Where(s => s.Inline is not null)]) == 0 ? ExitCode.Ok : ExitCode.Pending;
-	});
-
-	public int Reject(IReadOnlyList<string> patterns, bool all) => Run((pending, fs) =>
-	{
-		if (Select(pending, patterns, all) is not { } selected)
-			return ExitCode.Usage;
-		foreach (var snapshot in selected)
-			RejectOne(fs, snapshot);
-		return ExitCode.Ok;
-	});
+	public int Reject(IReadOnlyList<string> patterns, bool all) =>
+		Run((pending, fs) =>
+		{
+			if (Select(pending, patterns, all) is not { } selected)
+				return ExitCode.Usage;
+			foreach (var snapshot in selected)
+				RejectOne(fs, snapshot);
+			return ExitCode.Ok;
+		});
 
 	/// <summary>
 	/// Walks through every pending snapshot: its diff, then accept, reject, skip or quit. Exits 1 when snapshots are
 	/// left pending, 0 otherwise.
 	/// </summary>
-	public int Review(ISnapPrompt prompt, bool color) => Run((pending, fs) =>
-	{
-		if (pending.Count == 0)
+	public int Review(ISnapPrompt prompt, bool color) =>
+		Run((pending, fs) =>
 		{
-			output.WriteLine("No pending snapshots.");
-			return ExitCode.Ok;
-		}
+			if (pending.Count == 0)
+			{
+				output.WriteLine("No pending snapshots.");
+				return ExitCode.Ok;
+			}
 
-		int accepted = 0, rejected = 0, left = pending.Count;
-		// Inline snapshots are edited together once the walk is over: accepting one grows the file and moves the lines
-		// the next one was recorded at.
-		var inline = new List<PendingSnapshot>();
-		for (var i = 0; i < pending.Count; i++)
-		{
-			var snapshot = pending[i];
+			int accepted = 0, rejected = 0, left = pending.Count;
+			// Inline snapshots are edited together once the walk is over: accepting one grows the file and moves the lines
+			// the next one was recorded at.
+			var inline = new List<PendingSnapshot>();
+			for (var i = 0; i < pending.Count; i++)
+			{
+				var snapshot = pending[i];
+				output.WriteLine();
+				output.WriteLine($"[{i + 1}/{pending.Count}] {(snapshot.IsNew ? "new" : "changed")}  {snapshot.Key}  .{snapshot.Extension}");
+				WriteDiff(fs, snapshot, color);
+				var answer = Ask(prompt);
+				if (answer == 'q')
+					break;
+				if (answer == 'a' && snapshot.Inline is not null)
+				{
+					inline.Add(snapshot);
+				}
+				else if (answer == 'a')
+				{
+					AcceptOne(fs, snapshot);
+					accepted++;
+					left--;
+				}
+				else if (answer == 'r')
+				{
+					RejectOne(fs, snapshot);
+					rejected++;
+					left--;
+				}
+			}
+
+			if (inline.Count > 0)
+			{
+				output.WriteLine();
+				var applied = inline.Count - AcceptInline(fs, inline);
+				accepted += applied;
+				left -= applied;
+			}
+
 			output.WriteLine();
-			output.WriteLine($"[{i + 1}/{pending.Count}] {(snapshot.IsNew ? "new" : "changed")}  {snapshot.Key}  .{snapshot.Extension}");
-			WriteDiff(fs, snapshot, color);
-			var answer = Ask(prompt);
-			if (answer == 'q')
-				break;
-			if (answer == 'a' && snapshot.Inline is not null)
-			{
-				inline.Add(snapshot);
-			}
-			else if (answer == 'a')
-			{
-				AcceptOne(fs, snapshot);
-				accepted++;
-				left--;
-			}
-			else if (answer == 'r')
-			{
-				RejectOne(fs, snapshot);
-				rejected++;
-				left--;
-			}
-		}
-
-		if (inline.Count > 0)
-		{
-			output.WriteLine();
-			var applied = inline.Count - AcceptInline(fs, inline);
-			accepted += applied;
-			left -= applied;
-		}
-
-		output.WriteLine();
-		output.WriteLine($"{accepted} accepted, {rejected} rejected, {left} still pending.");
-		return left == 0 ? ExitCode.Ok : ExitCode.Pending;
-	});
+			output.WriteLine($"{accepted} accepted, {rejected} rejected, {left} still pending.");
+			return left == 0 ? ExitCode.Ok : ExitCode.Pending;
+		});
 
 	/// <summary>
 	/// Lists verified files the latest test run did not touch, per the run manifest each project's received folder
 	/// keeps. Exits 1 when there are any; <paramref name="delete"/> removes them instead.
 	/// </summary>
-	public int Orphans(bool json, bool delete) => Run(context =>
-	{
-		var orphans = new List<(ReceivedRoot Root, string Path, string? Started)>();
-		foreach (var root in context.Roots)
+	public int Orphans(bool json, bool delete) =>
+		Run(context =>
 		{
-			var manifestPath = context.Fs.Path.Combine(root.Directory, RunManifest.FileName);
-			if (!context.Fs.File.Exists(manifestPath))
+			var orphans = new List<(ReceivedRoot Root, string Path, string? Started)>();
+			foreach (var root in context.Roots)
 			{
-				error.WriteLine($"No run manifest for {root.Project}: run its tests to record which snapshots they use.");
-				continue;
-			}
-
-			if (!context.Fs.Directory.Exists(root.VerifiedDirectory))
-				continue;
-			var (touched, started) = RunManifest.Read(context.Fs.File.ReadAllText(manifestPath, SnapshotText.Encoding));
-			foreach (var file in context.Fs.Directory.EnumerateFiles(root.VerifiedDirectory, "*", SearchOption.AllDirectories).Order(StringComparer.Ordinal))
-			{
-				var name = context.Fs.Path.GetFileName(file);
-				if (!name.Contains(SnapshotPath.VerifiedInfix, StringComparison.Ordinal) || name.EndsWith(".tmp", StringComparison.Ordinal))
+				var manifestPath = context.Fs.Path.Combine(root.Directory, RunManifest.FileName);
+				if (!context.Fs.File.Exists(manifestPath))
+				{
+					error.WriteLine($"No run manifest for {root.Project}: run its tests to record which snapshots they use.");
 					continue;
-				if (!touched.Contains(SnapshotPath.Relative(context.Fs, root.VerifiedDirectory, file)))
-					orphans.Add((root, file, started));
+				}
+
+				if (!context.Fs.Directory.Exists(root.VerifiedDirectory))
+					continue;
+				var (touched, started) = RunManifest.Read(context.Fs.File.ReadAllText(manifestPath, SnapshotText.Encoding));
+				foreach (var file in context
+					.Fs
+					.Directory
+					.EnumerateFiles(root.VerifiedDirectory, "*", SearchOption.AllDirectories)
+					.Order(StringComparer.Ordinal))
+				{
+					var name = context.Fs.Path.GetFileName(file);
+					if (!name.Contains(SnapshotPath.VerifiedInfix, StringComparison.Ordinal) || name.EndsWith(".tmp", StringComparison.Ordinal))
+						continue;
+					if (!touched.Contains(SnapshotPath.Relative(context.Fs, root.VerifiedDirectory, file)))
+						orphans.Add((root, file, started));
+				}
 			}
-		}
 
-		if (json)
-		{
-			output.WriteLine(OrphansJson(orphans.Select(o => (o.Root.Project, o.Path))));
-			return orphans.Count == 0 || delete ? Deleted(context.Fs, orphans.Select(o => o.Path), delete, quiet: true) : ExitCode.Pending;
-		}
+			if (json)
+			{
+				output.WriteLine(OrphansJson(orphans.Select(o => (o.Root.Project, o.Path))));
+				return orphans.Count == 0 || delete ? Deleted(context.Fs, orphans.Select(o => o.Path), delete, quiet: true) : ExitCode.Pending;
+			}
 
-		if (orphans.Count == 0)
-		{
-			output.WriteLine("No orphaned snapshots.");
-			return ExitCode.Ok;
-		}
+			if (orphans.Count == 0)
+			{
+				output.WriteLine("No orphaned snapshots.");
+				return ExitCode.Ok;
+			}
 
-		foreach (var group in orphans.GroupBy(o => o.Root.Project))
-		{
-			var started = group.First().Started;
-			output.WriteLine($"{group.Key}: {group.Count()} verified file(s) the latest run{(started is null ? "" : $" (started {started})")} did not use:");
-			foreach (var orphan in group)
-				output.WriteLine("  " + Relative(orphan.Path));
-		}
+			foreach (var group in orphans.GroupBy(o => o.Root.Project))
+			{
+				var started = group.First().Started;
+				output.WriteLine(
+					$"{group.Key}: {group.Count()} verified file(s) the latest run{(started is null ? "" : $" (started {started})")} did not use:"
+				);
+				foreach (var orphan in group)
+					output.WriteLine("  " + Relative(orphan.Path));
+			}
 
-		if (!delete)
-		{
-			output.WriteLine("Run the whole suite first: a filtered run leaves out the snapshots it skipped. 'snap orphans --delete' removes these.");
-			return ExitCode.Pending;
-		}
+			if (!delete)
+			{
+				output.WriteLine("Run the whole suite first: a filtered run leaves out the snapshots it skipped. 'snap orphans --delete' removes these.");
+				return ExitCode.Pending;
+			}
 
-		return Deleted(context.Fs, orphans.Select(o => o.Path), delete, quiet: false);
-	});
+			return Deleted(context.Fs, orphans.Select(o => o.Path), delete, quiet: false);
+		});
 
 	private int Deleted(IFileSystem fs, IEnumerable<string> paths, bool delete, bool quiet)
 	{
@@ -316,9 +328,12 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 	/// <summary>A binary snapshot has no line diff: its paths, sizes and attachments (a diff image) instead.</summary>
 	private void WriteBinary(IFileSystem fs, PendingSnapshot snapshot, long receivedLength)
 	{
-		output.WriteLine("--- " + (snapshot.IsNew
-			? "(new snapshot, no verified file)"
-			: $"{Relative(snapshot.VerifiedPath)}  ({Bytes(fs.FileInfo.New(snapshot.VerifiedPath).Length)})"));
+		output.WriteLine(
+			"--- " +
+				(snapshot.IsNew
+					? "(new snapshot, no verified file)"
+					: $"{Relative(snapshot.VerifiedPath)}  ({Bytes(fs.FileInfo.New(snapshot.VerifiedPath).Length)})")
+		);
 		output.WriteLine($"+++ {Relative(snapshot.ReceivedPath)}  ({Bytes(receivedLength)})");
 		output.WriteLine("Binary snapshot: no line diff, open the files to compare.");
 		foreach (var attachment in Attachments(fs, snapshot))
@@ -332,9 +347,7 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 	{
 		var directory = fs.Path.GetDirectoryName(snapshot.ReceivedPath)!;
 		var name = fs.Path.GetFileName(snapshot.ReceivedPath);
-		return [.. fs.Directory.EnumerateFiles(directory)
-			.Where(f => SnapshotPath.IsAttachmentOf(fs.Path.GetFileName(f), name))
-			.Order(StringComparer.Ordinal)];
+		return [.. fs.Directory.EnumerateFiles(directory).Where(f => SnapshotPath.IsAttachmentOf(fs.Path.GetFileName(f), name)).Order(StringComparer.Ordinal)];
 	}
 
 	// Only the interactive review colours its output, and only on a terminal: messages and other commands stay plain.
@@ -565,11 +578,14 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 	private string Relative(string path) => SnapshotPath.Relative(fileSystem, _root, path);
 
 	private ScopedFileSystem.ScopedFileSystem Scoped(string scopeRoot) =>
-		new(fileSystem, new ScopedFileSystemOptions(scopeRoot)
-		{
-			AllowedHiddenFolderNames = AllowedHiddenFolders,
-			AllowedHiddenFileNames = [ReceivedMarker.FileName, RunManifest.FileName],
-		});
+		new(
+			fileSystem,
+			new ScopedFileSystemOptions(scopeRoot)
+			{
+				AllowedHiddenFolderNames = AllowedHiddenFolders,
+				AllowedHiddenFileNames = [ReceivedMarker.FileName, RunManifest.FileName],
+			}
+		);
 
 	private bool IsSameOrInside(string path, string root)
 	{

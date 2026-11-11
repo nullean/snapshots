@@ -20,7 +20,10 @@ internal sealed record InlineRecord(string Source, string Format, InlineEdit Edi
 	public static string Render(string source, string format, InlineEdit edit, string? sourceHash)
 	{
 		using var buffer = new MemoryStream();
-		using (var json = new Utf8JsonWriter(buffer, new JsonWriterOptions { Indented = true, NewLine = "\n", Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }))
+		using (var json = new Utf8JsonWriter(
+			buffer,
+			new JsonWriterOptions { Indented = true, NewLine = "\n", Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }
+		))
 		{
 			json.WriteStartObject();
 			json.WriteString("format", format);
@@ -52,8 +55,10 @@ internal sealed record InlineRecord(string Source, string Format, InlineEdit Edi
 					root.GetProperty("line").GetInt32(),
 					Optional(root, "expression"),
 					Optional(root, "expected"),
-					Required(root, "actual")),
-				Optional(root, "sourceHash"));
+					Required(root, "actual")
+				),
+				Optional(root, "sourceHash")
+			);
 		}
 		catch (Exception e) when (e is JsonException or KeyNotFoundException or InvalidOperationException or FormatException)
 		{
@@ -61,8 +66,7 @@ internal sealed record InlineRecord(string Source, string Format, InlineEdit Edi
 		}
 	}
 
-	private static string Required(JsonElement root, string name) =>
-		root.GetProperty(name).GetString() ?? throw new FormatException($"'{name}' is null");
+	private static string Required(JsonElement root, string name) => root.GetProperty(name).GetString() ?? throw new FormatException($"'{name}' is null");
 
 	private static string? Optional(JsonElement root, string name) =>
 		root.TryGetProperty(name, out var value) && value.ValueKind != JsonValueKind.Null ? value.GetString() : null;

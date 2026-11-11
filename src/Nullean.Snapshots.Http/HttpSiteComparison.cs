@@ -1,5 +1,5 @@
-using Nullean.HttpFileParser;
 using System.Runtime.CompilerServices;
+using Nullean.HttpFileParser;
 using Nullean.Snapshots.Differences;
 
 namespace Nullean.Snapshots.Http;
@@ -39,11 +39,7 @@ public sealed class HttpCompareOptions
 }
 
 /// <summary>Where a comparison keeps its baseline: the library's own engine, or the CLI's.</summary>
-internal sealed record SiteStore(
-	Func<string, string> Seed,
-	Func<string?> Read,
-	Func<string, SiteComparisonOptions, SiteComparisonResult> Compare
-);
+internal sealed record SiteStore(Func<string, string> Seed, Func<string?> Read, Func<string, SiteComparisonOptions, SiteComparisonResult> Compare);
 
 public static partial class HttpFileSnapshot
 {
@@ -67,7 +63,8 @@ public static partial class HttpFileSnapshot
 		var store = new SiteStore(
 			text => SiteComparison.SeedBaseline(text, Format, file),
 			() => SiteComparison.ReadBaseline(Format, file),
-			(text, compare) => SiteComparison.Compare(text, Format, HttpRuleTargets.Instance, file, compare));
+			(text, compare) => SiteComparison.Compare(text, Format, HttpRuleTargets.Instance, file, compare)
+		);
 		return CompareCoreAsync(file, options, RunFileAsync, store, cancellationToken);
 	}
 
@@ -89,12 +86,10 @@ public static partial class HttpFileSnapshot
 		}
 
 		var target = await run(file, ForSite(options, options.Target, options.TargetEnvironment, mode), cancellationToken).ConfigureAwait(false);
-		var result = store.Compare(target.Text, new SiteComparisonOptions
-		{
-			Record = options.Record,
-			Prune = options.Prune,
-			Note = $"recorded against {options.Target}",
-		});
+		var result = store.Compare(
+			target.Text,
+			new SiteComparisonOptions { Record = options.Record, Prune = options.Prune, Note = $"recorded against {options.Target}", }
+		);
 		if (target.Failure is not { } stopped)
 			return result;
 		var message = $"Target stopped at {stopped.Describe(Relative(file))}";

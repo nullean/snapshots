@@ -20,8 +20,11 @@ public static class BrowserAssertions
 		ArgumentNullException.ThrowIfNull(assertions);
 		if (assertions.Subject is not JourneyTranscript transcript)
 		{
-			SnapshotAssertions.FailUnless(assertions.CurrentAssertionChain, false,
-				$"Expected a journey transcript from JourneySnapshot.RunAsync, but found {(assertions.Subject is null ? "<null>" : assertions.Subject.GetType().Name)}.");
+			SnapshotAssertions.FailUnless(
+				assertions.CurrentAssertionChain,
+				false,
+				$"Expected a journey transcript from JourneySnapshot.RunAsync, but found {(assertions.Subject is null ? "<null>" : assertions.Subject.GetType().Name)}."
+			);
 			return new AndConstraint<ObjectAssertions>(assertions);
 		}
 

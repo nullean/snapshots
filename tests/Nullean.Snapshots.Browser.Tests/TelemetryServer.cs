@@ -12,14 +12,16 @@ namespace Nullean.Snapshots.Browser.Tests;
 /// </summary>
 internal sealed class TelemetryServer : IAsyncDisposable
 {
-	private const string Page = """
+	private const string Page =
+		"""
 		<!doctype html><title>Docs</title><link rel="icon" href="data:,">
 		<nav><a id="start" href="/get-started">Elastic Fundamentals</a></nav>
 		<main id="main-container"><h1>Home</h1></main>
 		<script src="/assets/chunk-instrumentation-4f9a1c.js"></script>
 		""";
 
-	private const string Chunk = """
+	private const string Chunk =
+		"""
 		const on = navigator.userAgent.endsWith('telemetry-test');
 		document.getElementById('start').addEventListener('click', (e) => {
 		  e.preventDefault();
@@ -92,9 +94,7 @@ internal sealed class TelemetryServer : IAsyncDisposable
 
 					response.Close();
 				}
-				catch (Exception e) when (e is HttpListenerException or ObjectDisposedException or IOException)
-				{
-				}
+				catch (Exception e) when (e is HttpListenerException or ObjectDisposedException or IOException) { }
 			});
 		}
 	}

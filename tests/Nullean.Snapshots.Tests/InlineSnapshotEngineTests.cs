@@ -8,8 +8,7 @@ public class InlineSnapshotEngineTests
 	private const string Key = "Rendering/HtmlTests/RendersTable.L10";
 
 	/// <summary>A test file whose line 10 holds the assertion.</summary>
-	private static string Source(string call = "x.Should().MatchInlineSnapshot(\"old\");") =>
-		string.Concat(Enumerable.Repeat("//\n", 9)) + call + "\n";
+	private static string Source(string call = "x.Should().MatchInlineSnapshot(\"old\");") => string.Concat(Enumerable.Repeat("//\n", 9)) + call + "\n";
 
 	private static InlineRecord Record(string text) => InlineRecord.Parse(text);
 
@@ -27,7 +26,12 @@ public class InlineSnapshotEngineTests
 		record.Edit.Line.Should().Be(10);
 		record.Edit.MethodName.Should().Be("MatchInlineSnapshot");
 		record.Format.Should().Be("Text");
-		p.Fs.Path.GetFullPath(p.Fs.Path.Combine(p.Project.ReceivedDirectory, record.Source.Replace('/', p.Fs.Path.DirectorySeparatorChar))).Should().Be(p.TestFile);
+		p
+			.Fs
+			.Path
+			.GetFullPath(p.Fs.Path.Combine(p.Project.ReceivedDirectory, record.Source.Replace('/', p.Fs.Path.DirectorySeparatorChar)))
+			.Should()
+			.Be(p.TestFile);
 		result.FailureMessage.Should().MatchSnapshot();
 	}
 
@@ -122,7 +126,10 @@ public class InlineSnapshotEngineTests
 
 		p.Engine.FlushManifests();
 
-		p.Read(p.TestFile).Should().Be(string.Concat(Enumerable.Repeat("//\n", 9)) + "x.Should().MatchInlineSnapshot(\"\"\"\n    new\n    value\n    \"\"\");\n");
+		p
+			.Read(p.TestFile)
+			.Should()
+			.Be(string.Concat(Enumerable.Repeat("//\n", 9)) + "x.Should().MatchInlineSnapshot(\"\"\"\n    new\n    value\n    \"\"\");\n");
 	}
 
 	[Test]
@@ -220,8 +227,13 @@ public class InlineSnapshotEngineTests
 		p.Environment["SNAPSHOT_ACCEPT"] = "1";
 
 		var result = p.Engine.MatchInline(
-			"new", "old", SnapshotFormats.Text,
-			new InlineSnapshotCallSite(new SnapshotCallSite(outside, "RendersTable", 10), "MatchInlineSnapshot", "\"old\""), null, null);
+			"new",
+			"old",
+			SnapshotFormats.Text,
+			new InlineSnapshotCallSite(new SnapshotCallSite(outside, "RendersTable", 10), "MatchInlineSnapshot", "\"old\""),
+			null,
+			null
+		);
 		p.Engine.FlushManifests();
 
 		result.Passed.Should().BeFalse();
@@ -237,8 +249,17 @@ public class InlineSnapshotEngineTests
 		p.Environment["SNAPSHOT_ACCEPT"] = "1";
 
 		var result = p.Engine.MatchInline(
-			"new", "old", SnapshotFormats.Text,
-			new InlineSnapshotCallSite(new SnapshotCallSite("/_/tests/Acme.Tests/Rendering/HtmlTests.cs", "RendersTable", 10), "MatchInlineSnapshot", "\"old\""), null, null);
+			"new",
+			"old",
+			SnapshotFormats.Text,
+			new InlineSnapshotCallSite(
+				new SnapshotCallSite("/_/tests/Acme.Tests/Rendering/HtmlTests.cs", "RendersTable", 10),
+				"MatchInlineSnapshot",
+				"\"old\""
+			),
+			null,
+			null
+		);
 		p.Engine.FlushManifests();
 
 		result.Passed.Should().BeTrue();

@@ -13,7 +13,8 @@ public class ParserTests
 	[Test]
 	public void SeparatesRequestsOnThreeOrMoreHashes()
 	{
-		var file = HttpFile.Parse("""
+		var file = HttpFile.Parse(
+			"""
 			GET https://example.com/a
 
 			###
@@ -21,17 +22,20 @@ public class ParserTests
 			POST https://example.com/b
 			#####
 			https://example.com/c
-			""");
-		file.Requests.Select(r => (r.Method, r.UrlTemplate, r.Line)).Should().Equal(
-			("GET", "https://example.com/a", 1),
-			("POST", "https://example.com/b", 5),
-			("GET", "https://example.com/c", 7));
+			"""
+		);
+		file
+			.Requests
+			.Select(r => (r.Method, r.UrlTemplate, r.Line))
+			.Should()
+			.Equal(("GET", "https://example.com/a", 1), ("POST", "https://example.com/b", 5), ("GET", "https://example.com/c", 7));
 	}
 
 	[Test]
 	public void NamesRequests()
 	{
-		var file = HttpFile.Parse("""
+		var file = HttpFile.Parse(
+			"""
 			# @name login
 			POST https://example.com/login
 
@@ -47,14 +51,16 @@ public class ParserTests
 			GET https://example.com/list
 			###
 			GET https://example.com/unnamed
-			""");
+			"""
+		);
 		file.Requests.Select(r => r.Name).Should().Equal("login", "other", "Get the list", "fromComment", null);
 	}
 
 	[Test]
 	public void ParsesTheRequestLine()
 	{
-		var file = HttpFile.Parse("""
+		var file = HttpFile.Parse(
+			"""
 			GET https://example.com/a HTTP/1.1
 			###
 			https://example.com/b
@@ -62,19 +68,26 @@ public class ParserTests
 			delete https://example.com/c HTTP/2
 			###
 			PATCH /relative HTTP/3
-			""");
-		file.Requests.Select(r => (r.Method, r.UrlTemplate, r.Version)).Should().Equal(
-			("GET", "https://example.com/a", "HTTP/1.1"),
-			("GET", "https://example.com/b", null),
-			("DELETE", "https://example.com/c", "HTTP/2"),
-			("PATCH", "/relative", "HTTP/3"));
+			"""
+		);
+		file
+			.Requests
+			.Select(r => (r.Method, r.UrlTemplate, r.Version))
+			.Should()
+			.Equal(
+				("GET", "https://example.com/a", "HTTP/1.1"),
+				("GET", "https://example.com/b", null),
+				("DELETE", "https://example.com/c", "HTTP/2"),
+				("PATCH", "/relative", "HTTP/3")
+			);
 		file.Requests[0].RequestLine.Should().Be("GET https://example.com/a HTTP/1.1");
 	}
 
 	[Test]
 	public void AppendsQueryContinuationLines()
 	{
-		var file = HttpFile.Parse("""
+		var file = HttpFile.Parse(
+			"""
 			GET https://example.com/comments
 			    ?page=2
 			    &pageSize=10
@@ -84,7 +97,8 @@ public class ParserTests
 			    /api
 			    /html
 			    ?id=123
-			""");
+			"""
+		);
 		file.Requests[0].UrlTemplate.Should().Be("https://example.com/comments?page=2&pageSize=10");
 		file.Requests[0].Headers.Should().ContainSingle().Which.ToString().Should().Be("Accept: application/json");
 		file.Requests[1].UrlTemplate.Should().Be("https://example.com:8080/api/html?id=123");
@@ -93,7 +107,8 @@ public class ParserTests
 	[Test]
 	public void ReadsHeadersThenTheBody()
 	{
-		var file = HttpFile.Parse("""
+		var file = HttpFile.Parse(
+			"""
 			POST https://example.com/comments
 			Content-Type: application/json
 			# a comment between headers
@@ -106,11 +121,14 @@ public class ParserTests
 
 
 			###
-			""");
+			"""
+		);
 		var request = file.Requests.Single();
-		request.Headers.Select(h => (h.Name, h.Value, h.Line)).Should().Equal(
-			("Content-Type", "application/json", 2),
-			("Authorization", "Bearer {{token}}", 4));
+		request
+			.Headers
+			.Select(h => (h.Name, h.Value, h.Line))
+			.Should()
+			.Equal(("Content-Type", "application/json", 2), ("Authorization", "Bearer {{token}}", 4));
 		request.Body!.Kind.Should().Be(HttpFileBodyKind.Text);
 		request.Body.Text.Should().Be(/*lang=json,strict*/ "{\n  \"name\": \"sample\"\n}");
 		request.Body.Line.Should().Be(6);
@@ -127,7 +145,8 @@ public class ParserTests
 	public void ReadsFileBodies()
 	{
 		var path = Path.Combine(Path.GetTempPath(), "dir", "api.http");
-		var file = HttpFile.Parse("""
+		var file = HttpFile.Parse(
+			"""
 			POST https://example.com
 			Content-Type: application/xml
 
@@ -140,7 +159,9 @@ public class ParserTests
 			POST https://example.com
 
 			<@latin1 ./latin.txt
-			""", path);
+			""",
+			path
+		);
 		file.Requests[0].Body!.Kind.Should().Be(HttpFileBodyKind.File);
 		file.Requests[0].Body!.FilePath.Should().Be("./demo.xml");
 		file.Requests[0].Body!.Parts[0].FullPath.Should().Be(Path.Combine(Path.GetTempPath(), "dir", "demo.xml"));
@@ -151,7 +172,8 @@ public class ParserTests
 	[Test]
 	public void MixesTextAndFilesInMultipartBodies()
 	{
-		var file = HttpFile.Parse("""
+		var file = HttpFile.Parse(
+			"""
 			POST https://example.com/upload
 			Content-Type: multipart/form-data; boundary=b
 
@@ -160,7 +182,8 @@ public class ParserTests
 
 			< ./input.txt
 			--b--
-			""");
+			"""
+		);
 		var body = file.Requests[0].Body!;
 		body.Kind.Should().Be(HttpFileBodyKind.Mixed);
 		body.Parts.Select(p => p.Kind).Should().Equal(HttpFileBodyKind.Text, HttpFileBodyKind.File, HttpFileBodyKind.Text);
@@ -172,7 +195,8 @@ public class ParserTests
 	[Test]
 	public void ReadsFileVariables()
 	{
-		var file = HttpFile.Parse("""
+		var file = HttpFile.Parse(
+			"""
 			@hostname = localhost
 			@port=44320
 			@host = {{hostname}}:{{port}}
@@ -180,16 +204,21 @@ public class ParserTests
 			###
 			@later = 1
 			GET https://{{host}}/{{later}}
-			""");
-		file.Variables.Select(v => (v.Name, v.Value, v.Line)).Should().Equal(
-			("hostname", "localhost", 1), ("port", "44320", 2), ("host", "{{hostname}}:{{port}}", 3), ("later", "1", 6));
+			"""
+		);
+		file
+			.Variables
+			.Select(v => (v.Name, v.Value, v.Line))
+			.Should()
+			.Equal(("hostname", "localhost", 1), ("port", "44320", 2), ("host", "{{hostname}}:{{port}}", 3), ("later", "1", 6));
 		file.Requests.Should().HaveCount(2);
 	}
 
 	[Test]
 	public void ReadsDirectives()
 	{
-		var file = HttpFile.Parse("""
+		var file = HttpFile.Parse(
+			"""
 			# @no-redirect
 			// @no-cookie-jar
 			# @timeout 5
@@ -202,7 +231,8 @@ public class ParserTests
 			###
 			// @timeout 2 m
 			GET https://example.com
-			""");
+			"""
+		);
 		var d = file.Requests[0].Directives;
 		(d.NoRedirect, d.NoCookieJar, d.Timeout).Should().Be((true, true, TimeSpan.FromSeconds(5)));
 		file.Requests[1].Directives.Timeout.Should().Be(TimeSpan.FromMilliseconds(500));
@@ -213,7 +243,8 @@ public class ParserTests
 	[Test]
 	public void AcceptsEveryDynamicValue()
 	{
-		var file = HttpFile.Parse("""
+		var file = HttpFile.Parse(
+			"""
 			GET https://example.com
 			A: {{$guid}} {{$uuid}} {{$random.uuid}}
 			B: {{$randomInt}} {{$randomInt 5 200}}
@@ -221,7 +252,8 @@ public class ParserTests
 			D: {{$localDatetime iso8601}} {{$timestamp}} {{$timestamp -3 h}} {{$isoTimestamp}} {{$timestamp 1y}}
 			E: {{$processEnv HOME}} {{$processEnv %name}} {{$env.HOME}} {{$dotenv KEY}} {{$secret Shop:ApiKey}}
 			F: {{login.response.body.$.token}} {{login.response.body.*}} {{login.response.headers.Location}} {{login.request.body.$.a["b c"][0]}}
-			""");
+			"""
+		);
 		file.Requests[0].Headers.Should().HaveCount(6);
 	}
 
@@ -248,8 +280,7 @@ public class ParserTests
 	[Arguments("GET https://example.com HTTP/9", "api.http:1: unsupported HTTP version 'HTTP/9'; use HTTP/1.1, HTTP/2 or HTTP/3")]
 	[Arguments("POST https://example.com\n\n< ./a.json\nmore", "api.http:4: a file body ('< ./path') must be the only line of the body; to mix text and files use a multipart/* Content-Type")]
 	[Arguments("POST https://example.com\n\n<@nonsense-encoding ./a.json", "api.http:3: unknown encoding 'nonsense-encoding' in '<@nonsense-encoding'; use a name such as utf-8, utf-16 or latin1")]
-	public void ReportsSyntaxErrorsWithTheirLine(string text, string expected) =>
-		Errors(text).Should().Equal(expected);
+	public void ReportsSyntaxErrorsWithTheirLine(string text, string expected) => Errors(text).Should().Equal(expected);
 
 	[Test]
 	[Arguments("GET https://example.com\n\n> {%\n  client.global.set(\"a\", response.body.a);\n%}", "api.http:3: JetBrains response handler scripts ('> {% ... %}') are not supported: they run JavaScript")]
@@ -268,13 +299,13 @@ public class ParserTests
 	[Arguments("GRPC localhost:50051/Service/Method", "api.http:1: GRPC requests are not supported; only HTTP requests are")]
 	[Arguments("run #login\nGET https://example.com", "api.http:1: JetBrains 'run' statements are not supported")]
 	[Arguments("import ./other.http\nGET https://example.com", "api.http:1: JetBrains 'import' statements are not supported")]
-	public void RefusesWhatItDoesNotSupport(string text, string expected) =>
-		Errors(text).Should().Equal(expected);
+	public void RefusesWhatItDoesNotSupport(string text, string expected) => Errors(text).Should().Equal(expected);
 
 	[Test]
 	public void ReportsEveryErrorAtOnce()
 	{
-		var errors = Errors("""
+		var errors = Errors(
+			"""
 			# @prompt user
 			GET https://example.com
 			A: {{$nope}}
@@ -286,28 +317,38 @@ public class ParserTests
 			GET https://example.com
 
 			> {% client.test() %}
-			""");
+			"""
+		);
 		errors.Should().Equal(
 			"api.http:1: prompt variables ('@prompt') are not supported: a run cannot ask questions. Pass the value with HttpFileRunOptions.Variables",
 			"api.http:3: unknown dynamic variable '$nope' in '{{$nope}}'",
 			"api.http:4: expected a header 'Name: value' (or a blank line before the body), got 'not a header'",
 			"api.http:7: cURL commands are not supported; write the request as 'METHOD URL' followed by its headers",
-			"api.http:11: JetBrains response handler scripts ('> {% ... %}') are not supported: they run JavaScript");
+			"api.http:11: JetBrains response handler scripts ('> {% ... %}') are not supported: they run JavaScript"
+		);
 	}
 
 	[Test]
 	public void TheExceptionMessageListsEveryError()
 	{
 		var act = () => HttpFile.Parse("GET https://example.com\nA: {{$nope}}\nB: {{}}", "x.http");
-		act.Should().Throw<HttpFileParseException>().Which.Message.Should().Be(
-			$"2 errors:{Environment.NewLine}x.http:2: unknown dynamic variable '$nope' in '{{{{$nope}}}}'{Environment.NewLine}x.http:3: empty variable reference '{{{{}}}}'");
+		act
+			.Should()
+			.Throw<HttpFileParseException>()
+			.Which
+			.Message
+			.Should()
+			.Be(
+				$"2 errors:{Environment.NewLine}x.http:2: unknown dynamic variable '$nope' in '{{{{$nope}}}}'{Environment.NewLine}x.http:3: empty variable reference '{{{{}}}}'"
+			);
 	}
 
 	[Test]
 	public void ReportsTheLineOfAReferenceInsideAMultilineBody()
 	{
 		Errors("POST https://example.com\n\n{\n  \"a\": 1,\n  \"b\": \"{{$nope}}\"\n}")
-			.Should().Equal("api.http:5: unknown dynamic variable '$nope' in '{{$nope}}'");
+			.Should()
+			.Equal("api.http:5: unknown dynamic variable '$nope' in '{{$nope}}'");
 	}
 
 	[Test]

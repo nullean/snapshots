@@ -158,6 +158,5 @@ internal sealed class JsonPath
 	}
 
 	/// <summary>A string's value without quotes; anything else as its JSON text.</summary>
-	public static string ToText(JsonElement element) =>
-		element.ValueKind == JsonValueKind.String ? element.GetString() ?? "" : element.GetRawText();
+	public static string ToText(JsonElement element) => element.ValueKind == JsonValueKind.String ? element.GetString() ?? "" : element.GetRawText();
 }

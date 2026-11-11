@@ -12,7 +12,8 @@ public sealed class TUnitTestIdentity : ISnapshotTestIdentityProvider
 	/// <summary>The shared instance.</summary>
 	public static TUnitTestIdentity Instance { get; } = new();
 
-	private TUnitTestIdentity() { }
+	private TUnitTestIdentity()
+	{ }
 
 	/// <summary>
 	/// Makes TUnit the source of test identity. Referencing this package calls it for you from a module initializer
@@ -40,7 +41,8 @@ public sealed class TUnitTestIdentity : ISnapshotTestIdentityProvider
 					.. IsInjected(metadata.MethodDataSource) && IsOnlySource(TestMethod(details)) ? [] : details.TestMethodArguments,
 				],
 				type.Assembly,
-				TreeNodeFilter(type, details.MethodName));
+				TreeNodeFilter(type, details.MethodName)
+			);
 		}
 	}
 
@@ -95,14 +97,11 @@ public sealed class TUnitTestIdentity : ISnapshotTestIdentityProvider
 	internal static string ClassName(Type type)
 	{
 		var name = type.IsNested && type.DeclaringType is { } outer ? ClassName(outer) + "." + Plain(type) : Plain(type);
-		return type.IsGenericType && !type.IsGenericTypeDefinition
-			? name + "_" + string.Join("_", type.GetGenericArguments().Select(Plain))
-			: name;
+		return type.IsGenericType && !type.IsGenericTypeDefinition ? name + "_" + string.Join("_", type.GetGenericArguments().Select(Plain)) : name;
 	}
 
 	/// <summary><c>/{Assembly}/{Namespace}/{Class}/{Method}</c>, the shape Microsoft.Testing.Platform's filter takes.</summary>
-	internal static string TreeNodeFilter(Type type, string methodName) =>
-		$"/{type.Assembly.GetName().Name}/{type.Namespace}/{Plain(type)}/{methodName}";
+	internal static string TreeNodeFilter(Type type, string methodName) => $"/{type.Assembly.GetName().Name}/{type.Namespace}/{Plain(type)}/{methodName}";
 
 	private static string Plain(Type type)
 	{

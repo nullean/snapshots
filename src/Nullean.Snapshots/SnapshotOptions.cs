@@ -22,6 +22,5 @@ public sealed class SnapshotOptions
 	}
 
 	/// <summary>Adds a scrubber for this call that replaces every match of <paramref name="pattern"/>.</summary>
-	public SnapshotOptions Scrub(Regex pattern, string replacement) =>
-		Scrub(Nullean.Snapshots.Scrubbers.Regex(pattern, replacement));
+	public SnapshotOptions Scrub(Regex pattern, string replacement) => Scrub(Nullean.Snapshots.Scrubbers.Regex(pattern, replacement));
 }

@@ -33,8 +33,7 @@ internal static class TestImages
 	}
 
 	public static Gen<RgbaImage> Image(int maxSide = 24) =>
-		Gen.Select(Gen.Int[1, maxSide], Gen.Int[1, maxSide])
-			.SelectMany((w, h) => Gen.Byte.Array[w * h * 4].Select(p => new RgbaImage(w, h, p)));
+		Gen.Select(Gen.Int[1, maxSide], Gen.Int[1, maxSide]).SelectMany((w, h) => Gen.Byte.Array[w * h * 4].Select(p => new RgbaImage(w, h, p)));
 
 	/// <summary>
 	/// An 8-bit RGBA PNG with the given filter type on each row (cycled), an optional ancillary chunk and the image data

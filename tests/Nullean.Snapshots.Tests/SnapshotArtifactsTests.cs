@@ -22,8 +22,7 @@ public class SnapshotArtifactsTests
 	{
 		var p = new TestProject();
 
-		p.Engine.ArtifactsDirectory(Journey(p, "landing.journey"))
-			.Should().Be(p.Fs.Path.Combine(p.Project.ReceivedDirectory, "landing.artifacts"));
+		p.Engine.ArtifactsDirectory(Journey(p, "landing.journey")).Should().Be(p.Fs.Path.Combine(p.Project.ReceivedDirectory, "landing.artifacts"));
 	}
 
 	[Test]

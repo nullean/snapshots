@@ -90,7 +90,11 @@ public static class RuleLoader
 		var rules = new List<DifferenceRule>();
 		var files = new List<RuleFileInfo>();
 		var folders = new List<string>();
-		for (var folder = fs.Path.GetDirectoryName(fs.Path.GetFullPath(sidecarPath)); folder is not null && IsInside(fs, root, folder); folder = fs.Path.GetDirectoryName(folder))
+		for (var folder = fs.Path.GetDirectoryName(fs.Path.GetFullPath(sidecarPath)); folder is not null && IsInside(
+			fs,
+			root,
+			folder
+		); folder = fs.Path.GetDirectoryName(folder))
 			folders.Insert(0, folder);
 		foreach (var folder in folders)
 			Visit(fs, scoped, root, fs.Path.Combine(folder, FolderFile), RuleOrigin.Shared, null, optional: true, [], rules, files, errors);
@@ -103,8 +107,17 @@ public static class RuleLoader
 	}
 
 	private static void Visit(
-		IFileSystem raw, IFileSystem fs, string root, string path, RuleOrigin origin, RuleLocation? from, bool optional,
-		List<string> stack, List<DifferenceRule> rules, List<RuleFileInfo> files, List<string> errors
+		IFileSystem raw,
+		IFileSystem fs,
+		string root,
+		string path,
+		RuleOrigin origin,
+		RuleLocation? from,
+		bool optional,
+		List<string> stack,
+		List<DifferenceRule> rules,
+		List<RuleFileInfo> files,
+		List<string> errors
 	)
 	{
 		var full = fs.Path.GetFullPath(path);
@@ -162,12 +175,27 @@ public static class RuleLoader
 			var target = include.Path.StartsWith("//", StringComparison.Ordinal)
 				? fs.Path.Combine(root, include.Path[2..].Replace('/', fs.Path.DirectorySeparatorChar))
 				: fs.Path.Combine(fs.Path.GetDirectoryName(full) ?? root, include.Path.Replace('/', fs.Path.DirectorySeparatorChar));
-			Visit(raw, fs, root, target, include.Optional ? RuleOrigin.Optional : RuleOrigin.Shared, include.Where, include.Optional, [.. stack, full], rules, files, errors);
+			Visit(
+				raw,
+				fs,
+				root,
+				target,
+				include.Optional ? RuleOrigin.Optional : RuleOrigin.Shared,
+				include.Where,
+				include.Optional,
+				[.. stack, full],
+				rules,
+				files,
+				errors
+			);
 		}
 	}
 
 	private static bool IsInside(IFileSystem fs, string root, string full) =>
-		Comparer.Equals(full, root) || full.StartsWith(root + fs.Path.DirectorySeparatorChar, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+		Comparer.Equals(full, root) || full.StartsWith(
+			root + fs.Path.DirectorySeparatorChar,
+			OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal
+		);
 
 	internal static StringComparer Comparer { get; } = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
 }

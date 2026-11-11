@@ -53,6 +53,9 @@ jobs:
       - name: Build
         run: dotnet build -c Release
 
+      - name: Check formatting (curb)
+        run: dotnet tool restore && dotnet curb check .
+
       # The macOS job has been cancelled in two ways. Most often it never got a runner at all (no steps, cancelled at exactly
       # 15 minutes: GitHub's macOS pool was full), which only a re-run fixes. The other time it had a runner and the Test step
       # froze: the whole VM stops answering, so not even this step's timeout fires and GitHub discards the log. The cause is

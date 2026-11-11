@@ -72,8 +72,11 @@ public class SnapshotMatchFileTests
 	public void FailureMessageCarriesTheCallingTestsFilter()
 	{
 		var p = new TestProject { Identity = TestProject.TUnitLike("JourneyTests", "Runs") };
-		p.MatchFile("b", Journey(p, "journeys", "checkout.journey")).FailureMessage
-			.Should().Contain("--treenode-filter \"/Acme.Tests/Acme.Tests.Rendering/JourneyTests/Runs\"");
+		p
+			.MatchFile("b", Journey(p, "journeys", "checkout.journey"))
+			.FailureMessage
+			.Should()
+			.Contain("--treenode-filter \"/Acme.Tests/Acme.Tests.Rendering/JourneyTests/Runs\"");
 	}
 
 	[Test]

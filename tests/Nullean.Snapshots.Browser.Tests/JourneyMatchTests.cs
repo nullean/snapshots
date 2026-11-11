@@ -27,13 +27,21 @@ public class JourneyMatchTests
 	{
 		var p = new TestProject();
 		p.Fs.AddFile(p.VerifiedFile("journeys/shop", "journey"), new MockFileData(Good));
-		var transcript = new JourneyTranscript(Journey(p), Good, new JourneyFailure(4, "click #pay", "Timed out after 5s waiting for css #pay to be visible and enabled: no element matches."));
+		var transcript = new JourneyTranscript(
+			Journey(p),
+			Good,
+			new JourneyFailure(4, "click #pay", "Timed out after 5s waiting for css #pay to be visible and enabled: no element matches.")
+		);
 
 		var result = JourneySnapshot.WithFailure(transcript, p.Engine.MatchFile(transcript.Text, JourneySnapshot.Format, transcript.File, null, null));
 
 		result.Passed.Should().BeFalse();
-		result.FailureMessage.Should().Be(
-			$"Journey stopped at {Relative(transcript.File)}:4: click #pay\nTimed out after 5s waiting for css #pay to be visible and enabled: no element matches.");
+		result
+			.FailureMessage
+			.Should()
+			.Be(
+				$"Journey stopped at {Relative(transcript.File)}:4: click #pay\nTimed out after 5s waiting for css #pay to be visible and enabled: no element matches."
+			);
 	}
 
 	[Test]
@@ -136,8 +144,12 @@ public class JourneyMatchTests
 		var result = JourneySnapshot.Match(transcript);
 
 		result.Passed.Should().BeFalse();
-		result.FailureMessage.Should().Be(
-			$"Journey stopped at {Relative(transcript.File)}:3: expect visible #pay\nTimed out after 5s waiting for css #pay to be visible: no element matches.");
+		result
+			.FailureMessage
+			.Should()
+			.Be(
+				$"Journey stopped at {Relative(transcript.File)}:3: expect visible #pay\nTimed out after 5s waiting for css #pay to be visible: no element matches."
+			);
 	}
 
 	[Test]
@@ -156,9 +168,10 @@ public class JourneyMatchTests
 	public async Task TheTranscriptFlagOffNeedsNoVerifiedFileAndStillReportsAFailedStep()
 	{
 		var run = new Run();
-		run.Transcript = file => file.EndsWith("basket.journey", StringComparison.Ordinal)
-			? new JourneyTranscript(file, Good, new JourneyFailure(2, "expect visible #pay", "no element matches."))
-			: new JourneyTranscript(file, Changed, null);
+		run.Transcript =
+			file => file.EndsWith("basket.journey", StringComparison.Ordinal)
+				? new JourneyTranscript(file, Good, new JourneyFailure(2, "expect visible #pay", "no element matches."))
+				: new JourneyTranscript(file, Changed, null);
 
 		(await run.InvokeWith(null, null, "off", "journeys/**/*.journey")).Should().Be(1);
 
@@ -175,9 +188,15 @@ public class JourneyMatchTests
 		(await run.InvokeWith(null, null, "maybe", "journeys/shop.journey")).Should().Be(2);
 		(await run.InvokeWith(null, ".bad", null, "journeys/shop.journey")).Should().Be(2);
 
-		run.Err.ToString().Replace("\r\n", "\n", StringComparison.Ordinal).Should().Be(
-			"Error: --transcript 'maybe' is not 'compare' or 'off'.\n" +
-			"Error: --variant '.bad' must be a name of letters, digits, '.', '-' and '_', without a leading or trailing dot.\n");
+		run
+			.Err
+			.ToString()
+			.Replace("\r\n", "\n", StringComparison.Ordinal)
+			.Should()
+			.Be(
+				"Error: --transcript 'maybe' is not 'compare' or 'off'.\n" +
+					"Error: --variant '.bad' must be a name of letters, digits, '.', '-' and '_', without a leading or trailing dot.\n"
+			);
 		run.Ran.Should().BeEmpty();
 	}
 
@@ -215,11 +234,18 @@ public class JourneyMatchTests
 			InvokeMore(new JourneyRunArgs { Interactive = false }, baseUrl, variant, transcript, patterns);
 
 		public Task<int> InvokeMore(JourneyRunArgs more, string? baseUrl, string? variant, string? transcript, params string[] patterns) =>
-			new JourneyCli(P.Fs, P.Project.Directory, Out, Err, (file, options, _) =>
-			{
-				Ran.Add((file, options.BaseUrl, options));
-				return Task.FromResult(Transcript!(file));
-			}, k => Env.GetValueOrDefault(k)).RunAsync(patterns, baseUrl, CancellationToken.None, variant: variant, transcript: transcript, more: more with { Interactive = false });
+			new JourneyCli(
+				P.Fs,
+				P.Project.Directory,
+				Out,
+				Err,
+				(file, options, _) =>
+				{
+					Ran.Add((file, options.BaseUrl, options));
+					return Task.FromResult(Transcript!(file));
+				},
+				k => Env.GetValueOrDefault(k)
+			).RunAsync(patterns, baseUrl, CancellationToken.None, variant: variant, transcript: transcript, more: more with { Interactive = false });
 
 		public string Output => Out.ToString().Replace("\r\n", "\n", StringComparison.Ordinal);
 	}
@@ -245,8 +271,11 @@ public class JourneyMatchTests
 
 		await run.Invoke(null, "**/*.journey");
 
-		run.Ran.Select(r => run.P.Fs.Path.GetRelativePath(run.P.Project.Directory, r.File).Replace('\\', '/'))
-			.Should().Equal("journeys/nested/basket.journey", "journeys/shop.journey");
+		run
+			.Ran
+			.Select(r => run.P.Fs.Path.GetRelativePath(run.P.Project.Directory, r.File).Replace('\\', '/'))
+			.Should()
+			.Equal("journeys/nested/basket.journey", "journeys/shop.journey");
 	}
 
 	[Test]
@@ -258,7 +287,12 @@ public class JourneyMatchTests
 
 		(await run.Invoke(null, "journeys/shop.journey")).Should().Be(1);
 
-		run.Output.Should().Contain("FAILED  journeys/shop").And.Contain("Journey did not match snapshot: tests/Acme.Tests/.snapshots/journeys/shop.verified.journey\n");
+		run
+			.Output
+			.Should()
+			.Contain("FAILED  journeys/shop")
+			.And
+			.Contain("Journey did not match snapshot: tests/Acme.Tests/.snapshots/journeys/shop.verified.journey\n");
 		run.Output.Should().Contain("Accept:   snap accept Acme.Tests/journeys/shop");
 		run.P.Read(run.P.ReceivedFile("journeys/shop", "journey")).Should().Be(Changed);
 		run.P.Fs.File.Exists(run.P.Fs.Path.Combine(run.P.Project.ReceivedDirectory, RunManifest.FileName)).Should().BeFalse();
@@ -272,8 +306,13 @@ public class JourneyMatchTests
 
 		(await run.Invoke(null, "journeys/shop.journey")).Should().Be(1);
 
-		run.P.Fs.File.Exists(run.P.Fs.Path.Combine(run.P.Project.Directory, "obj", "snapshots", "received", "journeys", "shop.received.journey"))
-			.Should().BeTrue();
+		run
+			.P
+			.Fs
+			.File
+			.Exists(run.P.Fs.Path.Combine(run.P.Project.Directory, "obj", "snapshots", "received", "journeys", "shop.received.journey"))
+			.Should()
+			.BeTrue();
 	}
 
 	[Test]
@@ -296,11 +335,16 @@ public class JourneyMatchTests
 		(await run.Invoke("localhost:5000", "journeys/shop.journey")).Should().Be(2);
 		(await run.Invoke(null, "journeys/missing.journey", "journeys/*.nope")).Should().Be(2);
 
-		run.Err.ToString().Replace("\r\n", "\n", StringComparison.Ordinal).Should().Be(
-			"Error: name the journeys to run: files or globs such as 'journeys/**/*.journey'.\n" +
-			"Error: --base-url 'localhost:5000' is not an absolute http, https or file URL.\n" +
-			"Error: no journey matches 'journeys/missing.journey'.\n" +
-			"Error: no journey matches 'journeys/*.nope'.\n");
+		run
+			.Err
+			.ToString()
+			.Replace("\r\n", "\n", StringComparison.Ordinal)
+			.Should()
+			.Be(
+				"Error: name the journeys to run: files or globs such as 'journeys/**/*.journey'.\n" +
+					"Error: --base-url 'localhost:5000' is not an absolute http, https or file URL.\n" +
+					"Error: no journey matches 'journeys/missing.journey'.\n" + "Error: no journey matches 'journeys/*.nope'.\n"
+			);
 		run.Ran.Should().BeEmpty();
 	}
 
@@ -309,9 +353,10 @@ public class JourneyMatchTests
 	{
 		var run = new Run();
 		run.P.Fs.AddFile(run.P.VerifiedFile("journeys/shop", "journey"), new MockFileData(Good));
-		run.Transcript = file => file.EndsWith("basket.journey", StringComparison.Ordinal)
-			? throw new JourneyParseException("basket.journey", [new JourneyError(1, "'screenshot' is not supported in journeys.")])
-			: new JourneyTranscript(file, Good, null);
+		run.Transcript =
+			file => file.EndsWith("basket.journey", StringComparison.Ordinal)
+				? throw new JourneyParseException("basket.journey", [new JourneyError(1, "'screenshot' is not supported in journeys.")])
+				: new JourneyTranscript(file, Good, null);
 
 		(await run.Invoke(null, "journeys/**/*.journey")).Should().Be(2);
 
@@ -349,7 +394,10 @@ public class JourneyMatchTests
 	public async Task ARequiresLineThatTheSiteDoesNotMeetSkipsTheJourneyWithItsReason()
 	{
 		var run = new Run();
-		run.P.Fs.AddFile(run.P.Fs.Path.Combine(run.P.Project.Directory, "journeys", "preview.journey"), new MockFileData("# @requires preview\nopen index.html\n"));
+		run
+			.P
+			.Fs
+			.AddFile(run.P.Fs.Path.Combine(run.P.Project.Directory, "journeys", "preview.journey"), new MockFileData("# @requires preview\nopen index.html\n"));
 
 		var without = await run.InvokeMore(new JourneyRunArgs(), null, null, "off", "journeys/preview.journey", "journeys/shop.journey");
 		var skipped = run.Output;
@@ -369,9 +417,15 @@ public class JourneyMatchTests
 		(await run.InvokeMore(new JourneyRunArgs { Viewport = "wide" }, null, null, null, "journeys/shop.journey")).Should().Be(2);
 		(await run.InvokeMore(new JourneyRunArgs { Headers = ["no colon"] }, null, null, null, "journeys/shop.journey")).Should().Be(2);
 
-		run.Err.ToString().Replace("\r\n", "\n", StringComparison.Ordinal).Should().Be(
-			"Error: --viewport 'wide' is not a viewport: use --viewport <width>x<height>, e.g. 1280x800.\n" +
-			"Error: --header 'no colon' is not a header: use --header \"Name: value\".\n");
+		run
+			.Err
+			.ToString()
+			.Replace("\r\n", "\n", StringComparison.Ordinal)
+			.Should()
+			.Be(
+				"Error: --viewport 'wide' is not a viewport: use --viewport <width>x<height>, e.g. 1280x800.\n" +
+					"Error: --header 'no colon' is not a header: use --header \"Name: value\".\n"
+			);
 		run.Ran.Should().BeEmpty();
 	}
 
@@ -380,8 +434,12 @@ public class JourneyMatchTests
 	{
 		var args = new JourneyRunArgs { Features = ["preview"], Env = "demo", ReadOnly = true, UserAgent = "Monitor 1", Viewport = "1280x800" };
 
-		JourneyCli.RerunCommand("https://shop.test/", null, "off", args).Should().Be(
-			"snap journey run {id}.journey --base-url https://shop.test/ --transcript off --env demo --feature preview --read-only --user-agent \"Monitor 1\" --viewport 1280x800");
+		JourneyCli
+			.RerunCommand("https://shop.test/", null, "off", args)
+			.Should()
+			.Be(
+				"snap journey run {id}.journey --base-url https://shop.test/ --transcript off --env demo --feature preview --read-only --user-agent \"Monitor 1\" --viewport 1280x800"
+			);
 	}
 
 	[Test]

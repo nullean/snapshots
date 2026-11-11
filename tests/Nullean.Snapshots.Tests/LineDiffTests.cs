@@ -6,12 +6,13 @@ namespace Nullean.Snapshots.Tests;
 public class LineDiffTests
 {
 	/// <summary>Short lines from a small alphabet, so random texts share lines and the differ has work to do.</summary>
-	private static readonly Gen<string> Text =
-		Gen.String[Gen.Char["ab{} "], 0, 3].Array[0, 25].Select(lines => SnapshotText.Normalize(string.Join("\n", lines)));
+	private static readonly Gen<string> Text = Gen
+		.String[Gen.Char["ab{} "], 0, 3]
+		.Array[0, 25]
+		.Select(lines => SnapshotText.Normalize(string.Join("\n", lines)));
 
 	[Test]
-	public void IdenticalTextsHaveNoHunks() =>
-		Text.Sample(t => LineDiff.Hunks(t, t).Count == 0);
+	public void IdenticalTextsHaveNoHunks() => Text.Sample(t => LineDiff.Hunks(t, t).Count == 0);
 
 	[Test]
 	public void ApplyingTheHunksToExpectedGivesActual() =>
@@ -32,16 +33,11 @@ public class LineDiffTests
 	private static readonly string[][] AddedToEmptyHunks = [["@@ line 1 @@", "+x", "+y"]];
 
 	[Test]
-	public void AppendedLineIsOnlyAnAddition() =>
-		LineDiff.Hunks("a\n", "a\nb\n").Should().BeEquivalentTo(
-			AppendedHunks,
-			o => o.WithStrictOrdering());
+	public void AppendedLineIsOnlyAnAddition() => LineDiff.Hunks("a\n", "a\nb\n").Should().BeEquivalentTo(AppendedHunks, o => o.WithStrictOrdering());
 
 	[Test]
 	public void ChangeIsShownWithThreeLinesOfContext() =>
-		LineDiff.Hunks("1\n2\n3\n4\n5\n6\n7\n8\n9\n", "1\n2\n3\n4\nFIVE\n6\n7\n8\n9\n").Should().BeEquivalentTo(
-			ChangedHunks,
-			o => o.WithStrictOrdering());
+		LineDiff.Hunks("1\n2\n3\n4\n5\n6\n7\n8\n9\n", "1\n2\n3\n4\nFIVE\n6\n7\n8\n9\n").Should().BeEquivalentTo(ChangedHunks, o => o.WithStrictOrdering());
 
 	[Test]
 	public void FarApartChangesAreSeparateHunks()
@@ -53,10 +49,7 @@ public class LineDiffTests
 	}
 
 	[Test]
-	public void EverythingAddedToEmptyText() =>
-		LineDiff.Hunks("", "x\ny\n").Should().BeEquivalentTo(
-			AddedToEmptyHunks,
-			o => o.WithStrictOrdering());
+	public void EverythingAddedToEmptyText() => LineDiff.Hunks("", "x\ny\n").Should().BeEquivalentTo(AddedToEmptyHunks, o => o.WithStrictOrdering());
 
 	[Test]
 	public void LongLinesAreCut()
