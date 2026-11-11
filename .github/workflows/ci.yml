@@ -127,6 +127,9 @@ jobs:
       # even when the step is cancelled. A runner that freezes completely still answers nothing, and then the log shows how far it got.
       - name: Test
         timeout-minutes: 10
+        env:
+          # An experiment against the freeze: a runner without a usable GPU may stall in Chrome's GPU process, which takes the whole VM with it.
+          NULLEAN_SNAPSHOTS_CHROME_ARGS: --disable-gpu --disable-dev-shm-usage --disable-background-networking
         run: >
           dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests
           --timeout 6m --output Detailed

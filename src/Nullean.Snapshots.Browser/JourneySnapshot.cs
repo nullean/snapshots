@@ -109,7 +109,14 @@ public static partial class JourneySnapshot
 
 	private static async Task<Cdp.Browser> LaunchSharedAsync()
 	{
-		var browser = await Cdp.Browser.LaunchAsync().ConfigureAwait(false);
+		// NULLEAN_SNAPSHOTS_CHROME_ARGS: extra Chrome command line arguments, separated by spaces, for a machine Chrome misbehaves on.
+		var extra = Environment.GetEnvironmentVariable("NULLEAN_SNAPSHOTS_CHROME_ARGS")?.Split(
+			' ',
+			StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
+		);
+		var browser = extra is { Length: > 0 }
+			? await Cdp.Browser.LaunchAsync(new Cdp.BrowserLaunchOptions { Arguments = extra }).ConfigureAwait(false)
+			: await Cdp.Browser.LaunchAsync().ConfigureAwait(false);
 		AppDomain.CurrentDomain.ProcessExit += (_, _) =>
 		{
 			try
