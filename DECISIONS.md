@@ -910,3 +910,8 @@ two sites. This change is the rules and what reads them; running the two sites i
 - `--disable-gpu --disable-dev-shm-usage --disable-background-networking` were tried on the macOS browser job (#90). The job passed on the pull request and froze on `main` straight after (run 43092595500, 15 minutes,
   cancelled, no log), as before, so the flags were taken out again along with `NULLEAN_SNAPSHOTS_CHROME_ARGS`. The freeze takes the whole runner: no timeout, log or artifact inside the job survives it,
   and nothing observed ties it to Chrome rather than to the macOS runner image. #64 stays open; the job stays non-gating.
+
+## The macOS browser job on macos-14 (#64)
+
+- The freeze takes the whole runner down, so nothing inside the job can say why. The one thing left to try without dropping the coverage is another image: the job runs on `macos-14` instead of `macos-latest`, and
+  is named for it. If it still freezes the image is not the cause and the job goes back to `macos-latest`; if it runs clean over several runs it stays, and #64 can close.
