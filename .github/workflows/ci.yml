@@ -97,8 +97,9 @@ jobs:
   # is not in the release job's needs, and continue-on-error keeps a failure from failing the workflow run. The tests still run
   # on macOS and still fail, in this job's result, if Chrome is missing or cannot start.
   browser-macos:
-    runs-on: macos-latest
-    name: Browser tests (macos-latest)
+    # An older image than macos-latest, as an experiment against the freeze (#64): the freeze takes the runner down, so only another image can tell whether it is the image.
+    runs-on: macos-14
+    name: Browser tests (macos-14)
     # A healthy run takes 1-2 minutes; when the runner freezes nothing else answers either, so do not wait long for it.
     timeout-minutes: 10
     continue-on-error: true
