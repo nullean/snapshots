@@ -45,8 +45,6 @@ public async Task Run(SnapshotFile file)
 - It fails unless the subject is an `HttpResponseMessage`; pass the response, not its content or a string.
 - `MatchHttpFileSnapshot` is keyed by the `.http` file, not the test, and takes no `name`. Two tests over one file
   share one verified file; use `HttpFileSnapshotOptions.Variant` to keep them apart.
-- TUnit's analyzer rejects `[HttpFiles]` on a `SnapshotFile` parameter (error `TUnit0001`). The cases run fine: add
-  `<NoWarn>$(NoWarn);TUnit0001</NoWarn>` to the test project.
 - `HttpFileTest.RunAsync` does not skip on `# @requires` or `# @mutates`. Check `SkipReason` yourself.
 - A relative path is relative to the test project, not the working folder.
 - A request that cannot be resolved or sent fails the test, naming it first. A 404 or 500 is recorded, not failed.

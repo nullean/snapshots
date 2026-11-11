@@ -70,6 +70,33 @@ public class SnapshotPathTests
 	}
 
 	[Test]
+	public void LineEndingsInStringArgumentsDoNotChangeTheHash()
+	{
+		var lf = SnapshotPath.ArgumentsHash(["a\nb\n\nc"]);
+
+		SnapshotPath.ArgumentsHash(["a\r\nb\r\n\r\nc"]).Should().Be(lf, "a Windows checkout of the same source");
+		SnapshotPath.ArgumentsHash(["a\rb\r\rc"]).Should().Be(lf, "a lone CR is a line ending too");
+		SnapshotPath.ArgumentsHash([CrLfLines]).Should().Be(SnapshotPath.ArgumentsHash([LfLines]), "inside a collection");
+		SnapshotPath.ArgumentsHash([new Wrapped("a\r\nb")]).Should().Be(SnapshotPath.ArgumentsHash([new Wrapped("a\nb")]), "inside an object's ToString()");
+	}
+
+	[Test]
+	public void OtherDifferencesInStringArgumentsStillChangeTheHash()
+	{
+		SnapshotPath.ArgumentsHash(["a\nb"]).Should().NotBe(SnapshotPath.ArgumentsHash(["a\n\nb"]), "a blank line is a difference");
+		SnapshotPath.ArgumentsHash(["a b"]).Should().NotBe(SnapshotPath.ArgumentsHash(["a\nb"]));
+		SnapshotPath
+			.ArgumentsHash(["a\u2028b"])
+			.Should()
+			.NotBe(SnapshotPath.ArgumentsHash(["a\nb"]), "only CR and CRLF are line endings here, not every separator");
+	}
+
+	private static readonly string[] CrLfLines = ["a\r\nb", "c"];
+	private static readonly string[] LfLines = ["a\nb", "c"];
+
+	private sealed record Wrapped(string Text);
+
+	[Test]
 	public void VerifiedAndReceivedSwapByName() => SnapshotPath.ToVerifiedName("RendersTable.received.html").Should().Be("RendersTable.verified.html");
 
 	[Test]
