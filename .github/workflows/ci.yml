@@ -5,22 +5,24 @@ on:
   push:
     branches:
       - main
-    tags:
-      - "*.*.*"
+  # Publishing the release-drafter draft (github.com, phone or `mise run release publish`) creates the tag and fires
+  # this; nuget.org's trusted publishing policy names this file, so releasing happens here.
+  release:
+    types: [published]
   workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+  cancel-in-progress: ${{ github.event_name != 'release' }}
 
 permissions:
   contents: read
 
 # What runs when:
 #   pull requests            build, test and pack the libraries on linux, windows and macos
-#   main, tags, manual runs  that, plus the native AOT pack for every RID on a matching runner, the root and
+#   main, releases, manual   that, plus the native AOT pack for every RID on a matching runner, the root and
 #                            portable 'any' tool packages, and an install-and-run smoke test on each OS
-# A pushed tag (X.Y.Z or X.Y.Z-pre.N) also publishes, once all of that has passed: see the release job.
+# A published release also publishes the packages, once all of that has passed on its tag: see the release job.
 
 jobs:
   build:
@@ -262,20 +264,21 @@ jobs:
           "$GITHUB_WORKSPACE/build/smoke-cli.sh" "$temp/tool/$snap"
           "$GITHUB_WORKSPACE/build/smoke-cli.sh" dotnet dnx "Nullean.Snapshots.Cli@$root" --add-source "$feed" --yes
 
-  # Publishing to nuget.org: a pushed tag (X.Y.Z or X.Y.Z-pre.N) publishes, and only once every gate above has passed.
-  # Pushing the tag is the release decision. A failed run can be re-run: pushing is skipped for packages already there.
+  # Publishing to nuget.org: publishing the release-drafter draft releases, and the packages go out only once every gate
+  # above has passed on the tag it created. Pushing a tag on its own publishes nothing. A failed run can be re-run:
+  # pushing is skipped for packages already there.
   # The 'release' environment has no reviewers: it is kept because the nuget.org trusted publishing policy names it,
-  # and it only lets tags deploy.
+  # and it only lets tags deploy (a release run's ref is its tag).
   # nuget.org trusts this workflow file (ci.yml) through a trusted publishing policy, so there is no long-lived key.
   release:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-    needs: [build, aot-pack, tool-pack, tool-smoke]
+    if: github.event_name == 'release'
+    needs: [build, aot-pack, tool-pack, tool-smoke, zizmor]
     runs-on: ubuntu-latest
     name: Publish to nuget.org
     timeout-minutes: 20
     environment: release
     permissions:
-      contents: write   # the GitHub release
+      contents: write   # attach the packages to the release
       id-token: write   # trusted publishing: exchange the workflow's OIDC token for a short-lived key
 
     steps:
@@ -330,21 +333,17 @@ jobs:
           done
           push "$root"
 
-      # A GitHub release for the tag, with notes generated from the pull requests since the previous one, and the
-      # packages attached. After publishing, so a release always means the packages are on nuget.org.
-      - name: GitHub release
+      # The release and its notes already exist: publishing the draft created them. Attach the packages, as releases
+      # always had them; after the push, so an attached package is always on nuget.org. A re-run replaces them.
+      - name: Attach the packages to the release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          pre=""
-          case "$GITHUB_REF_NAME" in *-*) pre="--prerelease" ;; esac
-          gh release create "$GITHUB_REF_NAME" packages/*.nupkg --repo "$GITHUB_REPOSITORY" --verify-tag $pre \
-            --title "$GITHUB_REF_NAME" --generate-notes \
-            --notes "Packages: https://www.nuget.org/packages?q=Nullean.Snapshots"
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$TAG" packages/*.nupkg --clobber --repo "$GITHUB_REPOSITORY"
 
   # Static analysis of these workflows (nullean/.github).
   zizmor:
-    uses: nullean/.github/.github/workflows/zizmor.yml@09af1fa16762b8ae42d899d45430a4267df5300c # v1.2.0
+    uses: nullean/.github/.github/workflows/zizmor.yml@83ef343759c443afe1964e9c33327527f8677b05 # v1.3.0
     permissions:
       contents: read
