@@ -328,6 +328,18 @@ public class HttpSiteCompareTests
 	}
 
 	[Test]
+	public async Task NameInRecordIsEachFilesOwnName()
+	{
+		var run = new CompareRun();
+		run.P.Fs.AddFile(Rules(run.P), new MockFileData("include? known/shop.differences\n"));
+
+		(await run.Invoke(record: "http/known/{name}.differences")).Should().Be(0);
+
+		run.P.Fs.FileExists(run.P.Fs.Path.Combine(run.P.Project.Directory, "http", "known", "shop.differences")).Should().BeTrue();
+		run.Output.Should().Contain("Recorded 1 rule(s) for http/shop.http in http/known/shop.differences.");
+	}
+
+	[Test]
 	public async Task BadInputExitsTwoWithTheProblem()
 	{
 		var run = new CompareRun();

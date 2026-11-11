@@ -50,6 +50,9 @@ Accept:   snap accept Shop.Tests/CatalogTests/Serializes   (or: dnx Nullean.Snap
 - **Messages people and agents can act on.** Plain text without colour codes, repository-relative paths, at most 20
   differences and 80 lines, and the exact command to accept. They read the same in a terminal, a CI log and an
   agent's context.
+- **Two sites compared.** `snap journey compare` and `snap http compare` run a journey or `.http` file against a baseline site and
+  a preview and fail only on differences nobody expected, which are rules in a checked-in `.differences` file next to it; screenshots
+  are compared too, with a diff image. See [expected differences](https://snapshots.nullean.net/workflow/expected-differences/).
 - **You accept, or nothing changes.** Nothing is ever accepted for you. `SNAPSHOT_ACCEPT=1` works on your machine;
   with `CI` set it is ignored, and the failure says so.
 - **Tidy.** Verified files live in one `.snapshots/` folder per test project, mirroring your test files. Received
