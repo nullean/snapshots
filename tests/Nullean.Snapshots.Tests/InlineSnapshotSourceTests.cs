@@ -225,7 +225,7 @@ public class InlineSnapshotSourceTests
 		var source = Source("x.MatchInlineSnapshot(\"old\");");
 		var disagree = InlineSnapshotSource.Rewrite(source, [Edit(1, "\"old\"", "old", "a\n"), Edit(1, "\"old\"", "old", "b\n")]);
 		disagree.Source.Should().Be(source);
-		disagree.Errors.Should().AllSatisfy(e => e.Should().Contain("different values"));
+		disagree.Errors.Should().AllSatisfy(e => e.Should().Contain("different values").And.Contain("inherit the test"));
 
 		var agree = InlineSnapshotSource.Rewrite(source, [Edit(1, "\"old\"", "old", "a\n"), Edit(1, "\"old\"", "old", "a\n")]);
 		agree.Errors.Should().AllBeEquivalentTo((string?)null);
