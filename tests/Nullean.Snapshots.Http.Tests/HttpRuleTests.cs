@@ -186,6 +186,110 @@ public class HttpRuleTests
 		app.IsClean.Should().BeTrue("the folder file's rule explains the dropped header, and the one nothing needed is shared, not stale");
 	}
 
+	// A text body that gains or loses lines: rules name the lines.
+
+	private const string Network = "## GET {{host}}/api/network\nstatus: 200 OK\ncontent-type: text/plain\n\n> GET /a 200\n> GET /b 200\n";
+
+	private static string WithLines(params string[] lines) =>
+		"## GET {{host}}/api/network\nstatus: 200 OK\ncontent-type: text/plain\n\n" + string.Concat(lines.Select(l => "> " + l + "\n"));
+
+	[Test]
+	public void AnAddedLineOfATextIsExcusedByARuleForThatLine()
+	{
+		var actual = WithLines("GET /a 200", "GET /fonts/x.woff2 404", "GET /b 200");
+
+		var app = Apply(Network, actual, "## GET {{host}}/api/network\nadded text \"GET /fonts/*\"\n");
+
+		app.IsClean.Should().BeTrue();
+		app.Explained.Should().ContainSingle().Which.Rule.Text.Should().Be("added text \"GET /fonts/*\"");
+	}
+
+	[Test]
+	public void TheSuggestionForAnAddedLineNamesTheLine()
+	{
+		var app = Apply(Network, WithLines("GET /a 200", "GET /fonts/x.woff2 404", "GET /b 200"), string.Empty);
+
+		ExpectedDifferences.Suggest(app.UnexplainedFacts.Single(), HttpRuleTargets.Instance).Should().Equal("added text \"GET /fonts/x.woff2 404\"");
+	}
+
+	[Test]
+	public void ARemovedAndAChangedLineAreEachNamed()
+	{
+		var app = Apply(Network, WithLines("GET /a 200", "GET /c 500"), string.Empty);
+
+		ExpectedDifferences
+			.Suggest(app.UnexplainedFacts.Single(), HttpRuleTargets.Instance)
+			.Should()
+			.Equal("removed text \"GET /b 200\"", "added text \"GET /c 500\"");
+	}
+
+	[Test]
+	public void EveryChangedLineMustBeNamedOrTheTextIsStillUnexplainedAndNoRuleIsUsed()
+	{
+		var rules = "## GET {{host}}/api/network\nadded text \"GET /c *\"\n";
+
+		var app = Apply(Network, WithLines("GET /a 200", "GET /c 500"), rules);
+
+		app.Unexplained.Should().ContainSingle("the removed line is not named");
+		app.Stale.Should().ContainSingle("a rule that excused nothing is stale, as any that matched nothing");
+		Apply(Network, WithLines("GET /a 200", "GET /c 500"), rules + "removed text \"GET /b *\"\n").IsClean.Should().BeTrue();
+	}
+
+	[Test]
+	public void ALineRuleNeverExcusesAWholeTextThatCameOrWent()
+	{
+		var baseline = "## GET {{host}}/api/network\nstatus: 200 OK\ncontent-type: text/plain\n";
+
+		var app = Apply(baseline, Network, "## GET {{host}}/api/network\nadded text \"GET /a 200\"\n");
+
+		app.Unexplained.Should().ContainSingle();
+	}
+
+	[Test]
+	public void IgnoreTextWithALineCoversThoseLinesBothWays() =>
+		Apply(Network, WithLines("GET /a 200", "GET /x 404"), "## *network\nignore text /^GET \\/(b|x) /\n").IsClean.Should().BeTrue();
+
+	// Rules shared by several files only count where they could have applied.
+
+	[Test]
+	public void ARuleOfASharedOptionalFileForASectionThisRunDoesNotHaveIsNotStale()
+	{
+		var rules = Load(
+			Repo(
+				("shop.differences", "include? known.differences\n"),
+				("known.differences", "## another journey's step\nadded body $.x\n\n## search*\nremoved header x-never-either\n")
+			)
+		);
+
+		var app = Apply(Baseline, Baseline, rules);
+
+		app.Stale.Select(r => r.Text).Should().Equal(["removed header x-never-either"], "the other journey's rule could not have applied here");
+	}
+
+	[Test]
+	public void TheFilesOwnRulesAreStrictEvenForASectionThatIsGone()
+	{
+		var rules = Load(Repo(("shop.differences", "## a step that was renamed\nadded body $.x\n")));
+
+		Apply(Baseline, Baseline, rules).Stale.Should().ContainSingle("a heading nothing matches in the file's own rules is a stale or misspelt rule");
+	}
+
+	[Test]
+	public void PruningASharedFileLeavesAnotherFilesRules()
+	{
+		var fs = Repo(
+			("shop.differences", "include? known.differences\n"),
+			("known.differences", "## another journey's step\nadded body $.x\n\n## search*\nremoved header x-gone\n")
+		);
+		var rules = Load(fs);
+		var app = Apply(Baseline, Baseline, rules);
+		var known = fs.Path.Combine(Root, "known.differences");
+
+		ExpectedDifferences.Prune(rules, known, app).Should().Be(1);
+
+		fs.File.ReadAllText(known).Should().Contain("## another journey's step").And.NotContain("x-gone");
+	}
+
 	[Test]
 	public void ATargetTheFormatDoesNotKnowIsAnErrorWithItsLine()
 	{

@@ -10,7 +10,7 @@ page.Should().NotContainHtml("<script>");
 ```
 
 HTML is parsed with AngleSharp, pretty-printed (one element per line, tab indented) and compared structurally with
-AngleSharp.Diffing: attribute order and whitespace do not matter. A failure names each difference and shows a line
+AngleSharp.Diffing: attribute order and whitespace do not matter (except inside `<pre>` and `<textarea>`, see below). A failure names each difference and shows a line
 diff of the pretty-printed HTML:
 
 ```text
@@ -31,13 +31,19 @@ Line diff:
 +			<td class="x">{Kibana}</td>
 ```
 
+## Code blocks keep their whitespace
+
+Whitespace is significant inside `<pre>`, `<textarea>` and `<listing>`, so the snapshot keeps it exactly, at any depth: a code block's lines,
+blank lines and indentation, with the markup of a highlighted block (`<pre><code><span>…`) printed as it is, on the lines it has. A change that only
+moves a newline or a space there fails the comparison, and the message shows the lines. Everywhere else whitespace still does not matter.
+
 ## Narrowing what is compared
 
 `HtmlSnapshotOptions` select, remove and transform before printing, applied to both sides:
 
 ```csharp
 var html = new HtmlSnapshotOptions()
-	.Select("main#content")                 // print this element's content instead of the body
+	.Select("main#content")                 // print the content of every match instead of the body (SelectFirst: only the first)
 	.Remove("script")                       // drop matching elements
 	.RemoveAttributes("hx-*", "preload")    // drop attributes everywhere; * is a wildcard
 	.RemoveAttributesFrom("a", "data-*")    // or only from matching elements
@@ -45,6 +51,9 @@ var html = new HtmlSnapshotOptions()
 
 page.Should().MatchHtmlSnapshot(html);
 ```
+
+`Select` prints every element the selector matches, one after the other in document order, so `.Select(".card")` covers all the cards; an
+element inside another match is not printed twice. `SelectFirst` keeps one. Removals, attribute removals and transforms run on each match.
 
 `ContainHtml` ignores indentation, so a fragment matches wherever it is nested.
 

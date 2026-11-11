@@ -186,8 +186,10 @@ internal sealed class JourneyCli(
 			(site, _) => WithArtifactsReceived(fileSystem, projects.FromCallerFile(site.FilePath))
 		);
 		var runFiles = JourneyRunFile.FromPaths(_root, files);
-		var recordFile = record is null ? null : fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, record));
-		var pruneFile = prune is null ? null : fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, prune));
+		// `{name}` in --record and --prune is the journey's file name, so each journey keeps its own file of differences.
+		string? RulesFile(string? path, string journey) =>
+			path is null ? null : fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, ExpandName(path, journey)));
+
 		var executor = new DelegateExecutor(run, ensureReady);
 		var interactive = args.Interactive ?? ConsoleJourneyReporter.UseInteractive;
 
@@ -247,11 +249,11 @@ internal sealed class JourneyCli(
 					JourneySnapshot.Format,
 					JourneyRuleTargets.Instance,
 					f.Path,
-					new SiteComparisonOptions { Record = recordFile, Prune = pruneFile, Note = $"recorded against {targetUri}" }
+					new SiteComparisonOptions { Record = RulesFile(record, f.Path), Prune = RulesFile(prune, f.Path), Note = $"recorded against {targetUri}" }
 				);
 				if (result.Recorded.Count > 0)
 					output.WriteLine(
-						$"Recorded {result.Recorded.Count} rule(s) for {f.Id} in {fileSystem.Path.GetRelativePath(_root, recordFile!).Replace('\\', '/')}."
+						$"Recorded {result.Recorded.Count} rule(s) for {f.Id} in {fileSystem.Path.GetRelativePath(_root, RulesFile(record, f.Path)!).Replace('\\', '/')}."
 					);
 				var passed = result.Passed;
 				var message = result.FailureMessage;
@@ -355,6 +357,9 @@ internal sealed class JourneyCli(
 			}
 		}
 	}
+
+	/// <summary><c>{name}</c> in a --record or --prune path: the journey's or <c>.http</c> file's name without its extension.</summary>
+	internal string ExpandName(string path, string file) => path.Replace("{name}", fileSystem.Path.GetFileNameWithoutExtension(file), StringComparison.Ordinal);
 
 	/// <summary>Reads a required <c>--baseline</c> or <c>--target</c>: an absolute http, https or file URL.</summary>
 	internal static bool TryParseSite(string flag, string? value, out Uri uri, out string problem)
@@ -789,7 +794,7 @@ internal sealed class JourneyCommands
 	/// <param name="baseline">The site to take the baseline from, such as https://docs.example.com/. Required.</param>
 	/// <param name="target">The site to compare with it, such as https://docs-preview.example.com/. Required.</param>
 	/// <param name="reuseBaseline">Use the baselines of an earlier run, and run the baseline site only for journeys that have none.</param>
-	/// <param name="record">Append a rule for every unexpected difference to this file, which the journey's rules must include? , instead of failing.</param>
+	/// <param name="record">Append a rule for every unexpected difference to this file, which the journey's rules must include? , instead of failing. {name} stands for the journey's file name: known/{name}.differences.</param>
 	/// <param name="prune">Remove the stale rules of this file (a rules file that is an include?), instead of failing for them.</param>
 	/// <param name="root">The folder files and globs are relative to. Defaults to the current folder.</param>
 	/// <param name="allow">-a, --allow, Another host pattern journeys may reach (repeatable): host, *.domain or *.</param>

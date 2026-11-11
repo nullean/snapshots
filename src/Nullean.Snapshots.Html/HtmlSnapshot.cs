@@ -1,5 +1,6 @@
 using AngleSharp.Diffing;
 using AngleSharp.Diffing.Core;
+using AngleSharp.Diffing.Strategies;
 using AngleSharp.Dom;
 using AngleSharp.Html;
 using AngleSharp.Html.Parser;
@@ -16,7 +17,7 @@ public static class HtmlSnapshot
 	public static SnapshotFormat Format { get; } = new HtmlSnapshotFormat();
 
 	/// <summary>
-	/// Parses <paramref name="html"/>, applies <paramref name="options"/> and pretty-prints the selected element's
+	/// Parses <paramref name="html"/>, applies <paramref name="options"/> and pretty-prints the selected elements'
 	/// content, one node per line with tab indentation. Whitespace-only text between top-level elements is dropped.
 	/// </summary>
 	/// <exception cref="InvalidOperationException">The selector in <paramref name="options"/> matches nothing.</exception>
@@ -24,28 +25,50 @@ public static class HtmlSnapshot
 	{
 		ArgumentNullException.ThrowIfNull(html);
 		var document = new HtmlParser().ParseDocument(html);
-		IElement? root = options?.Selector is { } selector ? document.QuerySelector(selector) : document.Body;
-		if (root is null)
+		List<IElement> roots;
+		if (options?.Selector is { } selector)
 		{
-			throw new InvalidOperationException(options?.Selector is { } s ? $"The HTML has no element matching '{s}'." : "The HTML has no body.");
+			var matches = document.QuerySelectorAll(selector).ToList();
+			if (options.SelectsOnlyTheFirst)
+				matches = [.. matches.Take(1)];
+			// An element inside another match is part of its content already.
+			roots = [.. matches.Where(m => !matches.Any(other => other != m && other.Contains(m)))];
+			if (roots.Count == 0)
+				throw new InvalidOperationException($"The HTML has no element matching '{selector}'.");
 		}
+		else
+			roots = [document.Body ?? throw new InvalidOperationException("The HTML has no body.")];
 
-		if (options is not null)
-			Apply(root, options);
-
-		var formatter = new PrettyMarkupFormatter { NewLine = "\n", Indentation = "\t" };
+		var formatter = new WhitespaceKeepingFormatter { NewLine = "\n", Indentation = "\t" };
 		using var writer = new StringWriter { NewLine = "\n" };
-		foreach (var node in root.ChildNodes)
+		foreach (var root in roots)
 		{
-			if (node is IText text)
+			if (options is not null)
+				Apply(root, options);
+
+			// A selected <pre> (or <textarea>) has whitespace that is its content: its children are not tidied at all.
+			var preformattedRoot = root.LocalName is "pre" or "textarea" or "listing";
+			foreach (var node in root.ChildNodes)
 			{
-				// Escaped as the formatter would: the raw data of "&lt;a" is "<a", which reparses as a tag.
-				if (!string.IsNullOrWhiteSpace(text.Data))
-					writer.Write("\n" + HtmlMarkupFormatter.Instance.Text(text).Trim());
-				continue;
+				if (preformattedRoot)
+				{
+					node.ToHtml(writer, HtmlMarkupFormatter.Instance);
+					continue;
+				}
+
+				if (node is IText text)
+				{
+					// Escaped as the formatter would: the raw data of "&lt;a" is "<a", which reparses as a tag.
+					if (!string.IsNullOrWhiteSpace(text.Data))
+						writer.Write("\n" + HtmlMarkupFormatter.Instance.Text(text).Trim());
+					continue;
+				}
+
+				node.ToHtml(writer, formatter);
 			}
 
-			node.ToHtml(writer, formatter);
+			if (roots.Count > 1 && preformattedRoot)
+				writer.Write('\n');
 		}
 
 		return SnapshotText.Normalize(writer.ToString().TrimStart('\n'));
@@ -56,8 +79,27 @@ public static class HtmlSnapshot
 	{
 		ArgumentNullException.ThrowIfNull(expected);
 		ArgumentNullException.ThrowIfNull(actual);
-		var diffs = DiffBuilder.Compare(expected).WithTest(actual).Build().ToList();
+		var diffs = DiffBuilder
+			.Compare(expected)
+			.WithTest(actual)
+			.WithOptions(o => o.AddDefaultOptions().AddComparer(PreformattedText, StrategyType.Specialized))
+			.Build()
+			.ToList();
 		return diffs.Count == 0 ? SnapshotComparison.Match : new SnapshotComparison(false, [.. diffs.Select(Describe)], LineDiff.Hunks(expected, actual));
+	}
+
+	/// <summary>
+	/// Text inside a <c>pre</c>, <c>textarea</c> or <c>listing</c> is compared exactly. The comparer's own rule covers only text that is a direct
+	/// child of one, so the usual <c>&lt;pre&gt;&lt;code&gt;</c> block had its newlines and spaces ignored.
+	/// </summary>
+	private static CompareResult PreformattedText(in Comparison comparison, CompareResult currentDecision)
+	{
+		if (
+			comparison.Control.Node is not IText control || comparison.Test.Node is not IText test ||
+			!(Preformatted.Inside(control) || Preformatted.Inside(test))
+		)
+			return currentDecision;
+		return string.Equals(control.Data, test.Data, StringComparison.Ordinal) ? CompareResult.Same : CompareResult.FromDiff(new NodeDiff(comparison));
 	}
 
 	private static void Apply(IElement root, HtmlSnapshotOptions options)
@@ -147,7 +189,7 @@ public static class HtmlSnapshot
 	private static void Add(List<string> lines, string prefix, string[] text)
 	{
 		for (var i = 0; i < text.Length; i++)
-			lines.Add((i == 0 ? prefix : new string(' ', prefix.Length)) + text[i]);
+			lines.Add(i > 0 && text[i].Length == 0 ? string.Empty : (i == 0 ? prefix : new string(' ', prefix.Length)) + text[i]);
 	}
 
 	private static string Kind(ComparisonSource source) => source.Node.NodeType.ToString().ToLowerInvariant();
@@ -155,7 +197,7 @@ public static class HtmlSnapshot
 	private static string[] Text(INode node)
 	{
 		using var writer = new StringWriter { NewLine = "\n" };
-		node.ToHtml(writer, new PrettyMarkupFormatter { NewLine = "\n", Indentation = "\t" });
+		node.ToHtml(writer, new WhitespaceKeepingFormatter { NewLine = "\n", Indentation = "\t" });
 		return Cap(writer.ToString().Trim('\n'));
 	}
 

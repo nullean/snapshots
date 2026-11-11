@@ -813,6 +813,67 @@ two sites. This change is the rules and what reads them; running the two sites i
 - `diff` comes after `because` on the assertions so positional callers keep working. On `HttpFileTest.RunAsync` the two new parameters sit before `cancellationToken` (CA1068 wants it last),
   so a caller that passed the token positionally as the third argument must name it.
 
+## HTML: whitespace in preformatted content (#36)
+
+- **Everything inside `pre`, `textarea` and `listing` is printed and compared exactly.** AngleSharp's pretty printer turned each newline in such an element into a space and
+  indented before a child element, so a code block's line structure was lost from the snapshot, and AngleSharp.Diffing keeps whitespace only for text that is a *direct* child of
+  `pre`, so the usual `<pre><code>` block was compared collapsed too: a change that only moved newlines did not fail. `WhitespaceKeepingFormatter` (a subclass of the pretty printer
+  that hands text, open and close tags below a preformatted element to the plain HTML serializer, and keeps the closing tag of the element itself off a line of its own) prints
+  it, a specialised Diffing comparer compares text in the subtree ordinally, and the failure message prints a node the same way. The serializer's rule that content which starts with a newline
+  gets an extra one after the start tag is the plain serializer's, so a print and a reparse are stable (a property test generates `pre` and `textarea` with newlines).
+- **No option to collapse it again.** It is HTML semantics, and the issue asked for it by default. Verified files with a `<pre>` change once and need accepting.
+
+## HTML: `Select` keeps every match (#37)
+
+- **`Select(selector)` prints all matching elements, `SelectFirst(selector)` the first.** `Select` silently used `QuerySelector`, so `.Select(".card")` over four cards verified one and a regression in the
+  other three passed. Printing every match is what the word says; the old behaviour stays one call away. This changes verified files for any selector that matched more than once (they gain the
+  other matches and need accepting), so the PR is labelled `breaking`.
+- A match inside another match is skipped: its text is already part of the outer match's content. Removals, attribute removals and transforms run per matched element. A selector that
+  matches nothing still throws.
+
+## Stale received files (#38)
+
+- **A received file older than its project's latest run is stale.** A passing assertion deletes its own received file and a failing one writes it again, so a received file
+  the latest run did not write was left by an earlier run (a mutation run and a revert, a filtered run). The run manifest, which is written once per test process into the
+  project's received folder with the run's start time (second resolution, and a file written during the run is never older than it), is the clock: discovery marks a
+  file whose last write is before it. No manifest, no staleness. It cannot tell a leftover from a legitimate pending file from a filtered earlier run, so it is a mark and a
+  guard, not a ban.
+- **`accept --all` does not take stale files; `--include-stale` does, and a key always does.** Accepting overwrites a verified file with output nobody has just seen,
+  and `--all` is the call an agent makes without reading. It lists what it left and exits 1, as any pending snapshot does. By key the person named it (the note says
+  it was stale), and `status`, `diff` and `review` mark it. This changes `--all` for anyone who ran it after a filtered run.
+
+## The arguments hash and line endings (#41)
+
+- **`\r\n` and a lone `\r` are `\n` in the text that is hashed.** A multi-line string argument from a C# raw string literal has its source file's line endings, and a Windows
+  checkout (`core.autocrlf`) turns them into CRLF, so the same test was named for a different hash on each OS and a verified file committed from one was "new" on
+  the other. Normalising the whole text before hashing covers strings, collections and an object's `ToString()`, and only those two endings change: not
+  `ReplaceLineEndings`, which would also rewrite U+2028 and the like and move more hashes. An argument without a `\r` hashes as before. Verified files that were named for a
+  CRLF hash (written on Windows from a CRLF checkout) are named differently now and need renaming (`snap orphans` lists them, the new name is in the failure).
+
+## File data sources and TUnit's analyzer (#71)
+
+- **`[SnapshotFiles]`, `[HttpFiles]` and `[JourneyFiles]` are untyped data sources.** They were `DataSourceGeneratorAttribute<TestDataRow<SnapshotFile>>`, and TUnit's analyzer
+  (TUnit0001, an error by default) compares that type argument with a test's `SnapshotFile` parameter and rejects every consumer's test, though TUnit unwraps the
+  row at runtime. They now derive from `UntypedDataSourceGeneratorAttribute` and yield `[new TestDataRow<SnapshotFile>(...)]`: the analyzer cannot see the
+  element type, and TUnit still takes the display name (`Run(basket/empty)`) and the `@tags` categories from the row (checked with a consumer project at default
+  severity, and by filtering on a category). Our own tests had hidden it behind `dotnet_diagnostic.TUnit0001.severity = none`; that is gone, so with
+  `TreatWarningsAsErrors` this repository's tests fail to build if the analyzer ever objects again. The skills no longer tell users to suppress it.
+
+## Shared rules and line rules (#77)
+
+- **A shared `include?` file's rules are stale only where they could have applied.** `--record` writes the rules of every journey into one file, and
+  every journey includes it, so each journey saw the others' rules as stale. A rule in an `include?` file is now checked only when its `## heading`
+  matches a section of this run; under a heading that matches and explaining nothing it is stale as before. The file's own rules stay strict (a
+  heading that matches nothing is a renamed or misspelt step, which is what staleness is for), and `include` and folder files are never stale.
+  `--prune` follows: it removes only what is stale for the run, so pruning one journey no longer deletes another's rules from a shared file.
+- **A changed text is excused line by line.** A read's `text` (or a response's text body) that gained a line was a `changed text` of the whole value, which
+  no rule could name, and its suggestion was a truncated pair of first lines. A change of a multi-line text is now compared by lines (the line differ's
+  removed and added lines); `added text "line"` and `removed text "line"` (a quoted glob or a regex, `ignore text "..."` for either) name them, every
+  changed line must be named or the change is unexplained, and the rules are marked used only then. The suggestion names the lines. A line rule never
+  excuses a whole text that came or went, and `text "name"` in a journey is still an accessibility node: the two never meet, one is under `tree` and the
+  other is the `text` key.
+- **`{name}` in `--record` and `--prune`** is the file's name, so each journey can keep its own file of differences.
+
 ## HTTP: event streams (#34)
 
 - **`text/event-stream` bodies are written as `events:` and parsed into the section's `body`**, a sequence of `{event, id, retry, data}` maps, `data` a JSON tree when the payload is JSON and a string
