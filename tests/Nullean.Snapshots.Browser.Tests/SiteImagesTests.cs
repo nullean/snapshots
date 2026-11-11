@@ -67,6 +67,21 @@ public class SiteImagesTests
 		(diff.Width, diff.Height).Should().Be((20, 10));
 	}
 
+	private static bool HasBlue(byte[] png) =>
+		Png.Decode(png) is var image && Enumerable.Range(0, image.PixelCount).Any(i => image.Pixels[i * 4] == 0 && image.Pixels[(i * 4) + 1] == 102 && image.Pixels[(i * 4) + 2] == 255);
+
+	[Test]
+	public void TheDiffImageBoxesEachPlaceUnlessOptionsSayOtherwise()
+	{
+		var fs = Folders(("baseline", "nav.png", Solid(20, 10, 200)), ("target", "nav.png", Solid(20, 10, 200, (5, 4))));
+
+		var boxed = SiteImages.Compare(fs, Baseline, Target).Single();
+		HasBlue(fs.File.ReadAllBytes(boxed.DiffPath!)).Should().BeTrue();
+
+		var plain = SiteImages.Compare(fs, Baseline, Target, new ImageSnapshotOptions()).Single();
+		HasBlue(fs.File.ReadAllBytes(plain.DiffPath!)).Should().BeFalse("explicit options are the caller's: no boxes unless they ask");
+	}
+
 	[Test]
 	public void DifferentSizesAreADifferenceWithoutADiffImage()
 	{

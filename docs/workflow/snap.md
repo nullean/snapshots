@@ -134,7 +134,7 @@ codes are those of `run`, with a rules file that does not parse as 2.
 **Screenshots.** A journey's `screenshot nav.png` steps write PNGs, and a comparison gives each site a folder of its own
 (`{journey}.baseline.artifacts` and `{journey}.target.artifacts` in the received tree), so the second run does not empty the
 first's. Pictures with the same name are compared pixel by pixel, as [image snapshots](../formats/images.md) are, and each
-pair that differs gets a diff image next to the target's: the page faded, the changed pixels in red. They are listed after the
+pair that differs gets a diff image next to the target's: the page faded, the changed pixels in red, a blue box around each place. They are listed after the
 run with where the pixels differ, and drawn there on a terminal that can show images.
 
 ```

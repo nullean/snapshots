@@ -83,3 +83,10 @@ endings inside them. If your `.gitattributes` has one, mark images binary after 
 
 `snap` treats image snapshots as binary: `snap accept` copies them byte for byte, and `snap diff` and `snap review`
 show their paths, sizes and the diff image instead of a line diff.
+
+## Boxing the changes
+
+`ImageSnapshotOptions.OutlineRegions` draws a blue rectangle, two pixels thick and three pixels clear, around each region of the
+diff image where the images differ, so a change on a busy page is easy to find. It is off by default, so a diff image stays the
+faded image with the differences in red and anti-aliasing in yellow. At most 100 regions are boxed. [Comparing two
+sites](../workflow/snap.md#comparing-two-sites) turns it on for its screenshots.
