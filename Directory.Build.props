@@ -35,7 +35,8 @@
   </PropertyGroup>
 
   <ItemGroup Condition="$(MSBuildProjectDirectory.Replace('\','/').Contains('/src/'))">
-    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="README.md" Visible="false" />
+    <!-- Every package ships its own src/<Project>/README.md, written for nuget.org (CommonMark, absolute links). -->
+    <None Include="$(MSBuildProjectDirectory)/README.md" Pack="true" PackagePath="README.md" Visible="false" />
     <None Include="$(MSBuildThisFileDirectory)nuget-icon.png" Pack="true" PackagePath="nuget-icon.png" Visible="false" />
     <!-- An agent skill per package, skills/<name>/SKILL.md:
          https://devblogs.microsoft.com/dotnet/delivering-skills-in-nuget-packages/ -->
