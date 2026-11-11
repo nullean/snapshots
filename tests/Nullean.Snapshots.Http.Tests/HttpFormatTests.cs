@@ -47,6 +47,69 @@ public class HttpFormatTests
 
 	private static readonly HttpResponseSection Orders = Section("GET {{host}}/api/orders", 404, "Not Found", mediaType: null, charSet: null);
 
+	// #34: an MCP server answers with text/event-stream; the JSON in its data lines reads and compares as JSON.
+	private static string Stream(string body) => Render(Section("POST {{host}}/mcp", body: body, mediaType: "text/event-stream"));
+
+	[Test]
+	public void AnEventStreamShowsItsJsonDataPrettyPrinted()
+	{
+		var text = Stream("event: message\nid: 7\ndata: {\"jsonrpc\":\"2.0\",\"result\":{\"n\":1}}\n\nevent: done\ndata: [DONE]\n\n");
+
+		text.Should().EndWith(
+			"events:\nevent: message\nid: 7\ndata:\n{\n  \"jsonrpc\": \"2.0\",\n  \"result\": {\n    \"n\": 1\n  }\n}\n\nevent: done\ndata: [DONE]\n"
+		);
+		HttpResponseText.Parse(text).Should().NotBeNull();
+	}
+
+	[Test]
+	public void ChangingOneFieldOfAnEventIsOneDifferenceWithItsPath()
+	{
+		var verified = Stream("event: message\ndata: {\"result\":{\"n\":1,\"m\":2}}\n\n");
+		var actual = Stream("event: message\ndata: {\"result\":{\"n\":5,\"m\":2}}\n\n");
+
+		var comparison = HttpSnapshot.Format.Compare(verified, actual);
+
+		comparison.IsMatch.Should().BeFalse();
+		comparison.Differences.Should().ContainSingle().Which[0].Should().Contain("body[0].data.result.n");
+		HttpSnapshot.FormatWith(new TreeDiffOptions { IgnorePaths = ["$[*].body[*].data.result.n"] }).Compare(verified, actual).IsMatch.Should().BeTrue();
+	}
+
+	[Test]
+	public void AStreamThatCannotBeSaidExactlyStaysQuotedText()
+	{
+		Stream(": keep-alive\ndata: {}\n\n").Should().Contain("> : keep-alive");
+		Stream("data: a\ndata: b\n\n").Should().Contain("> data: a");
+		Stream("data:\n\n").Should().Contain("> data:");
+	}
+
+	[Test]
+	public void MultiLineJsonDataIsOneValue()
+	{
+		var text = Stream("data: {\"a\":\ndata: 1}\n\n");
+
+		text.Should().Contain("data:\n{\n  \"a\": 1\n}\n");
+	}
+
+	private const string Search =
+		"## GET /search\nstatus: 200 OK\ncontent-type: application/json; charset=utf-8\n\n{{\n  \"hits\": [\n    {{ \"id\": 1, \"score\": {0} }},\n    {{ \"id\": 2, \"score\": {1} }}\n  ]\n}}\n";
+
+	// #35: a score in a JSON body is volatile; it is ignored by path, rooted at the sections: $[*].body...
+	[Test]
+	public void IgnoredPathsApplyToJsonBodies()
+	{
+		var verified = string.Format(Search, "1.5", "2.5");
+		var actual = string.Format(Search, "9.5", "8.5");
+
+		HttpSnapshot.FormatWith(null).Compare(verified, actual).IsMatch.Should().BeFalse();
+		HttpSnapshot.FormatWith(new TreeDiffOptions { IgnorePaths = ["$[*].body.hits[*].score"] }).Compare(verified, actual).IsMatch.Should().BeTrue();
+		HttpSnapshot
+			.FormatWith(new TreeDiffOptions { IgnorePaths = ["$[*].body.hits[*].score"] })
+			.Compare(verified, string.Format(Search, "1.5", "2.5").Replace("\"id\": 2", "\"id\": 3", StringComparison.Ordinal))
+			.IsMatch
+			.Should()
+			.BeFalse("only the ignored path is ignored");
+	}
+
 	[Test]
 	public void RendersTheDocumentedShape() =>
 		Render(Login, Orders)

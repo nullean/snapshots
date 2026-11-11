@@ -54,10 +54,13 @@ optionally a `"name"` or `/regex/` and `[attr]` or `[attr=value]` filters. Sever
 - `changed heading "old" -> "new"` is the node whose name changed, found by its old or its new name. For an attribute or
   a value the same line works: `changed heading [level] 1 -> 2`.
 - `ignore navigation` covers the navigation, everything in it, and any change to it.
+- A read's `text` that gained or lost lines is excused line by line: `added text "GET {origin}/static-res/*.woff2 (Font) 404"` names
+  a line that came, `removed text /^v9\./` one that went (a quoted glob or a regular expression; `ignore text "…"` either way). Every
+  line that changed must be named, or the change is unexplained. `text` with no value is still the whole read (`changed text`, `ignore text`).
 
 **`.http` files.** `status`, `header NAME` (a glob, any case), `body [PATH]` (the path inside a JSON body, with `[*]`, `.*`
-and `..key` as in ignored paths of a JSON snapshot), `text`, `binary` and `request`. `ignore body $.meta` covers
-`$.meta` and everything inside it.
+and `..key` as in ignored paths of a JSON snapshot), `text` (a text body, with `added text "line"` and `removed text "line"` for
+single lines, as for a journey's reads), `binary` and `request`. `ignore body $.meta` covers `$.meta` and everything inside it.
 
 ## Includes: forever and for now
 
@@ -72,6 +75,9 @@ the git repository. Includes nest, and a loop is an error.
 Everything is read through a file system scoped to the repository: an include cannot leave it, even as `include?`, and a
 symbolic link is refused. Both are errors, not a quiet "not found".
 
+`--record` and `--prune` take a file; `{name}` in it is the journey's or `.http` file's name, so each journey keeps its own file of
+differences: `--record 'journeys/known/{name}.differences'` (each journey's rules then `include? known/<name>.differences`).
+
 The journey's own file holds the differences that are there for good. The optional include holds the ones of a given
 preview: it can be checked in on the pull request that needs it and deleted when the change ships, or never checked in.
 Moving a line from it into the journey's file, or into a shared one, makes it permanent.
@@ -79,8 +85,18 @@ Moving a line from it into the journey's file, or into a shared one, makes it pe
 ## Rules that match nothing
 
 A rule that explained no difference is **stale**, and a run with a stale rule fails, so a difference that shipped does
-not stay excused. `maybe` opts a rule out. Rules from `include` and from a folder's `.differences` (shared by many files, so
-one file not needing a rule says nothing) are exempt; rules in the file itself and in `include?` files are checked.
+not stay excused. `maybe` opts a rule out.
+
+- Rules in the file itself are always checked: a rule that names a step that is no longer there is the misspelt or renamed rule
+  you want to hear about.
+- Rules from `include` and from a folder's `.differences` are shared by many files, so one file not needing a rule says
+  nothing: they are never stale.
+- Rules in an `include?` file are checked only where they could have applied: a rule under a `## heading` that no section of this
+  run matches belongs to another journey that shares the file, and says nothing about this one. A rule under a heading that does
+  match, and explained nothing, is stale.
+
+So several journeys can share one `include?` file, and `--record` can fill it from all of them. To share a rule that
+applies everywhere, put it in a folder's `.differences`, or `include` it.
 
 ## Running it
 

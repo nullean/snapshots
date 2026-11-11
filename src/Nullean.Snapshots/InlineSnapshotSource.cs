@@ -67,7 +67,7 @@ internal static class InlineSnapshotSource
 			foreach (var i in group)
 			{
 				errors[i] =
-					$"{group.Count()} test cases write different values to the snapshot at line {edits[i].Line}; use MatchSnapshot for values that differ per case.";
+					$"{group.Count()} test cases (data rows, or classes that inherit the test from a base class) write different values to the one literal at line {edits[i].Line}; use MatchSnapshot for values that differ per case.";
 				targets[i] = null;
 			}
 		}

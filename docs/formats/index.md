@@ -36,4 +36,15 @@ and its replacement. To scrub every snapshot, register them once, for instance f
 internal static void Snapshots() => SnapshotDefaults.AddScrubber(Scrubbers.Guids);
 ```
 
+`Scrubbers.Path(root, replacement)` replaces a folder where it starts a path and writes the rest of the path with `/`, so a Windows run
+gives the same text (`C:\work\repo\docs\a.md` and its JSON-escaped form both become `{repo}/docs/a.md`); `Scrubbers.TempDirectory()` is the
+system temp folder as `{temp}`, including the resolved form where the temp folder is a link (`/private/var` on macOS):
+
+```csharp
+new SnapshotOptions().Scrub(Scrubbers.Path(repoRoot, "{repo}")).Scrub(Scrubbers.TempDirectory());
+```
+
+A drive letter from an in-memory file system (`C:\docs\docset.yml` against `/docs/docset.yml`) is not a root of this machine: scrub it with
+`Scrubbers.Path("C:/docs", "/docs")`, or a regex.
+
 Nothing is scrubbed unless you ask for it.

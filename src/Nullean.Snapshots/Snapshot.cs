@@ -279,7 +279,7 @@ internal sealed partial class SnapshotEngine(
 			var queued = _inline.GetOrAdd((source, start), _ => new QueuedInline(project, target, source, edit, record, sourceHash));
 			if (!string.Equals(queued.Edit.NewValue, edit.NewValue, StringComparison.Ordinal))
 				throw new InlineSnapshotException(
-					"test cases of one test write different values to this snapshot; use MatchSnapshot for values that differ per case."
+					"test cases (data rows, or classes that inherit the test from a base class) write different values to this one literal; use MatchSnapshot for values that differ per case."
 				);
 			return null;
 		}
