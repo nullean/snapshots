@@ -123,65 +123,115 @@ jobs:
         run: dotnet build tests/Nullean.Snapshots.Browser.Tests -c Release
 
       # DIAGNOSTIC (not to merge): one step per test class, so the step that never completes names where the runner dies (#64).
-      - name: Test AriaTreeTests
+      - name: Test AnUnexpectedDifferenceFailsAndSuggestsTheRule
         continue-on-error: true
         timeout-minutes: 3
-        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/AriaTreeTests/*" --timeout 2m
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/AnUnexpectedDifferenceFailsAndSuggestsTheRule" --timeout 2m
 
-      - name: Test HeaderGrammarConformanceTests
+      - name: Test AnExpectedDifferencePasses
         continue-on-error: true
         timeout-minutes: 3
-        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/HeaderGrammarConformanceTests/*" --timeout 2m
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/AnExpectedDifferencePasses" --timeout 2m
 
-      - name: Test JourneyCompareTests
+      - name: Test ARuleThatMatchesNothingFails
         continue-on-error: true
         timeout-minutes: 3
-        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/*" --timeout 2m
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/ARuleThatMatchesNothingFails" --timeout 2m
 
-      - name: Test JourneyConsoleRunnerTests
+      - name: Test ABaselineThatStopsAtAStepMeansNothingToCompareWith
         continue-on-error: true
         timeout-minutes: 3
-        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyConsoleRunnerTests/*" --timeout 2m
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/ABaselineThatStopsAtAStepMeansNothingToCompareWith" --timeout 2m
 
-      - name: Test JourneyTranscriptTests
+      - name: Test AFailedStepOnTheTargetFailsTheComparison
         continue-on-error: true
         timeout-minutes: 3
-        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyTranscriptTests/*" --timeout 2m
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/AFailedStepOnTheTargetFailsTheComparison" --timeout 2m
 
-      - name: Test JourneyRuleTests
+      - name: Test ReusingTheBaselineRunsTheBaselineSiteOnlyForJourneysWithoutOne
         continue-on-error: true
         timeout-minutes: 3
-        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyRuleTests/*" --timeout 2m
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/ReusingTheBaselineRunsTheBaselineSiteOnlyForJourneysWithoutOne" --timeout 2m
 
-      - name: Test JourneyMatchTests
+      - name: Test RecordFillsTheIncludedFileAndTheNextRunPasses
         continue-on-error: true
         timeout-minutes: 3
-        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyMatchTests/*" --timeout 2m
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/RecordFillsTheIncludedFileAndTheNextRunPasses" --timeout 2m
 
-      - name: Test LiveJourneyTests
+      - name: Test PruneDropsTheRulesOfAChangeThatShipped
         continue-on-error: true
         timeout-minutes: 3
-        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/LiveJourneyTests/*" --timeout 2m
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/PruneDropsTheRulesOfAChangeThatShipped" --timeout 2m
 
-      - name: Test RequiresTests
+      - name: Test BadInputExitsTwo
         continue-on-error: true
         timeout-minutes: 3
-        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/RequiresTests/*" --timeout 2m
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/BadInputExitsTwo" --timeout 2m
 
-      - name: Test SiteImagesTests
+      - name: Test ThePreviewsExtraLinkIsExplainedByItsRule
         continue-on-error: true
         timeout-minutes: 3
-        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/SiteImagesTests/*" --timeout 2m
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/ThePreviewsExtraLinkIsExplainedByItsRule" --timeout 2m
 
-      - name: Test ProjectJourneys
+      - name: Test WithoutARuleTheExtraLinkFailsAndTheSuggestionIsTheRule
         continue-on-error: true
         timeout-minutes: 3
-        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/ProjectJourneys/*" --timeout 2m
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/WithoutARuleTheExtraLinkFailsAndTheSuggestionIsTheRule" --timeout 2m
 
-      - name: Test TagsAsCategoriesTests
+      - name: Test ARuleForSomethingThatDidNotChangeIsStale
         continue-on-error: true
         timeout-minutes: 3
-        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/TagsAsCategoriesTests/*" --timeout 2m
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/ARuleForSomethingThatDidNotChangeIsStale" --timeout 2m
+
+      - name: Test EachSiteGetsItsOwnArtifactsFolderSoTheSecondRunDoesNotEmptyTheFirst
+        continue-on-error: true
+        timeout-minutes: 3
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/EachSiteGetsItsOwnArtifactsFolderSoTheSecondRunDoesNotEmptyTheFirst" --timeout 2m
+
+      - name: Test ADifferingScreenshotIsReportedWithItsDiffImageAndIsNotAFailure
+        continue-on-error: true
+        timeout-minutes: 3
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/ADifferingScreenshotIsReportedWithItsDiffImageAndIsNotAFailure" --timeout 2m
+
+      - name: Test ABigPictureWithASmallChangeIsReportedWithItsZoomToo
+        continue-on-error: true
+        timeout-minutes: 3
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/ABigPictureWithASmallChangeIsReportedWithItsZoomToo" --timeout 2m
+
+      - name: Test ImageDiffFailMakesADifferingScreenshotAFailure
+        continue-on-error: true
+        timeout-minutes: 3
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/ImageDiffFailMakesADifferingScreenshotAFailure" --timeout 2m
+
+      - name: Test ImageDiffOffComparesNoPictures
+        continue-on-error: true
+        timeout-minutes: 3
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/ImageDiffOffComparesNoPictures" --timeout 2m
+
+      - name: Test IdenticalScreenshotsSayNothing
+        continue-on-error: true
+        timeout-minutes: 3
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/IdenticalScreenshotsSayNothing" --timeout 2m
+
+      - name: Test AReusedBaselineKeepsItsScreenshotsForTheNextComparison
+        continue-on-error: true
+        timeout-minutes: 3
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/AReusedBaselineKeepsItsScreenshotsForTheNextComparison" --timeout 2m
+
+      - name: Test ScreenshotOnFailureReachesBothSites
+        continue-on-error: true
+        timeout-minutes: 3
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/ScreenshotOnFailureReachesBothSites" --timeout 2m
+
+      - name: Test ABadImageDiffExitsTwo
+        continue-on-error: true
+        timeout-minutes: 3
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/ABadImageDiffExitsTwo" --timeout 2m
+
+      - name: Test TheScreenshotsOfTwoRealSitesDifferWhereThePreviewHasItsExtraLink
+        continue-on-error: true
+        timeout-minutes: 3
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/TheScreenshotsOfTwoRealSitesDifferWhereThePreviewHasItsExtraLink" --timeout 2m
 
       - name: Upload the diagnostic log
         if: always()
