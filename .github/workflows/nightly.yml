@@ -1,6 +1,7 @@
 name: nightly
 
-# The CsCheck properties at 10,000 iterations instead of the default 100, on every OS, once a day and by hand.
+# The CsCheck properties at 10,000 iterations instead of the default 100, on Linux and Windows, once a day and by hand.
+# macOS runners are severely constrained, so macOS runs only on a push to main (ci.yml), at the default iterations.
 # A failure prints the seed to reproduce with: CsCheck_Seed=<seed> dotnet test ...; keep it as a regression test.
 on:
   schedule:
@@ -15,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     name: Properties x10000 (${{ matrix.os }})
     timeout-minutes: 45
@@ -36,19 +37,13 @@ jobs:
 
       - run: dotnet build -c Release
 
-      # The Chrome-driven tests are not properties, and on macOS they are the main suspect for the runner freezing (see ci.yml), which
-      # has cancelled this job most nights: there they are left to ci.yml's own browser job. Every other test project runs on every OS,
-      # one at a time, so a failure names its project.
+      # Every test project runs, one at a time, so a failure names its project.
       - name: Test with 10,000 iterations per property
         timeout-minutes: 20
         shell: bash
         run: |
           failed=0
           for project in tests/*/*.csproj; do
-            if [ "$RUNNER_OS" = "macOS" ] && [ "$(basename "$project")" = "Nullean.Snapshots.Browser.Tests.csproj" ]; then
-              echo "Skipping $project here: it runs in ci.yml's browser-macos job."
-              continue
-            fi
             dotnet test -c Release --no-build --project "$project" || failed=1
           done
           exit $failed

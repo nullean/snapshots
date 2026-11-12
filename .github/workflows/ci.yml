@@ -18,18 +18,42 @@ concurrency:
 permissions:
   contents: read
 
-# What runs when:
-#   pull requests            build, test and pack the libraries on linux, windows and macos
-#   main, releases, manual   that, plus the native AOT pack for every RID on a matching runner, the root and
-#                            portable 'any' tool packages, and an install-and-run smoke test on each OS
-# A published release also publishes the packages, once all of that has passed on its tag: see the release job.
+# What runs when (macOS runners are severely constrained, so macOS runs only on a push to main, plus the osx-arm64 AOT pack
+# on a release, because macOS AOT only compiles on macOS):
+#   pull requests     build, test and pack the libraries on linux and windows
+#   main              that on macos too, the macOS browser tests, the native AOT pack for every RID on a matching runner,
+#                     the root and portable 'any' tool packages, and an install-and-run smoke test on each OS
+#   manual            as main, without macOS
+#   releases          no tests: main-green waits for main's run on the released commit and fails unless it passed; then
+#                     the libraries are packed on linux, the tool packages on every RID, and the release job publishes
 
 jobs:
+  # A release ships a commit main has already proven: wait for main's push run of ci.yml on the released commit and stop
+  # unless it passed. Every release job needs it.
+  main-green:
+    if: github.event_name == 'release'
+    name: main is green
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    permissions:
+      actions: read # read main's ci.yml runs
+    steps:
+      - uses: nullean/.github/actions/require-green-main@f9eb30d28e48b3f6b8ff1f4e7dae1d2b7b2d544b # v1.6.0
+
+  # On a release only the Linux leg runs, and only to pack the libraries the release job publishes: the checks and tests ran
+  # in main's push run on this commit.
   build:
+    needs: main-green
+    # main-green is skipped on everything but a release, which would skip this job too without a status function.
+    if: ${{ !cancelled() && (github.event_name != 'release' || needs.main-green.result == 'success') }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: >-
+          ${{ fromJSON(
+            (github.event_name == 'push' && '["ubuntu-latest", "windows-latest", "macos-latest"]')
+            || (github.event_name == 'release' && '["ubuntu-latest"]')
+            || '["ubuntu-latest", "windows-latest"]') }}
     runs-on: ${{ matrix.os }}
     name: Build and test (${{ matrix.os }})
     timeout-minutes: 20
@@ -54,6 +78,7 @@ jobs:
         run: dotnet build -c Release
 
       - name: Check formatting (curb)
+        if: github.event_name != 'release'
         run: dotnet tool restore && dotnet curb check .
 
       # The macOS job has been cancelled in two ways. Most often it never got a runner at all (no steps, cancelled at exactly
@@ -62,6 +87,7 @@ jobs:
       # not known, and the Chrome-driven tests are the main suspect, so on macOS they run in their own job below, which does
       # not gate a release. Every other test project runs on every OS, one project at a time, so a failure names its project.
       - name: Test
+        if: github.event_name != 'release'
         timeout-minutes: 10
         shell: bash
         run: |
@@ -95,8 +121,10 @@ jobs:
 
   # The Chrome-driven tests on macOS, apart from the build job above so that a frozen runner cannot hold up a release: this job
   # is not in the release job's needs, and continue-on-error keeps a failure from failing the workflow run. The tests still run
-  # on macOS and still fail, in this job's result, if Chrome is missing or cannot start.
+  # on macOS and still fail, in this job's result, if Chrome is missing or cannot start. Like every macOS test job, only on a
+  # push to main.
   browser-macos:
+    if: github.event_name == 'push'
     runs-on: macos-latest
     name: Browser tests (macos-latest)
     # A healthy run takes 1-2 minutes; when the runner freezes nothing else answers either, so do not wait long for it.
@@ -142,18 +170,20 @@ jobs:
           path: .artifacts/diagnostics
           if-no-files-found: ignore
 
-  # Native AOT cannot cross-compile between operating systems, so each RID packs on a matching runner.
+  # Native AOT cannot cross-compile between operating systems, so each RID packs on a matching runner. osx-arm64 runs on a
+  # push to main and on a release, where it is the one macOS job; workflow_dispatch packs the other four.
   aot-pack:
-    if: github.event_name != 'pull_request'
+    needs: main-green
+    if: >-
+      ${{ !cancelled() && github.event_name != 'pull_request'
+        && (github.event_name != 'release' || needs.main-green.result == 'success') }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { rid: linux-x64, runner: ubuntu-latest }
-          - { rid: linux-arm64, runner: ubuntu-24.04-arm }
-          - { rid: win-x64, runner: windows-latest }
-          - { rid: win-arm64, runner: windows-11-arm }
-          - { rid: osx-arm64, runner: macos-latest }
+        include: >-
+          ${{ fromJSON((github.event_name == 'push' || github.event_name == 'release')
+            && '[{"rid":"linux-x64","runner":"ubuntu-latest"},{"rid":"linux-arm64","runner":"ubuntu-24.04-arm"},{"rid":"win-x64","runner":"windows-latest"},{"rid":"win-arm64","runner":"windows-11-arm"},{"rid":"osx-arm64","runner":"macos-latest"}]'
+            || '[{"rid":"linux-x64","runner":"ubuntu-latest"},{"rid":"linux-arm64","runner":"ubuntu-24.04-arm"},{"rid":"win-x64","runner":"windows-latest"},{"rid":"win-arm64","runner":"windows-11-arm"}]') }}
     runs-on: ${{ matrix.runner }}
     name: AOT pack (${{ matrix.rid }})
     timeout-minutes: 20
@@ -194,7 +224,10 @@ jobs:
   # A plain pack emits the root package, the portable 'any' fallback and managed per-RID packages. Only the first two
   # are kept: the real per-RID packages are the AOT ones above.
   tool-pack:
-    if: github.event_name != 'pull_request'
+    needs: main-green
+    if: >-
+      ${{ !cancelled() && github.event_name != 'pull_request'
+        && (github.event_name != 'release' || needs.main-green.result == 'success') }}
     runs-on: ubuntu-latest
     name: Pack the root and portable tool packages
     timeout-minutes: 20
@@ -231,13 +264,18 @@ jobs:
           path: .artifacts/package-output/*.nupkg
           if-no-files-found: error
 
-  # Installs the packed tool from a local feed and runs it, once installed and once through dnx.
+  # Installs the packed tool from a local feed and runs it, once installed and once through dnx. Not on a release, which
+  # relies on main's run of it; macOS only on a push to main.
   tool-smoke:
+    if: github.event_name != 'release'
     needs: [aot-pack, tool-pack]
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: >-
+          ${{ fromJSON(github.event_name == 'push'
+            && '["ubuntu-latest", "windows-latest", "macos-latest"]'
+            || '["ubuntu-latest", "windows-latest"]') }}
     runs-on: ${{ matrix.os }}
     name: Tool smoke test (${{ matrix.os }})
     timeout-minutes: 15
@@ -283,15 +321,15 @@ jobs:
           "$GITHUB_WORKSPACE/build/smoke-cli.sh" "$temp/tool/$snap"
           "$GITHUB_WORKSPACE/build/smoke-cli.sh" dotnet dnx "Nullean.Snapshots.Cli@$root" --add-source "$feed" --yes
 
-  # Publishing to nuget.org: publishing the release-drafter draft releases, and the packages go out only once every gate
-  # above has passed on the tag it created. Pushing a tag on its own publishes nothing. A failed run can be re-run:
+  # Publishing to nuget.org: publishing the release-drafter draft releases, and the packages go out only once main-green has
+  # seen main's run on the released commit pass. Pushing a tag on its own publishes nothing. A failed run can be re-run:
   # pushing is skipped for packages already there.
   # The 'release' environment has no reviewers: it is kept because the nuget.org trusted publishing policy names it,
   # and it only lets tags deploy (a release run's ref is its tag).
   # nuget.org trusts this workflow file (ci.yml) through a trusted publishing policy, so there is no long-lived key.
   release:
     if: github.event_name == 'release'
-    needs: [build, aot-pack, tool-pack, tool-smoke, zizmor]
+    needs: [main-green, build, aot-pack, tool-pack, zizmor]
     runs-on: ubuntu-latest
     name: Publish to nuget.org
     timeout-minutes: 20
@@ -363,6 +401,6 @@ jobs:
 
   # Static analysis of these workflows (nullean/.github).
   zizmor:
-    uses: nullean/.github/.github/workflows/zizmor.yml@d850ce6eee9efa9f81b410d15fcd480409518d19 # v1.5.0
+    uses: nullean/.github/.github/workflows/zizmor.yml@e21d5f59405aa7078e51825cd4c407191e28562f # v1.6.1
     permissions:
       contents: read
