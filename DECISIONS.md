@@ -916,3 +916,10 @@ two sites. This change is the rules and what reads them; running the two sites i
 
 - The browser job on `macos-14` (#92) never ran: GitHub cancelled it in the second it started on `main` (run 43104320259) and after three minutes on the run before, while every other job of those runs passed. That says
   nothing about the freeze, so the job is back on `macos-latest`. The two freezes that were real (runs 43087327143 and 43092595500) ran 15 minutes with no newer commit on `main` to cancel them.
+
+## The macOS browser tests run one at a time (#64)
+
+- Bisecting by test class and then by test (throwaway PR #98) showed that every `JourneyCompareTests` test passes alone and the whole project passes with `--maximum-parallel-tests 1` (2m49s), while with the default
+  parallelism the job froze the whole runner on the last 4 runs. The freeze is therefore load, not one test: several tests at once start Chrome pages, a local server and screenshot work on a small macOS runner.
+  The job runs the project serially. If it freezes again the cause is not parallelism and this goes back; if it stays green over many runs, #64 can close. Only the macOS job is serial; local runs and the
+  other operating systems keep the default.
