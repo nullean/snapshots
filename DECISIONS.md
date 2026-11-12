@@ -912,7 +912,7 @@ two sites. This change is the rules and what reads them; running the two sites i
   cancelled, no log), as before, so the flags were taken out again along with `NULLEAN_SNAPSHOTS_CHROME_ARGS`. The freeze takes the whole runner: no timeout, log or artifact inside the job survives it,
   and nothing observed ties it to Chrome rather than to the macOS runner image. #64 stays open; the job stays non-gating.
 
-## The macOS browser job on macos-14 (#64)
+## macos-14 is not an experiment we can run (#64)
 
-- The freeze takes the whole runner down, so nothing inside the job can say why. The one thing left to try without dropping the coverage is another image: the job runs on `macos-14` instead of `macos-latest`, and
-  is named for it. If it still freezes the image is not the cause and the job goes back to `macos-latest`; if it runs clean over several runs it stays, and #64 can close.
+- The browser job on `macos-14` (#92) never ran: GitHub cancelled it in the second it started on `main` (run 43104320259) and after three minutes on the run before, while every other job of those runs passed. That says
+  nothing about the freeze, so the job is back on `macos-latest`. The two freezes that were real (runs 43087327143 and 43092595500) ran 15 minutes with no newer commit on `main` to cancel them.
