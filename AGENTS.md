@@ -49,8 +49,10 @@ CLI end to end on a throwaway fixture.
 
 release-drafter keeps a draft release current from the labels of merged pull requests, and every pull request carries
 exactly one release label (`pr-labels.yml` enforces it). **Publishing the draft** releases: it creates the tag and runs
-`ci.yml` on it, and once every gate has passed the `release` job pushes the packages to nuget.org and attaches them to
-the release. Pushing a tag on its own does nothing. In 0.x a `breaking` label bumps the minor version; 1.0 is the
+`ci.yml` on it. Its `main-green` job waits for main's push run of `ci.yml` on the released commit and fails unless it
+passed; only then are the packages packed and the `release` job pushes them to nuget.org and attaches them to the
+release. A release runs no tests of its own, and macOS runs only on pushes to main (plus the osx-arm64 AOT pack on a
+release). Pushing a tag on its own does nothing. In 0.x a `breaking` label bumps the minor version; 1.0 is the
 maintainer's call. See the [releasing](.claude/skills/releasing/SKILL.md) and
 [breaking-changes](.claude/skills/breaking-changes/SKILL.md) skills, and `mise run release` for the current draft.
 
