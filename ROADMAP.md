@@ -9,7 +9,7 @@ Where it and [DECISIONS.md](DECISIONS.md) disagree, DECISIONS.md wins; the main 
   mirroring the test file's folder, with a folder per runtime class. Received files live under
   `$(ArtifactsPath)/.snapshots/received/{Project}/` or `{Project}/obj/snapshots/received/`.
 - **CLI discovery** probes those received roots instead of globbing for `__snapshots__`.
-- **TUnit and AwesomeAssertions:** the latest stable release only (1.78 and 9.6), no 1.65 test matrix.
+- **TUnit and AwesomeAssertions:** the latest stable release only (1.83 and 9.6 now), no 1.65 test matrix.
 - **Full AOT pack matrix** runs on pushes to main, tags and manual runs; pull requests run build, test and pack.
 
 ## Goal

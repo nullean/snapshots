@@ -122,8 +122,9 @@ its verified file by the prefix swap. Half-written `*.tmp` files are ignored.
   `Nullean.Snapshots.AwesomeAssertions`. Putting `BeHtml` in the AwesomeAssertions package, as the brief had it, would
   make every user carry AngleSharp. `MatchHtmlSnapshot` rather than a `MatchSnapshot` overload, which would be
   ambiguous with the text one when called without arguments.
-- **AngleSharp 1.7.2 as the minimum**, the lowest that works rather than the latest, so a consumer that pins it (docs-builder does) is not forced to upgrade by a test package.
-- **AOT-clean after all.** AngleSharp 1.7.2 and AngleSharp.Diffing 1.1.1 publish with native AOT without a single trim or
+- **AngleSharp tracks the latest release**, like every other dependency. It used to be held at 1.7.2 so a consumer that
+  pinned it (docs-builder) was not pulled up; the dependency bump of 2026-11 moved it to latest, and consumers move with it.
+- **AOT-clean after all.** AngleSharp (1.7.2 when checked) and AngleSharp.Diffing 1.1.1 publish with native AOT without a single trim or
   AOT warning (spiked on osx-arm64, the binary parsed, printed and diffed). The package sets `IsAotCompatible`.
 - **The pipeline:** parse, `Select(css)` (the body by default), `Remove(css)`, `RemoveAttributes(patterns)` with `*`
   wildcards on every element or `RemoveAttributesFrom(css, patterns)`, `Transform(Action<IElement>)`, then
