@@ -6,8 +6,9 @@ named.
 
 ## Build and test
 
-[mise](https://mise.jdx.dev) installs the toolchain (`mise.toml`: the SDK from `global.json`, the .NET 10 runtime the
-projects target, `gh`, `zizmor`) and runs the same task names as every nullean repository:
+[mise](https://mise.jdx.dev) installs the toolchain (`mise.toml`: the SDK from `global.json`, `gh`, `zizmor`; the
+libraries target net10.0 and net11.0, the CLI and the tests net11.0) and runs the same task names as every nullean
+repository:
 
 ```sh
 mise install       # once, and after the SDK in global.json changes

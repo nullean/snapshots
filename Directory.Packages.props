@@ -11,8 +11,8 @@
     <!-- Runtime dependencies -->
     <PackageVersion Include="DiffPlex" Version="1.9.0" />
     <PackageVersion Include="System.IO.Abstractions" Version="23.0.0" />
-    <PackageVersion Include="Nullean.ScopedFileSystem" Version="0.7.1" />
-    <PackageVersion Include="Nullean.Argh" Version="0.27.2" />
+    <PackageVersion Include="Nullean.ScopedFileSystem" Version="0.7.2" />
+    <PackageVersion Include="Nullean.Argh" Version="0.30.0" />
     <PackageVersion Include="AngleSharp" Version="1.10.2" />
     <PackageVersion Include="AngleSharp.Diffing" Version="1.1.1" />
     <PackageVersion Include="SharpYaml" Version="3.17.0" />
@@ -37,8 +37,8 @@
          Test-only, never a runtime dependency; the CLI lexes C# itself to stay small and AOT. -->
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
     <PackageVersion Include="StbImageSharp" Version="2.30.16" />
-    <!-- ASP.NET Core's in-memory server, for the HTTP tests' WebApplicationFactory-style case. Test-only. The latest
-         10.x: 11.0 targets net11.0 only, and the tests run on net10.0. -->
-    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.15" />
+    <!-- ASP.NET Core's in-memory server, for the HTTP tests' WebApplicationFactory-style case. Test-only, and the
+         tests run on net11.0, which 11.0 targets. -->
+    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="11.0.0" />
   </ItemGroup>
 </Project>

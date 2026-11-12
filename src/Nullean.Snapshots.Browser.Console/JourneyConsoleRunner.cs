@@ -63,7 +63,7 @@ public static class JourneyConsoleRunner
 			}
 			catch (BrowserLaunchException e)
 			{
-				await error.WriteLineAsync("Error: " + e.Message).ConfigureAwait(false);
+				await error.WriteLineAsync(("Error: " + e.Message).AsMemory(), CancellationToken.None).ConfigureAwait(false);
 				return JourneyExitCode.Browser;
 			}
 		}
@@ -74,7 +74,7 @@ public static class JourneyConsoleRunner
 		var outcomes = await Task.WhenAll(tasks).ConfigureAwait(false);
 		if (launched.Error is { } launchError)
 		{
-			await error.WriteLineAsync("Error: " + launchError).ConfigureAwait(false);
+			await error.WriteLineAsync(("Error: " + launchError).AsMemory(), CancellationToken.None).ConfigureAwait(false);
 			return JourneyExitCode.Browser;
 		}
 
