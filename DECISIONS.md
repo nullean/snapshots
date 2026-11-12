@@ -916,3 +916,9 @@ two sites. This change is the rules and what reads them; running the two sites i
 
 - The browser job on `macos-14` (#92) never ran: GitHub cancelled it in the second it started on `main` (run 43104320259) and after three minutes on the run before, while every other job of those runs passed. That says
   nothing about the freeze, so the job is back on `macos-latest`. The two freezes that were real (runs 43087327143 and 43092595500) ran 15 minutes with no newer commit on `main` to cancel them.
+
+## What is known about the macOS browser freeze (#64)
+
+- It is not the image (macos-14 never ran the job), not the Chrome GPU flags (the job froze on `main` with them), and not supersession by a newer push: runs 43087327143, 43092595500 and 43197337362 ran 15 minutes
+  with no newer commit on `main`. Each was in the Test step (the Build step before it takes 30 seconds), none got to its own `--timeout 6m` or the step's 10 minutes, and no log survived. The tests pass locally in 8 seconds
+  (194 tests), so what differs is the runner. The next try reads the running job's log from the API while the Test step is still alive.
