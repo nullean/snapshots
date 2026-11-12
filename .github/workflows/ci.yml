@@ -124,7 +124,7 @@ jobs:
   # on macOS and still fail, in this job's result, if Chrome is missing or cannot start. Like every macOS test job, only on a
   # push to main.
   browser-macos:
-    if: github.event_name == 'push'
+    if: github.event_name != 'release'
     runs-on: macos-latest
     name: Browser tests (macos-latest)
     # A healthy run takes 1-2 minutes; when the runner freezes nothing else answers either, so do not wait long for it.
@@ -150,17 +150,31 @@ jobs:
       - name: Build
         run: dotnet build tests/Nullean.Snapshots.Browser.Tests -c Release
 
-      # One test at a time: with the default parallelism the job froze the whole runner on 4 of 4 recent runs (#64), while every test of the
-      # slowest class passed on its own and the whole project passed one test at a time.
-      # A freeze here left no log (#64). --timeout ends the run itself, before the step's limit, and says which tests were still running;
-      # --output Detailed lists every test as it finishes, so the last line shows where it stopped, and the diagnostic log is uploaded
-      # even when the step is cancelled. A runner that freezes completely still answers nothing, and then the log shows how far it got.
-      - name: Test
-        timeout-minutes: 10
-        run: >
-          dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests
-          --maximum-parallel-tests 1 --timeout 6m --output Detailed
-          --diagnostic --diagnostic-verbosity Information --diagnostic-output-directory "$GITHUB_WORKSPACE/.artifacts/diagnostics"
+      # DIAGNOSTIC (not to merge) (#64).
+      - name: Test JourneyCompareTests P1 t10+t11
+        continue-on-error: true
+        timeout-minutes: 3
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/(ThePreviewsExtraLinkIsExplainedByItsRule)|(WithoutARuleTheExtraLinkFailsAndTheSuggestionIsTheRule)" --maximum-parallel-tests 1 --timeout 2m
+
+      - name: Test JourneyCompareTests P2 t11+t12
+        continue-on-error: true
+        timeout-minutes: 3
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/(WithoutARuleTheExtraLinkFailsAndTheSuggestionIsTheRule)|(ARuleForSomethingThatDidNotChangeIsStale)" --maximum-parallel-tests 1 --timeout 2m
+
+      - name: Test JourneyCompareTests P3 t10+t12
+        continue-on-error: true
+        timeout-minutes: 3
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/(ThePreviewsExtraLinkIsExplainedByItsRule)|(ARuleForSomethingThatDidNotChangeIsStale)" --maximum-parallel-tests 1 --timeout 2m
+
+      - name: Test JourneyCompareTests T13 alone
+        continue-on-error: true
+        timeout-minutes: 3
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/(EachSiteGetsItsOwnArtifactsFolderSoTheSecondRunDoesNotEmptyTheFirst)" --maximum-parallel-tests 1 --timeout 2m
+
+      - name: Test JourneyCompareTests R all three
+        continue-on-error: true
+        timeout-minutes: 3
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/(ThePreviewsExtraLinkIsExplainedByItsRule)|(WithoutARuleTheExtraLinkFailsAndTheSuggestionIsTheRule)|(ARuleForSomethingThatDidNotChangeIsStale)" --maximum-parallel-tests 1 --timeout 2m
 
       - name: Upload the diagnostic log
         if: always()
