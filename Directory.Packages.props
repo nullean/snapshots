@@ -12,7 +12,7 @@
     <PackageVersion Include="DiffPlex" Version="1.9.0" />
     <PackageVersion Include="System.IO.Abstractions" Version="23.0.0" />
     <PackageVersion Include="Nullean.ScopedFileSystem" Version="0.7.1" />
-    <PackageVersion Include="Nullean.Argh" Version="0.27.2" />
+    <PackageVersion Include="Nullean.Argh" Version="0.30.0" />
     <PackageVersion Include="AngleSharp" Version="1.10.2" />
     <PackageVersion Include="AngleSharp.Diffing" Version="1.1.1" />
     <PackageVersion Include="SharpYaml" Version="3.17.0" />
