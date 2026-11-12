@@ -10,15 +10,15 @@
   <ItemGroup>
     <!-- Runtime dependencies -->
     <PackageVersion Include="DiffPlex" Version="1.9.0" />
-    <PackageVersion Include="System.IO.Abstractions" Version="22.3.0" />
-    <PackageVersion Include="Nullean.ScopedFileSystem" Version="0.6.0" />
+    <PackageVersion Include="System.IO.Abstractions" Version="23.0.0" />
+    <PackageVersion Include="Nullean.ScopedFileSystem" Version="0.7.1" />
     <PackageVersion Include="Nullean.Argh" Version="0.27.2" />
     <PackageVersion Include="AngleSharp" Version="1.10.2" />
     <PackageVersion Include="AngleSharp.Diffing" Version="1.1.1" />
     <PackageVersion Include="SharpYaml" Version="3.17.0" />
     <!-- The browser for journeys. 0.x and unpublished while this is a draft; see DECISIONS.md, "Browser". -->
-    <PackageVersion Include="Nullean.Cdp" Version="0.11.0" />
-    <PackageVersion Include="Nullean.Cdp.Journeys" Version="0.11.0" />
+    <PackageVersion Include="Nullean.Cdp" Version="0.11.1" />
+    <PackageVersion Include="Nullean.Cdp.Journeys" Version="0.11.1" />
     <PackageVersion Include="Nullean.TerminalImages" Version="0.2.2" />
     <!-- Adapters build against the latest stable release, which is also their minimum. -->
     <PackageVersion Include="TUnit.Core" Version="1.83.8" />
@@ -29,7 +29,7 @@
     <PackageVersion Include="TUnit" Version="1.83.8" />
     <PackageVersion Include="AwesomeAssertions" Version="9.6.0" />
     <PackageVersion Include="CsCheck" Version="5.0.1" />
-    <PackageVersion Include="TestableIO.System.IO.Abstractions.TestingHelpers" Version="22.3.0" />
+    <PackageVersion Include="TestableIO.System.IO.Abstractions.TestingHelpers" Version="23.0.0" />
     <!-- The JSON oracle for the tree differ's property tests. Test-only, never a runtime dependency. -->
     <PackageVersion Include="SystemTextJson.JsonDiffPatch" Version="2.0.0" />
     <!-- The PNG oracle for the decoder's tests (a C# port of stb_image). Test-only, never a runtime dependency. -->
