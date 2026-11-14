@@ -1,0 +1,30 @@
+assembly Nullean.Snapshots.Json
+using AwesomeAssertions: AndConstraint<>
+using AwesomeAssertions.Primitives: ObjectAssertions, StringAssertions
+using Nullean.Snapshots: SnapshotComparison, SnapshotOptions
+using Nullean.Snapshots.Trees: Node, TreeDiffOptions, TreeSnapshotFormat
+using System.Diagnostics.CodeAnalysis: RequiresDynamicCodeAttribute, RequiresUnreferencedCodeAttribute, StringSyntaxAttribute
+using System.Runtime.CompilerServices: CallerArgumentExpressionAttribute, CallerFilePathAttribute, CallerLineNumberAttribute, CallerMemberNameAttribute
+using System.Text.Json: JsonSerializerOptions
+using System.Text.Json.Serialization.Metadata: JsonTypeInfo<>
+
+namespace Nullean.Snapshots.Json
+  static class JsonAssertions
+    static AndConstraint<StringAssertions> BeJson(this StringAssertions assertions, [StringSyntax("Json")] string expected, TreeDiffOptions? diff = null, string because = "")
+    [RequiresDynamicCode("Serializes with reflection; use the JsonTypeInfo<T> overload for trimming and native AOT.")]
+    [RequiresUnreferencedCode("Serializes with reflection; use the JsonTypeInfo<T> overload for trimming and native AOT.")]
+    static AndConstraint<ObjectAssertions> MatchInlineJsonSnapshot(this ObjectAssertions assertions, [StringSyntax("Json")] string? expected = null, JsonSerializerOptions? serializerOptions = null, TreeDiffOptions? diff = null, SnapshotOptions? options = null, string because = "", [CallerArgumentExpression("expected")] string? expectedExpression = null, [CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0)
+    static AndConstraint<ObjectAssertions> MatchInlineJsonSnapshot<T>(this ObjectAssertions assertions, JsonTypeInfo<T> typeInfo, [StringSyntax("Json")] string? expected = null, TreeDiffOptions? diff = null, SnapshotOptions? options = null, string because = "", [CallerArgumentExpression("expected")] string? expectedExpression = null, [CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0)
+    static AndConstraint<StringAssertions> MatchInlineJsonSnapshot(this StringAssertions assertions, [StringSyntax("Json")] string? expected = null, TreeDiffOptions? diff = null, SnapshotOptions? options = null, string because = "", [CallerArgumentExpression("expected")] string? expectedExpression = null, [CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0)
+    [RequiresDynamicCode("Serializes with reflection; use the JsonTypeInfo<T> overload for trimming and native AOT.")]
+    [RequiresUnreferencedCode("Serializes with reflection; use the JsonTypeInfo<T> overload for trimming and native AOT.")]
+    static AndConstraint<ObjectAssertions> MatchJsonSnapshot(this ObjectAssertions assertions, JsonSerializerOptions? serializerOptions = null, TreeDiffOptions? diff = null, string? name = null, SnapshotOptions? options = null, string because = "", [CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0)
+    static AndConstraint<ObjectAssertions> MatchJsonSnapshot<T>(this ObjectAssertions assertions, JsonTypeInfo<T> typeInfo, TreeDiffOptions? diff = null, string? name = null, SnapshotOptions? options = null, string because = "", [CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0)
+    static AndConstraint<StringAssertions> MatchJsonSnapshot(this StringAssertions assertions, TreeDiffOptions? diff = null, string? name = null, SnapshotOptions? options = null, string because = "", [CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0)
+
+  static class JsonSnapshot
+    static TreeSnapshotFormat Format { get; }
+    static SnapshotComparison Compare(string expected, string actual, TreeDiffOptions? options = null)
+    static TreeSnapshotFormat FormatWith(TreeDiffOptions? options)
+    static Node Parse(string json)
+    static string Pretty(string json)

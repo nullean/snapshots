@@ -1,0 +1,20 @@
+assembly Nullean.Snapshots.Browser.Assertions
+using AwesomeAssertions: AndConstraint<>
+using AwesomeAssertions.Primitives: ObjectAssertions, StringAssertions
+using Nullean.Cdp.Journeys: JourneyContext
+using Nullean.Snapshots: SnapshotFile, SnapshotOptions
+using Nullean.Snapshots.Browser: JourneySnapshotOptions
+using System.Runtime.CompilerServices: CallerFilePathAttribute, CallerLineNumberAttribute, CallerMemberNameAttribute
+using struct System.Threading: CancellationToken
+using System.Threading.Tasks: Task
+
+namespace Nullean.Snapshots.Browser
+  static class BrowserAssertions
+    static AndConstraint<StringAssertions> MatchAriaSnapshot(this StringAssertions assertions, string? name = null, SnapshotOptions? options = null, string because = "", [CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0)
+    static AndConstraint<ObjectAssertions> MatchJourneySnapshot(this ObjectAssertions assertions, SnapshotOptions? options = null, string because = "")
+
+  static class JourneyTest
+    static Task RunAsync(SnapshotFile journey, JourneySnapshotOptions? options = null, CancellationToken cancellationToken = default, [CallerFilePath] string callerFilePath = "")
+    static Task RunAsync(string journey, JourneySnapshotOptions? options = null, CancellationToken cancellationToken = default, [CallerFilePath] string callerFilePath = "")
+    static string? SkipReason(SnapshotFile journey, JourneySnapshotOptions options, [CallerFilePath] string callerFilePath = "")
+    static string? Unmet(SnapshotFile journey, JourneyContext context, [CallerFilePath] string callerFilePath = "")

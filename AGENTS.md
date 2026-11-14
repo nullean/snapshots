@@ -64,6 +64,10 @@ maintainer's call. See the [releasing](.claude/skills/releasing/SKILL.md) and
 - Core has no heavy dependencies. Libraries set `IsAotCompatible`; an exception is documented in DECISIONS.md.
 - The diff engine is tested with CsCheck properties first. Keep a failing seed as a regression test.
 - Never accept snapshots automatically, and never in CI.
+- Every package's public API is a snapshot (`tests/Nullean.Snapshots.PublicApi.Tests/PackageApiTests.cs`): a change to
+  one fails there with the version change it calls for. Read the `.verified.api` diff like the code change it is, accept
+  it with the change, and label the pull request for the version change the failure suggested. A new package goes
+  into `Packages()` and gets a ProjectReference in that test project.
 - Never publish a release (or the draft) without the owner's approval.
 - Record non-obvious choices in DECISIONS.md in the same change.
 - Every package ships an agent skill, `src/<Project>/skills/<name>/SKILL.md`. Change it with the public API, and

@@ -1,0 +1,11 @@
+assembly Nullean.Snapshots.Images.Assertions
+using AwesomeAssertions: AndConstraint<>
+using AwesomeAssertions.Collections: GenericCollectionAssertions<>
+using AwesomeAssertions.Streams: StreamAssertions
+using Nullean.Snapshots.Images: ImageSnapshotOptions
+using System.Runtime.CompilerServices: CallerFilePathAttribute, CallerLineNumberAttribute, CallerMemberNameAttribute
+
+namespace Nullean.Snapshots.Images
+  static class ImageAssertions
+    static AndConstraint<GenericCollectionAssertions<byte>> MatchImageSnapshot(this GenericCollectionAssertions<byte> assertions, ImageSnapshotOptions? image = null, string? name = null, string because = "", [CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0)
+    static AndConstraint<StreamAssertions> MatchImageSnapshot(this StreamAssertions assertions, ImageSnapshotOptions? image = null, string? name = null, string because = "", [CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0)

@@ -1,0 +1,129 @@
+assembly Nullean.Snapshots.Browser
+using Nullean.Cdp: Browser
+using Nullean.Cdp.Journeys: Checkpoint, JourneyContext, JourneyFailure, JourneyMetadata, JourneyResult, JourneyStep, JourneyViewport
+using Nullean.Snapshots: SnapshotComparison, SnapshotOptions, SnapshotResult
+using struct Nullean.Snapshots: TranscriptMode
+using Nullean.Snapshots.Differences: DifferenceFacts, IRuleTarget, RuleTargets, RuleToken, SiteComparisonResult
+using struct Nullean.Snapshots.Differences: RuleVerb
+using Nullean.Snapshots.Images: ImageSnapshotOptions
+using Nullean.Snapshots.Trees: Node, SeqNode, TreeDiffOptions, TreeSnapshotFormat
+using System: Action<>, Func<,>, Uri
+using struct System: TimeSpan
+using interface System: IEquatable<>
+using System.Collections.Generic: IReadOnlyDictionary<,>, IReadOnlyList<>, IReadOnlySet<>
+using System.IO.Abstractions: IFileSystem
+using System.Runtime.CompilerServices: CallerFilePathAttribute
+using struct System.Threading: CancellationToken
+using System.Threading.Tasks: Task<>
+
+namespace Nullean.Snapshots.Browser
+  sealed class AriaSnapshotFormat : TreeSnapshotFormat
+    AriaSnapshotFormat(TreeDiffOptions? options = null)
+    override string Extension { get; }
+    override string Name { get; }
+    override SnapshotComparison Compare(string verified, string actual)
+    override Node Parse(string text)
+
+  static class AriaTree
+    static SeqNode Parse(string text, int firstLine = 1)
+    static string Print(SeqNode tree)
+
+  sealed record ImageDifference : IEquatable<ImageDifference>
+    ImageDifference(string Name, string Summary, IReadOnlyList<string> Regions, string? DiffPath, string? ZoomPath = null)
+    string? DiffPath { get; init; }
+    string Name { get; init; }
+    IReadOnlyList<string> Regions { get; init; }
+    string Summary { get; init; }
+    string? ZoomPath { get; init; }
+    ImageDifference <Clone>$()
+    void Deconstruct(out string Name, out string Summary, out IReadOnlyList<string> Regions, out string? DiffPath, out string? ZoomPath)
+    bool Equals(ImageDifference? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(ImageDifference? left, ImageDifference? right)
+    static bool operator !=(ImageDifference? left, ImageDifference? right)
+
+  sealed class JourneyCompareOptions
+    JourneyCompareOptions()
+    required Uri Baseline { get; init; }
+    string? Prune { get; init; }
+    string? Record { get; init; }
+    bool ReuseBaseline { get; init; }
+    JourneySnapshotOptions Run { get; init; }
+    required Uri Target { get; init; }
+
+  sealed class JourneyRuleTargets : RuleTargets
+    JourneyRuleTargets()
+    override string HeadingKey { get; }
+    static JourneyRuleTargets Instance { get; }
+    override bool IsText(DifferenceFacts facts)
+    override IRuleTarget ParseTarget(RuleVerb verb, IReadOnlyList<RuleToken> target)
+    override IReadOnlyList<string> Suggest(DifferenceFacts facts)
+
+  static class JourneySnapshot
+    static AriaSnapshotFormat AriaFormat { get; }
+    static JourneySnapshotFormat Format { get; }
+    static Task<SiteComparisonResult> CompareAsync(string journeyFile, JourneyCompareOptions options, CancellationToken cancellationToken = default, [CallerFilePath] string callerFilePath = "")
+    static IReadOnlyList<ImageDifference> CompareScreenshots(string journeyFile, ImageSnapshotOptions? options = null, [CallerFilePath] string callerFilePath = "")
+    static IReadOnlyList<string> Find(string folder = "journeys", [CallerFilePath] string callerFilePath = "")
+    static SnapshotResult Match(JourneyTranscript transcript, SnapshotOptions? options = null, string? because = null)
+    static JourneyMetadata Metadata(string journeyFile, [CallerFilePath] string callerFilePath = "")
+    static Task<JourneyTranscript> RunAsync(string journeyFile, Browser browser, JourneySnapshotOptions? options, CancellationToken cancellationToken = default)
+    static Task<JourneyTranscript> RunAsync(string journeyFile, JourneySnapshotOptions? options = null, CancellationToken cancellationToken = default, [CallerFilePath] string callerFilePath = "")
+    static string? SkipReason(string journeyFile, JourneySnapshotOptions options, [CallerFilePath] string callerFilePath = "")
+    static string? Unmet(string journeyFile, JourneyContext context, [CallerFilePath] string callerFilePath = "")
+
+  sealed class JourneySnapshotFormat : TreeSnapshotFormat
+    JourneySnapshotFormat(TreeDiffOptions? options = null)
+    override string Extension { get; }
+    override string Name { get; }
+    override SnapshotComparison Compare(string verified, string actual)
+    override Node Parse(string text)
+
+  sealed class JourneySnapshotOptions
+    JourneySnapshotOptions()
+    TimeSpan? ActionTimeout { get; init; }
+    IReadOnlyList<string> AllowedHosts { get; init; }
+    string? ArtifactsDirectory { get; init; }
+    Uri? BaseUrl { get; init; }
+    string? BuildType { get; init; }
+    JourneyContext Context { get; }
+    string? Env { get; init; }
+    IReadOnlySet<string> Features { get; init; }
+    string? FileRoot { get; init; }
+    IReadOnlyDictionary<string, string> Headers { get; init; }
+    TimeSpan? NavigationTimeout { get; init; }
+    Action<JourneyStep>? OnStep { get; init; }
+    bool ReadOnly { get; init; }
+    bool ScreenshotOnFailure { get; init; }
+    Func<string, string?>? Secrets { get; init; }
+    TranscriptMode Transcript { get; init; }
+    string? UserAgent { get; init; }
+    string? Variant { get; init; }
+    JourneyViewport? Viewport { get; init; }
+    IReadOnlyList<string> WritableUrls { get; init; }
+
+  sealed record JourneyTranscript : IEquatable<JourneyTranscript>
+    JourneyTranscript(string File, string Text, JourneyFailure? Failure)
+    const string Origin = "{origin}"
+    JourneyFailure? Failure { get; init; }
+    string File { get; init; }
+    TranscriptMode Mode { get; init; }
+    string Text { get; init; }
+    string? Variant { get; init; }
+    JourneyTranscript <Clone>$()
+    void Deconstruct(out string File, out string Text, out JourneyFailure? Failure)
+    bool Equals(JourneyTranscript? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    static SeqNode Parse(string text)
+    static string Render(JourneyResult result, Uri? baseUrl)
+    static string Render(IReadOnlyList<Checkpoint> checkpoints, Uri? baseUrl)
+    override string ToString()
+    static bool operator ==(JourneyTranscript? left, JourneyTranscript? right)
+    static bool operator !=(JourneyTranscript? left, JourneyTranscript? right)
+
+  static class SiteImages
+    const int MaxRegions = 3
+    static IReadOnlyList<ImageDifference> Compare(IFileSystem fileSystem, string baselineDirectory, string targetDirectory, ImageSnapshotOptions? options = null)

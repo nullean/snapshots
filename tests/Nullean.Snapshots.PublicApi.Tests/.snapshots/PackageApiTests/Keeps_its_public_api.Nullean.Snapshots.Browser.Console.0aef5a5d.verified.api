@@ -1,0 +1,129 @@
+assembly Nullean.Snapshots.Browser.Console
+using Nullean.Cdp.Journeys: Journey, JourneyStep, JourneyViewport
+using Nullean.Snapshots: SnapshotResult
+using Nullean.Snapshots.Browser: JourneyTranscript
+using System: Func<,,>, Func<,>, Uri
+using struct System: TimeSpan
+using interface System: IEquatable<>
+using System.Collections.Generic: IEnumerable<>, IReadOnlyDictionary<,>, IReadOnlyList<>, IReadOnlySet<>
+using System.IO: TextWriter
+using struct System.Threading: CancellationToken
+using System.Threading.Tasks: Task<>
+
+namespace Nullean.Snapshots.Browser.Console
+  sealed class ConsoleJourneyReporter : IJourneyReporter
+    ConsoleJourneyReporter(TextWriter output, JourneyRunOptions options, bool interactive)
+    static bool UseInteractive { get; }
+    void Complete(IReadOnlyList<JourneyOutcome> outcomes, TimeSpan elapsed)
+    static string ContextBlock(string lead, IReadOnlyList<ContextRow> rows, IReadOnlyList<string>? notes = null)
+    void Finished(JourneyOutcome outcome)
+    void Planned(IReadOnlyList<(JourneyRunFile File, string Reason)> skipped, int toRun)
+    void Started(JourneyRunFile file)
+    void StepStarted(JourneyRunFile file, JourneyStep journeyStep)
+
+  sealed record ContextRow : IEquatable<ContextRow>
+    ContextRow(string Label, string Value, string? Source = null)
+    string Label { get; init; }
+    string? Source { get; init; }
+    string Value { get; init; }
+    ContextRow <Clone>$()
+    void Deconstruct(out string Label, out string Value, out string? Source)
+    bool Equals(ContextRow? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(ContextRow? left, ContextRow? right)
+    static bool operator !=(ContextRow? left, ContextRow? right)
+
+  interface IJourneyReporter
+    void Complete(IReadOnlyList<JourneyOutcome> outcomes, TimeSpan elapsed)
+    void Finished(JourneyOutcome outcome)
+    void Planned(IReadOnlyList<(JourneyRunFile File, string Reason)> skipped, int toRun)
+    void Started(JourneyRunFile file)
+    void StepStarted(JourneyRunFile file, JourneyStep journeyStep)
+
+  static class JourneyConsoleRunner
+    static Task<int> RunAsync(JourneyRunOptions options, TextWriter output, TextWriter error, CancellationToken cancellationToken = default)
+
+  static class JourneyExitCode
+    const int Browser = 3
+    const int Failed = 1
+    const int Ok = 0
+    const int Usage = 2
+
+  sealed record JourneyOutcome : IEquatable<JourneyOutcome>
+    JourneyOutcome(JourneyRunFile File, JourneyTranscript? Transcript, SnapshotResult? Compared, string? Error, string? SkipReason, TimeSpan Elapsed)
+    SnapshotResult? Compared { get; init; }
+    TimeSpan Elapsed { get; init; }
+    string? Error { get; init; }
+    bool Failed { get; }
+    JourneyRunFile File { get; init; }
+    bool IsParseError { get; init; }
+    Uri? LastOpened { get; init; }
+    bool Passed { get; }
+    string? SkipReason { get; init; }
+    bool Skipped { get; }
+    JourneyTranscript? Transcript { get; init; }
+    JourneyOutcome <Clone>$()
+    void Deconstruct(out JourneyRunFile File, out JourneyTranscript? Transcript, out SnapshotResult? Compared, out string? Error, out string? SkipReason, out TimeSpan Elapsed)
+    bool Equals(JourneyOutcome? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    static JourneyOutcome Skip(JourneyRunFile file, string reason)
+    override string ToString()
+    static bool operator ==(JourneyOutcome? left, JourneyOutcome? right)
+    static bool operator !=(JourneyOutcome? left, JourneyOutcome? right)
+
+  sealed record JourneyRunFile : IEquatable<JourneyRunFile>
+    JourneyRunFile(string Id, string Path)
+    string? Display { get; init; }
+    string Id { get; init; }
+    string Path { get; init; }
+    JourneyRunFile <Clone>$()
+    void Deconstruct(out string Id, out string Path)
+    bool Equals(JourneyRunFile? other)
+    override bool Equals(object? obj)
+    static IReadOnlyList<JourneyRunFile> FromPaths(string root, IEnumerable<string> paths)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(JourneyRunFile? left, JourneyRunFile? right)
+    static bool operator !=(JourneyRunFile? left, JourneyRunFile? right)
+
+  sealed class JourneyRunOptions
+    JourneyRunOptions()
+    bool AllowAllSkipped { get; init; }
+    bool AllowMutations { get; init; }
+    IReadOnlyList<string> AllowedHosts { get; init; }
+    Func<JourneyRunFile, string?>? ArtifactsFor { get; init; }
+    Uri? BaseUrl { get; init; }
+    string? BuildType { get; init; }
+    Func<JourneyRunFile, JourneyTranscript, SnapshotResult>? Compare { get; init; }
+    string? Env { get; init; }
+    IReadOnlySet<string> Features { get; init; }
+    string? FileRoot { get; init; }
+    required IReadOnlyList<JourneyRunFile> Files { get; init; }
+    bool GitHubActions { get; init; }
+    IReadOnlyDictionary<string, string> Headers { get; init; }
+    string? JUnitPath { get; init; }
+    Func<string, Journey>? Load { get; init; }
+    int Parallel { get; init; }
+    int ParseErrorExitCode { get; init; }
+    bool ReadOnly { get; init; }
+    string? Rerun { get; init; }
+    bool ScreenshotOnFailure { get; init; }
+    Uri? Site { get; init; }
+    bool StepSummary { get; init; }
+    string? StepSummaryPath { get; init; }
+    IReadOnlySet<string> Tags { get; init; }
+    string? UserAgent { get; init; }
+    string? Variant { get; init; }
+    bool Verbose { get; init; }
+    JourneyViewport? Viewport { get; init; }
+    IReadOnlyList<string> WritableUrls { get; init; }
+
+  static class TerminalPicture
+    const int ZoomColumns = 60
+    const int ZoomRows = 12
+    static bool TryDraw(TextWriter output, byte[] png, bool enlarge, int maxColumns, int maxRows)
+    static bool TryDraw(TextWriter output, byte[] png)
+    static bool TryDrawZoom(TextWriter output, byte[] png)

@@ -1,0 +1,16 @@
+assembly Nullean.Snapshots.AwesomeAssertions
+using AwesomeAssertions: AndConstraint<>
+using AwesomeAssertions.Execution: AssertionChain
+using AwesomeAssertions.Primitives: StringAssertions
+using Nullean.Snapshots: SnapshotFormat, SnapshotOptions
+using struct Nullean.Snapshots: InlineSnapshotCallSite
+using System.Runtime.CompilerServices: CallerArgumentExpressionAttribute, CallerFilePathAttribute, CallerLineNumberAttribute, CallerMemberNameAttribute
+
+namespace Nullean.Snapshots
+  static class SnapshotAssertions
+    static void FailUnless(AssertionChain chain, bool condition, string message)
+    static AndConstraint<StringAssertions> MatchInline(StringAssertions assertions, string? actual, string? expected, SnapshotFormat format, InlineSnapshotCallSite site, SnapshotOptions? options, string because)
+    static AndConstraint<StringAssertions> MatchInlineSnapshot(this StringAssertions assertions, SnapshotFormat format, string? expected = null, SnapshotOptions? options = null, string because = "", [CallerArgumentExpression("expected")] string? expectedExpression = null, [CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0)
+    static AndConstraint<StringAssertions> MatchInlineSnapshot(this StringAssertions assertions, string? expected = null, SnapshotOptions? options = null, string because = "", [CallerArgumentExpression("expected")] string? expectedExpression = null, [CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0)
+    static AndConstraint<StringAssertions> MatchSnapshot(this StringAssertions assertions, SnapshotFormat format, string? name = null, SnapshotOptions? options = null, string because = "", [CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0)
+    static AndConstraint<StringAssertions> MatchSnapshot(this StringAssertions assertions, string? name = null, SnapshotOptions? options = null, string because = "", [CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0)

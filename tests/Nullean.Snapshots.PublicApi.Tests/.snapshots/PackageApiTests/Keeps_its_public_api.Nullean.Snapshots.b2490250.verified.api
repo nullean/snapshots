@@ -1,0 +1,600 @@
+assembly Nullean.Snapshots
+using System: FormatException, Func<,>, Type
+using struct System: ReadOnlyMemory<>, ReadOnlySpan<>
+using interface System: IEquatable<>
+using System.Collections.Generic: IEnumerable<>, IReadOnlyList<>
+using struct System.Collections.Generic: KeyValuePair<,>
+using System.IO.Abstractions: IFileSystem
+using System.Reflection: Assembly
+using System.Text: Encoding, StringBuilder
+using System.Text.RegularExpressions: Regex
+
+namespace Nullean.Snapshots
+  sealed record BinarySnapshotComparison : IEquatable<BinarySnapshotComparison>
+    BinarySnapshotComparison(SnapshotComparison Comparison, IReadOnlyList<SnapshotAttachment> Attachments)
+    IReadOnlyList<SnapshotAttachment> Attachments { get; init; }
+    SnapshotComparison Comparison { get; init; }
+    static BinarySnapshotComparison Match { get; }
+    BinarySnapshotComparison <Clone>$()
+    void Deconstruct(out SnapshotComparison Comparison, out IReadOnlyList<SnapshotAttachment> Attachments)
+    bool Equals(BinarySnapshotComparison? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(BinarySnapshotComparison? left, BinarySnapshotComparison? right)
+    static bool operator !=(BinarySnapshotComparison? left, BinarySnapshotComparison? right)
+
+  abstract class BinarySnapshotFormat
+    protected BinarySnapshotFormat()
+    virtual IReadOnlyList<string> AttachmentSuffixes { get; }
+    abstract string Extension { get; }
+    abstract string Name { get; }
+    abstract BinarySnapshotComparison Compare(ReadOnlySpan<byte> verified, ReadOnlySpan<byte> actual)
+    virtual void Validate(ReadOnlySpan<byte> actual)
+
+  interface ISnapshotTestIdentityProvider
+    SnapshotTestIdentity? Current { get; }
+
+  readonly struct InlineSnapshotCallSite : IEquatable<InlineSnapshotCallSite>
+    InlineSnapshotCallSite(SnapshotCallSite CallSite, string MethodName, string? ExpectedExpression)
+    SnapshotCallSite CallSite { get; init; }
+    string? ExpectedExpression { get; init; }
+    string MethodName { get; init; }
+    void Deconstruct(out SnapshotCallSite CallSite, out string MethodName, out string? ExpectedExpression)
+    bool Equals(InlineSnapshotCallSite other)
+    override bool Equals(object obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(InlineSnapshotCallSite left, InlineSnapshotCallSite right)
+    static bool operator !=(InlineSnapshotCallSite left, InlineSnapshotCallSite right)
+
+  static class LineDiff
+    const int DefaultContext = 3
+    const int MaxLineLength = 500
+    static IReadOnlyList<IReadOnlyList<string>> Hunks(string expected, string actual, int context = 3)
+
+  static class Scrubbers
+    static string DateTimes(string text)
+    static string Guids(string text)
+    static Func<string, string> Path(string root, string replacement)
+    static Func<string, string> Regex(Regex pattern, string replacement)
+    static Func<string, string> TempDirectory(string replacement = "{temp}")
+
+  static class Snapshot
+    static string ArtifactsDirectory(string sourceFile)
+    static SnapshotResult Match(ReadOnlyMemory<byte> actual, BinarySnapshotFormat format, SnapshotCallSite callSite, string? name = null, string? because = null)
+    static SnapshotResult Match(string actual, SnapshotFormat format, SnapshotCallSite callSite, string? name = null, SnapshotOptions? options = null, string? because = null)
+    static SnapshotResult MatchFile(string actual, SnapshotFormat format, string sourceFile, SnapshotOptions? options = null, string? because = null, string? variant = null)
+    static SnapshotResult MatchInline(string actual, string? expected, SnapshotFormat format, InlineSnapshotCallSite site, SnapshotOptions? options = null, string? because = null)
+
+  sealed record SnapshotAttachment : IEquatable<SnapshotAttachment>
+    SnapshotAttachment(string Label, string Suffix, ReadOnlyMemory<byte> Content)
+    ReadOnlyMemory<byte> Content { get; init; }
+    string Label { get; init; }
+    string Suffix { get; init; }
+    SnapshotAttachment <Clone>$()
+    void Deconstruct(out string Label, out string Suffix, out ReadOnlyMemory<byte> Content)
+    bool Equals(SnapshotAttachment? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(SnapshotAttachment? left, SnapshotAttachment? right)
+    static bool operator !=(SnapshotAttachment? left, SnapshotAttachment? right)
+
+  readonly struct SnapshotCallSite : IEquatable<SnapshotCallSite>
+    SnapshotCallSite(string FilePath, string MemberName, int LineNumber)
+    string FilePath { get; init; }
+    int LineNumber { get; init; }
+    string MemberName { get; init; }
+    void Deconstruct(out string FilePath, out string MemberName, out int LineNumber)
+    bool Equals(SnapshotCallSite other)
+    override bool Equals(object obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(SnapshotCallSite left, SnapshotCallSite right)
+    static bool operator !=(SnapshotCallSite left, SnapshotCallSite right)
+
+  sealed record SnapshotComparison : IEquatable<SnapshotComparison>
+    SnapshotComparison(bool IsMatch, IReadOnlyList<IReadOnlyList<string>> Differences, IReadOnlyList<IReadOnlyList<string>>? LineDiff = null, string? Summary = null)
+    IReadOnlyList<IReadOnlyList<string>> Differences { get; init; }
+    bool IsMatch { get; init; }
+    IReadOnlyList<IReadOnlyList<string>>? LineDiff { get; init; }
+    static SnapshotComparison Match { get; }
+    string? Summary { get; init; }
+    SnapshotComparison <Clone>$()
+    void Deconstruct(out bool IsMatch, out IReadOnlyList<IReadOnlyList<string>> Differences, out IReadOnlyList<IReadOnlyList<string>>? LineDiff, out string? Summary)
+    bool Equals(SnapshotComparison? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(SnapshotComparison? left, SnapshotComparison? right)
+    static bool operator !=(SnapshotComparison? left, SnapshotComparison? right)
+
+  static class SnapshotDefaults
+    static IReadOnlyList<Func<string, string>> Scrubbers { get; }
+    static ISnapshotTestIdentityProvider? TestIdentity { get; }
+    static void AddScrubber(Func<string, string> scrubber)
+    static void AddScrubber(Regex pattern, string replacement)
+    static void ClearScrubbers()
+    static void UseTestIdentity(ISnapshotTestIdentityProvider? provider)
+
+  readonly struct SnapshotEnvironment : IEquatable<SnapshotEnvironment>
+    SnapshotEnvironment(SnapshotMode Mode, bool AcceptIgnoredInCi)
+    const string AcceptVariable = "SNAPSHOT_ACCEPT"
+    const string CiVariable = "CI"
+    bool AcceptIgnoredInCi { get; init; }
+    static SnapshotEnvironment Current { get; }
+    SnapshotMode Mode { get; init; }
+    void Deconstruct(out SnapshotMode Mode, out bool AcceptIgnoredInCi)
+    bool Equals(SnapshotEnvironment other)
+    override bool Equals(object obj)
+    static SnapshotEnvironment From(Func<string, string?> getVariable)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(SnapshotEnvironment left, SnapshotEnvironment right)
+    static bool operator !=(SnapshotEnvironment left, SnapshotEnvironment right)
+
+  sealed record SnapshotFile : IEquatable<SnapshotFile>
+    SnapshotFile(string Path, string Name)
+    string Name { get; init; }
+    string Path { get; init; }
+    SnapshotFile <Clone>$()
+    void Deconstruct(out string Path, out string Name)
+    bool Equals(SnapshotFile? other)
+    override bool Equals(object? obj)
+    static IReadOnlyList<SnapshotFile> Find(Assembly testAssembly, string folder, string pattern)
+    override int GetHashCode()
+    IReadOnlyList<string> Tags(Assembly testAssembly)
+    override string ToString()
+    static bool operator ==(SnapshotFile? left, SnapshotFile? right)
+    static bool operator !=(SnapshotFile? left, SnapshotFile? right)
+
+  abstract class SnapshotFormat
+    protected SnapshotFormat()
+    abstract string Extension { get; }
+    abstract string Name { get; }
+    abstract SnapshotComparison Compare(string verified, string actual)
+
+  static class SnapshotFormats
+    static SnapshotFormat Text { get; }
+
+  static class SnapshotMessageLimits
+    const int MaxDifferences = 20
+    const int MaxLines = 80
+
+  static class SnapshotMessages
+    static string Describe(SnapshotComparison comparison)
+
+  enum SnapshotMode
+    Compare = 0
+    Accept = 1
+
+  sealed class SnapshotOptions
+    SnapshotOptions()
+    bool IgnoreDefaultScrubbers { get; set; }
+    IReadOnlyList<Func<string, string>> Scrubbers { get; }
+    SnapshotOptions Scrub(Func<string, string> scrubber)
+    SnapshotOptions Scrub(Regex pattern, string replacement)
+
+  sealed record SnapshotResult : IEquatable<SnapshotResult>
+    SnapshotResult(bool Passed, string? FailureMessage, string Key, string VerifiedPath, string ReceivedPath)
+    string? FailureMessage { get; init; }
+    string Key { get; init; }
+    bool Passed { get; init; }
+    string ReceivedPath { get; init; }
+    string VerifiedPath { get; init; }
+    SnapshotResult <Clone>$()
+    void Deconstruct(out bool Passed, out string? FailureMessage, out string Key, out string VerifiedPath, out string ReceivedPath)
+    bool Equals(SnapshotResult? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(SnapshotResult? left, SnapshotResult? right)
+    static bool operator !=(SnapshotResult? left, SnapshotResult? right)
+
+  sealed record SnapshotTestIdentity : IEquatable<SnapshotTestIdentity>
+    SnapshotTestIdentity(string TestId, string ClassName, string MethodName, IReadOnlyList<object?> Arguments, Assembly? TestAssembly, string? TreeNodeFilter)
+    IReadOnlyList<object?> Arguments { get; init; }
+    string ClassName { get; init; }
+    string MethodName { get; init; }
+    Assembly? TestAssembly { get; init; }
+    string TestId { get; init; }
+    string? TreeNodeFilter { get; init; }
+    SnapshotTestIdentity <Clone>$()
+    void Deconstruct(out string TestId, out string ClassName, out string MethodName, out IReadOnlyList<object?> Arguments, out Assembly? TestAssembly, out string? TreeNodeFilter)
+    bool Equals(SnapshotTestIdentity? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(SnapshotTestIdentity? left, SnapshotTestIdentity? right)
+    static bool operator !=(SnapshotTestIdentity? left, SnapshotTestIdentity? right)
+
+  static class SnapshotText
+    static Encoding Encoding { get; }
+    static string Normalize(string text)
+
+  enum TranscriptMode
+    Compare = 0
+    Off = 1
+    Shape = 2
+
+namespace Nullean.Snapshots.Differences
+  sealed class BoundRules
+    RuleSet Set { get; }
+
+  sealed class DifferenceFacts
+    IReadOnlyList<Node> Chain { get; }
+    TreeDifference Difference { get; }
+    string? Heading { get; }
+    DifferenceKind Kind { get; }
+    string? LastKey { get; }
+    string? NewText { get; }
+    Node Node { get; }
+    string? OldText { get; }
+    IReadOnlyList<PathSegment> Path { get; }
+    int SectionIndex { get; }
+
+  sealed record DifferenceRule : IEquatable<DifferenceRule>
+    DifferenceRule(RuleVerb Verb, bool Maybe, string? Section, IReadOnlyList<RuleToken> Target, RuleValue? Old, RuleValue? New, RuleLocation Where, RuleOrigin Origin, string Text)
+    bool Maybe { get; init; }
+    RuleValue? New { get; init; }
+    RuleValue? Old { get; init; }
+    RuleOrigin Origin { get; init; }
+    string? Section { get; init; }
+    IReadOnlyList<RuleToken> Target { get; init; }
+    string Text { get; init; }
+    RuleVerb Verb { get; init; }
+    RuleLocation Where { get; init; }
+    DifferenceRule <Clone>$()
+    void Deconstruct(out RuleVerb Verb, out bool Maybe, out string? Section, out IReadOnlyList<RuleToken> Target, out RuleValue? Old, out RuleValue? New, out RuleLocation Where, out RuleOrigin Origin, out string Text)
+    bool Equals(DifferenceRule? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(DifferenceRule? left, DifferenceRule? right)
+    static bool operator !=(DifferenceRule? left, DifferenceRule? right)
+
+  static class ExpectedDifferences
+    static RuleApplication Apply(IReadOnlyList<TreeDifference> differences, Node baseline, Node actual, BoundRules rules, RuleTargets targets)
+    static BoundRules Bind(RuleSet rules, RuleTargets targets)
+    static int Prune(RuleSet rules, string file, RuleApplication application)
+    static IReadOnlyList<string> Record(RuleSet rules, string file, IReadOnlyList<DifferenceFacts> unexplained, RuleTargets targets, string note)
+    static IReadOnlyList<string> Suggest(DifferenceFacts facts, RuleTargets targets)
+
+  sealed class ExpectedDifferencesException : FormatException
+    ExpectedDifferencesException(IReadOnlyList<string> errors)
+    IReadOnlyList<string> Errors { get; }
+
+  sealed record ExplainedDifference : IEquatable<ExplainedDifference>
+    ExplainedDifference(TreeDifference Difference, DifferenceRule Rule)
+    TreeDifference Difference { get; init; }
+    DifferenceRule Rule { get; init; }
+    ExplainedDifference <Clone>$()
+    void Deconstruct(out TreeDifference Difference, out DifferenceRule Rule)
+    bool Equals(ExplainedDifference? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(ExplainedDifference? left, ExplainedDifference? right)
+    static bool operator !=(ExplainedDifference? left, ExplainedDifference? right)
+
+  interface IRuleTarget
+    bool Matches(DifferenceFacts facts, RuleVerb verb)
+    bool MatchesLine(DifferenceFacts facts, RuleVerb verb, string line) { … }
+
+  sealed record RuleApplication : IEquatable<RuleApplication>
+    RuleApplication(IReadOnlyList<TreeDifference> Unexplained, IReadOnlyList<DifferenceFacts> UnexplainedFacts, IReadOnlyList<ExplainedDifference> Explained, IReadOnlyList<DifferenceRule> Stale)
+    IReadOnlyList<ExplainedDifference> Explained { get; init; }
+    bool IsClean { get; }
+    IReadOnlyList<DifferenceRule> Stale { get; init; }
+    IReadOnlyList<TreeDifference> Unexplained { get; init; }
+    IReadOnlyList<DifferenceFacts> UnexplainedFacts { get; init; }
+    RuleApplication <Clone>$()
+    void Deconstruct(out IReadOnlyList<TreeDifference> Unexplained, out IReadOnlyList<DifferenceFacts> UnexplainedFacts, out IReadOnlyList<ExplainedDifference> Explained, out IReadOnlyList<DifferenceRule> Stale)
+    bool Equals(RuleApplication? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(RuleApplication? left, RuleApplication? right)
+    static bool operator !=(RuleApplication? left, RuleApplication? right)
+
+  sealed record RuleFileInfo : IEquatable<RuleFileInfo>
+    RuleFileInfo(string Path, RuleOrigin Origin, bool Exists, RuleLocation? IncludedFrom)
+    bool Exists { get; init; }
+    RuleLocation? IncludedFrom { get; init; }
+    RuleOrigin Origin { get; init; }
+    string Path { get; init; }
+    RuleFileInfo <Clone>$()
+    void Deconstruct(out string Path, out RuleOrigin Origin, out bool Exists, out RuleLocation? IncludedFrom)
+    bool Equals(RuleFileInfo? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(RuleFileInfo? left, RuleFileInfo? right)
+    static bool operator !=(RuleFileInfo? left, RuleFileInfo? right)
+
+  static class RuleLoader
+    const string Extension = ".differences"
+    const string FolderFile = ".differences"
+    static string FindRepositoryRoot(IFileSystem fs, string startDirectory)
+    static RuleSet Load(IFileSystem fs, string repositoryRoot, string sidecarPath)
+    static string SidecarPath(string file)
+
+  sealed record RuleLocation : IEquatable<RuleLocation>
+    RuleLocation(string File, int Line)
+    string File { get; init; }
+    int Line { get; init; }
+    RuleLocation <Clone>$()
+    void Deconstruct(out string File, out int Line)
+    bool Equals(RuleLocation? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(RuleLocation? left, RuleLocation? right)
+    static bool operator !=(RuleLocation? left, RuleLocation? right)
+
+  enum RuleOrigin
+    Sidecar = 0
+    Optional = 1
+    Shared = 2
+
+  sealed class RuleSet
+    static RuleSet Empty { get; }
+    IReadOnlyList<RuleFileInfo> Files { get; }
+    IReadOnlyList<DifferenceRule> Rules { get; }
+
+  abstract class RuleTargets
+    protected RuleTargets()
+    abstract string HeadingKey { get; }
+    virtual bool IsText(DifferenceFacts facts)
+    abstract IRuleTarget ParseTarget(RuleVerb verb, IReadOnlyList<RuleToken> target)
+    protected static string Quote(string value)
+    abstract IReadOnlyList<string> Suggest(DifferenceFacts facts)
+
+  sealed record RuleToken : IEquatable<RuleToken>
+    RuleToken(string Raw, RuleTokenKind Kind, string Value)
+    RuleTokenKind Kind { get; init; }
+    string Raw { get; init; }
+    string Value { get; init; }
+    RuleToken <Clone>$()
+    void Deconstruct(out string Raw, out RuleTokenKind Kind, out string Value)
+    bool Equals(RuleToken? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(RuleToken? left, RuleToken? right)
+    static bool operator !=(RuleToken? left, RuleToken? right)
+
+  enum RuleTokenKind
+    Word = 0
+    Quoted = 1
+    Regex = 2
+
+  sealed class RuleValue
+    RuleValue(RuleToken token)
+    RuleToken Token { get; }
+    bool Matches(string? text)
+
+  enum RuleVerb
+    Added = 0
+    Removed = 1
+    Changed = 2
+    Ignore = 3
+
+  static class SiteComparison
+    static string ArtifactsDirectory(string sourceFile, string role, bool clean = true)
+    static SiteComparisonResult Compare(string targetText, TreeSnapshotFormat format, RuleTargets targets, string sourceFile, SiteComparisonOptions? options = null)
+    static string? ReadBaseline(SnapshotFormat format, string sourceFile, string? variant = null)
+    static string SeedBaseline(string text, SnapshotFormat format, string sourceFile, string? variant = null)
+
+  sealed class SiteComparisonOptions
+    SiteComparisonOptions()
+    string? Note { get; init; }
+    string? Prune { get; init; }
+    string? Record { get; init; }
+    string? Variant { get; init; }
+
+  sealed record SiteComparisonResult : IEquatable<SiteComparisonResult>
+    SiteComparisonResult(bool Passed, string? FailureMessage, RuleApplication Application, string BaselinePath, string? TargetPath, IReadOnlyList<string> Recorded, int Pruned)
+    RuleApplication Application { get; init; }
+    string BaselinePath { get; init; }
+    string? FailureMessage { get; init; }
+    bool Passed { get; init; }
+    int Pruned { get; init; }
+    IReadOnlyList<string> Recorded { get; init; }
+    string? TargetPath { get; init; }
+    SiteComparisonResult <Clone>$()
+    void Deconstruct(out bool Passed, out string? FailureMessage, out RuleApplication Application, out string BaselinePath, out string? TargetPath, out IReadOnlyList<string> Recorded, out int Pruned)
+    bool Equals(SiteComparisonResult? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(SiteComparisonResult? left, SiteComparisonResult? right)
+    static bool operator !=(SiteComparisonResult? left, SiteComparisonResult? right)
+
+namespace Nullean.Snapshots.Trees
+  enum DifferenceKind
+    Changed = 0
+    TypeChanged = 1
+    Missing = 2
+    Unexpected = 3
+    KeyOrderChanged = 4
+
+  interface ITreeDiffer
+    IReadOnlyList<TreeDifference> Diff(Node expected, Node actual, TreeDiffOptions? options = null)
+
+  sealed record MapNode : Node, IEquatable<MapNode>
+    MapNode(IReadOnlyList<KeyValuePair<ScalarNode, Node>> Entries, SourceSpan? Span = default)
+    IReadOnlyList<KeyValuePair<ScalarNode, Node>> Entries { get; init; }
+    override MapNode <Clone>$()
+    void Deconstruct(out IReadOnlyList<KeyValuePair<ScalarNode, Node>> Entries, out SourceSpan? Span)
+    bool Equals(MapNode? other)
+    sealed override bool Equals(Node? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(MapNode? left, MapNode? right)
+    static bool operator !=(MapNode? left, MapNode? right)
+
+  enum MapOrder
+    Insensitive = 0
+    Significant = 1
+
+  abstract record Node : IEquatable<Node>
+    protected Node(Node original)
+    protected Node(SourceSpan? Span)
+    protected virtual Type EqualityContract { get; }
+    SourceSpan? Span { get; init; }
+    abstract Node <Clone>$()
+    void Deconstruct(out SourceSpan? Span)
+    virtual bool Equals(Node? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    protected virtual bool PrintMembers(StringBuilder builder)
+    override string ToString()
+    static bool operator ==(Node? left, Node? right)
+    static bool operator !=(Node? left, Node? right)
+
+  static class NodePath
+    static string Format(IEnumerable<PathSegment> segments)
+    static string KeyText(ScalarNode key)
+    static bool Matches(IReadOnlyList<PathSegment> pattern, IReadOnlyList<PathSegment> path)
+    static IReadOnlyList<PathSegment> Parse(string path)
+    static string Quote(string value)
+    static Node? Resolve(Node root, string path)
+
+  readonly struct NumberValue : IEquatable<NumberValue>
+    string Digits { get; }
+    long Exponent { get; }
+    bool IsInfinity { get; }
+    bool IsNaN { get; }
+    bool Negative { get; }
+    bool Equals(NumberValue other)
+    override bool Equals(object obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool TryParse(string text, out NumberValue value)
+    static bool operator ==(NumberValue left, NumberValue right)
+    static bool operator !=(NumberValue left, NumberValue right)
+
+  readonly struct PathSegment : IEquatable<PathSegment>
+    int Index { get; }
+    string? Key { get; }
+    PathSegmentKind Kind { get; }
+    bool Equals(PathSegment other)
+    override bool Equals(object obj)
+    static PathSegment ForIndex(int index)
+    static PathSegment ForKey(string key)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(PathSegment left, PathSegment right)
+    static bool operator !=(PathSegment left, PathSegment right)
+
+  enum PathSegmentKind
+    Key = 0
+    Index = 1
+    AnyKey = 2
+    AnyIndex = 3
+    Descendant = 4
+
+  enum ScalarKind
+    Null = 0
+    Bool = 1
+    Int = 2
+    Float = 3
+    String = 4
+
+  sealed record ScalarNode : Node, IEquatable<ScalarNode>
+    ScalarNode(ScalarKind Kind, string Canonical, SourceSpan? Span = default)
+    string Canonical { get; init; }
+    bool IsNumber { get; }
+    ScalarKind Kind { get; init; }
+    override ScalarNode <Clone>$()
+    static ScalarNode Bool(bool value, SourceSpan? span = default)
+    void Deconstruct(out ScalarKind Kind, out string Canonical, out SourceSpan? Span)
+    sealed override bool Equals(Node? other)
+    bool Equals(ScalarNode? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    static ScalarNode Null(SourceSpan? span = default)
+    static ScalarNode String(string value, SourceSpan? span = default)
+    override string ToString()
+    static bool operator ==(ScalarNode? left, ScalarNode? right)
+    static bool operator !=(ScalarNode? left, ScalarNode? right)
+
+  sealed record SeqNode : Node, IEquatable<SeqNode>
+    SeqNode(IReadOnlyList<Node> Items, SourceSpan? Span = default)
+    IReadOnlyList<Node> Items { get; init; }
+    override SeqNode <Clone>$()
+    void Deconstruct(out IReadOnlyList<Node> Items, out SourceSpan? Span)
+    sealed override bool Equals(Node? other)
+    bool Equals(SeqNode? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(SeqNode? left, SeqNode? right)
+    static bool operator !=(SeqNode? left, SeqNode? right)
+
+  readonly struct SourceSpan : IEquatable<SourceSpan>
+    SourceSpan(int Line, int Column)
+    int Column { get; init; }
+    int Line { get; init; }
+    void Deconstruct(out int Line, out int Column)
+    bool Equals(SourceSpan other)
+    override bool Equals(object obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(SourceSpan left, SourceSpan right)
+    static bool operator !=(SourceSpan left, SourceSpan right)
+
+  sealed record TreeDiffOptions : IEquatable<TreeDiffOptions>
+    TreeDiffOptions()
+    long CellCap { get; init; }
+    static TreeDiffOptions Default { get; }
+    IReadOnlyList<string> IgnorePaths { get; init; }
+    MapOrder MapOrder { get; init; }
+    bool NullEqualsMissing { get; init; }
+    bool StrictNumbers { get; init; }
+    TreeDiffOptions <Clone>$()
+    bool Equals(TreeDiffOptions? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(TreeDiffOptions? left, TreeDiffOptions? right)
+    static bool operator !=(TreeDiffOptions? left, TreeDiffOptions? right)
+
+  sealed class TreeDiffer : ITreeDiffer
+    TreeDiffer()
+    static TreeDiffer Instance { get; }
+    static bool DeepEquals(Node expected, Node actual, TreeDiffOptions? options = null)
+    IReadOnlyList<TreeDifference> Diff(Node expected, Node actual, TreeDiffOptions? options = null)
+
+  sealed record TreeDifference : IEquatable<TreeDifference>
+    TreeDifference(DifferenceKind Kind, string Path, Node? Expected, Node? Actual, string? ActualPath = null)
+    Node? Actual { get; init; }
+    string? ActualPath { get; init; }
+    Node? Expected { get; init; }
+    DifferenceKind Kind { get; init; }
+    string Path { get; init; }
+    TreeDifference <Clone>$()
+    void Deconstruct(out DifferenceKind Kind, out string Path, out Node? Expected, out Node? Actual, out string? ActualPath)
+    bool Equals(TreeDifference? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(TreeDifference? left, TreeDifference? right)
+    static bool operator !=(TreeDifference? left, TreeDifference? right)
+
+  static class TreeDifferences
+    const int MaxValueLength = 60
+    static IReadOnlyList<IReadOnlyList<string>> Describe(IReadOnlyList<TreeDifference> differences, string verifiedFileName)
+
+  static class TreeShape
+    static Node Project(Node node)
+
+  abstract class TreeSnapshotFormat : SnapshotFormat
+    protected TreeSnapshotFormat(TreeDiffOptions? options)
+    protected virtual ITreeDiffer Differ { get; }
+    TreeDiffOptions Options { get; }
+    override SnapshotComparison Compare(string verified, string actual)
+    abstract Node Parse(string text)

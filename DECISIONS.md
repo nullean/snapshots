@@ -928,3 +928,8 @@ two sites. This change is the rules and what reads them; running the two sites i
 
 - `Nullean.Snapshots.PublicApi` implements `SnapshotFormat` directly rather than `TreeSnapshotFormat`. The tree differ reports `$.a.b` paths and value changes; an API change needs more than that: who it breaks (callers, implementers, inheritors), whether compiled code or only source, and the version change it asks for. `Nullean.PublicApi.Diff` already compares two parsed `.api` files that way and the parser knows each declaration's line, so the format uses them and the planned overridable path renderer for trees was not needed.
 - When the two files describe the same API but are written differently (another version of the writer), the comparison finds nothing, so the failure shows the text diff instead, under "The API is the same, written differently".
+
+## Every package's public API is a snapshot
+
+- `PackageApiTests` keeps a `.verified.api` per package, read from the net11.0 build. A pull request that changes an API then shows it as a diff of that file, and the failure before accepting says which version change it calls for, so the release label is not a guess. One test project references every package for it; the CLI is left out, since its contract is its commands, not its types.
+

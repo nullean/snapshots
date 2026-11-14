@@ -1,0 +1,33 @@
+assembly Nullean.Snapshots.Html
+using AngleSharp.Dom: IElement
+using AwesomeAssertions: AndConstraint<>
+using AwesomeAssertions.Primitives: StringAssertions
+using Nullean.Snapshots: SnapshotComparison, SnapshotFormat, SnapshotOptions
+using System: Action<>
+using System.Diagnostics.CodeAnalysis: StringSyntaxAttribute
+using System.Runtime.CompilerServices: CallerArgumentExpressionAttribute, CallerFilePathAttribute, CallerLineNumberAttribute, CallerMemberNameAttribute
+
+namespace Nullean.Snapshots.Html
+  static class HtmlAssertions
+    static AndConstraint<StringAssertions> BeHtml(this StringAssertions assertions, [StringSyntax("html")] string expected, HtmlSnapshotOptions? html = null, string because = "")
+    static AndConstraint<StringAssertions> ContainHtml(this StringAssertions assertions, [StringSyntax("html")] string expected, HtmlSnapshotOptions? html = null, string because = "")
+    static AndConstraint<StringAssertions> MatchHtmlSnapshot(this StringAssertions assertions, HtmlSnapshotOptions? html = null, string? name = null, SnapshotOptions? options = null, string because = "", [CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0)
+    static AndConstraint<StringAssertions> MatchInlineHtmlSnapshot(this StringAssertions assertions, [StringSyntax("html")] string? expected = null, HtmlSnapshotOptions? html = null, SnapshotOptions? options = null, string because = "", [CallerArgumentExpression("expected")] string? expectedExpression = null, [CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0)
+    static AndConstraint<StringAssertions> NotContainHtml(this StringAssertions assertions, [StringSyntax("html")] string unexpected, HtmlSnapshotOptions? html = null, string because = "")
+
+  static class HtmlSnapshot
+    const int MaxNodeLines = 6
+    static SnapshotFormat Format { get; }
+    static SnapshotComparison Compare(string expected, string actual)
+    static string Pretty(string html, HtmlSnapshotOptions? options = null)
+
+  sealed class HtmlSnapshotOptions
+    HtmlSnapshotOptions()
+    string? Selector { get; }
+    bool SelectsOnlyTheFirst { get; }
+    HtmlSnapshotOptions Remove(string selector)
+    HtmlSnapshotOptions RemoveAttributes(params string[] patterns)
+    HtmlSnapshotOptions RemoveAttributesFrom(string? selector, params string[] patterns)
+    HtmlSnapshotOptions Select(string selector)
+    HtmlSnapshotOptions SelectFirst(string selector)
+    HtmlSnapshotOptions Transform(Action<IElement> transform)
