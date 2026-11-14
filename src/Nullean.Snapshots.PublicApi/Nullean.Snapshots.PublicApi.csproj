@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Nullean.Snapshots.PublicApi</RootNamespace>
+    <Description>Public API snapshots for Nullean.Snapshots: an assembly's API stored as a .api file, C# one declaration per line, and changes reported by path with who they break and the version bump they call for.</Description>
+    <PackageTags>snapshot;approval;testing;public-api;api-diff;semver;awesomeassertions</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Nullean.Snapshots/Nullean.Snapshots.csproj" />
+    <ProjectReference Include="../Nullean.Snapshots.AwesomeAssertions/Nullean.Snapshots.AwesomeAssertions.csproj" />
+    <PackageReference Include="Nullean.PublicApi.Diff" />
+  </ItemGroup>
+
+</Project>

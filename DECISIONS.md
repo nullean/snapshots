@@ -923,3 +923,8 @@ two sites. This change is the rules and what reads them; running the two sites i
   parallelism the job froze the whole runner on the last 4 runs. The freeze is therefore load, not one test: several tests at once start Chrome pages, a local server and screenshot work on a small macOS runner.
   The job runs the project serially. If it freezes again the cause is not parallelism and this goes back; if it stays green over many runs, #64 can close. Only the macOS job is serial; local runs and the
   other operating systems keep the default.
+
+## Public API snapshots compare APIs, not trees
+
+- `Nullean.Snapshots.PublicApi` implements `SnapshotFormat` directly rather than `TreeSnapshotFormat`. The tree differ reports `$.a.b` paths and value changes; an API change needs more than that: who it breaks (callers, implementers, inheritors), whether compiled code or only source, and the version change it asks for. `Nullean.PublicApi.Diff` already compares two parsed `.api` files that way and the parser knows each declaration's line, so the format uses them and the planned overridable path renderer for trees was not needed.
+- When the two files describe the same API but are written differently (another version of the writer), the comparison finds nothing, so the failure shows the text diff instead, under "The API is the same, written differently".

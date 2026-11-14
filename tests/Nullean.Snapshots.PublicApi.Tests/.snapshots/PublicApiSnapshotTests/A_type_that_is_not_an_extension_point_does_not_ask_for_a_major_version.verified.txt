@@ -1,0 +1,3 @@
+Suggested version change: Minor
+Lib.Drawing › IShape › Resize(double)  added void Resize(double factor)  [minor: breaks implementers, compiled code and source, which does not count] (IShape is not an extension point (configured))   (verified.api:4)
+Lib.Drawing › Widget › Resize(double)  added void Resize(double factor)  [minor]   (verified.api:8)

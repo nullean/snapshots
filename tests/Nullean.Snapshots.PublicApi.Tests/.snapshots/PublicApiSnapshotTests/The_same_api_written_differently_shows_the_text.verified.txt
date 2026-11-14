@@ -1,0 +1,10 @@
+The API is the same, written differently:
+@@ line 5 @@
+     double Area { get; }
+     void Draw()
+ 
+-  public class Widget : IShape
++  class Widget : IShape
+     Widget(string name)
+     double Area { get; }
+     void Draw()

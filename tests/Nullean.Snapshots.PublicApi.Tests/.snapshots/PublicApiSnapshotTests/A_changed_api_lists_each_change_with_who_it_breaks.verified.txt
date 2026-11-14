@@ -1,0 +1,4 @@
+Suggested version change: Major (2 breaking)
+Lib.Drawing › IShape › Resize(double)  added void Resize(double factor)  [major: breaks implementers, compiled code and source]   (verified.api:4)
+Lib.Drawing › Widget › Name(int) › parameter 1 name  index → position  [major: breaks callers, source only] (callers that pass it by name)   (verified.api:12)
+Lib.Drawing › Widget › Resize(double)  added void Resize(double factor)  [minor]   (verified.api:8)
