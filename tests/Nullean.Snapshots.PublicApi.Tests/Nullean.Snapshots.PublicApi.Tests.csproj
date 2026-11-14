@@ -6,6 +6,20 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     <PackageReference Include="TestableIO.System.IO.Abstractions.TestingHelpers" />
     <ProjectReference Include="../../src/Nullean.Snapshots.PublicApi/Nullean.Snapshots.PublicApi.csproj" />
+    <!-- every package, so PackageApiTests keeps each one's public API -->
+    <ProjectReference Include="../../src/Nullean.HttpFileParser/Nullean.HttpFileParser.csproj" />
+    <ProjectReference Include="../../src/Nullean.Snapshots/Nullean.Snapshots.csproj" />
+    <ProjectReference Include="../../src/Nullean.Snapshots.AwesomeAssertions/Nullean.Snapshots.AwesomeAssertions.csproj" />
+    <ProjectReference Include="../../src/Nullean.Snapshots.Browser/Nullean.Snapshots.Browser.csproj" />
+    <ProjectReference Include="../../src/Nullean.Snapshots.Browser.Assertions/Nullean.Snapshots.Browser.Assertions.csproj" />
+    <ProjectReference Include="../../src/Nullean.Snapshots.Browser.Console/Nullean.Snapshots.Browser.Console.csproj" />
+    <ProjectReference Include="../../src/Nullean.Snapshots.Html/Nullean.Snapshots.Html.csproj" />
+    <ProjectReference Include="../../src/Nullean.Snapshots.Http/Nullean.Snapshots.Http.csproj" />
+    <ProjectReference Include="../../src/Nullean.Snapshots.Http.Assertions/Nullean.Snapshots.Http.Assertions.csproj" />
+    <ProjectReference Include="../../src/Nullean.Snapshots.Images/Nullean.Snapshots.Images.csproj" />
+    <ProjectReference Include="../../src/Nullean.Snapshots.Images.Assertions/Nullean.Snapshots.Images.Assertions.csproj" />
+    <ProjectReference Include="../../src/Nullean.Snapshots.Json/Nullean.Snapshots.Json.csproj" />
+    <ProjectReference Include="../../src/Nullean.Snapshots.Yaml/Nullean.Snapshots.Yaml.csproj" />
     <ProjectReference Include="../../src/Nullean.Snapshots.TUnit/Nullean.Snapshots.TUnit.csproj" />
   </ItemGroup>
 

@@ -1,0 +1,119 @@
+assembly Nullean.Snapshots.Http
+using Nullean.HttpFileParser: HttpFileContext, HttpFileMetadata, HttpFileRunResult
+using Nullean.Snapshots: SnapshotComparison, SnapshotOptions, SnapshotResult
+using struct Nullean.Snapshots: TranscriptMode
+using Nullean.Snapshots.Differences: DifferenceFacts, IRuleTarget, RuleTargets, RuleToken, SiteComparisonResult
+using struct Nullean.Snapshots.Differences: RuleVerb
+using Nullean.Snapshots.Trees: Node, SeqNode, TreeDiffOptions, TreeSnapshotFormat
+using System: Func<,>, Random, TimeProvider, Uri
+using interface System: IEquatable<>
+using System.Collections.Generic: IEnumerable<>, IReadOnlyCollection<>, IReadOnlyDictionary<,>, IReadOnlyList<>, IReadOnlySet<>
+using System.Net.Http: HttpClient, HttpResponseMessage
+using System.Reflection: Assembly
+using System.Runtime.CompilerServices: CallerFilePathAttribute
+using struct System.Threading: CancellationToken
+using System.Threading.Tasks: Task<>
+
+namespace Nullean.Snapshots.Http
+  sealed class HttpCompareOptions
+    HttpCompareOptions()
+    required Uri Baseline { get; init; }
+    string? BaselineEnvironment { get; init; }
+    string HostVariable { get; init; }
+    string? Prune { get; init; }
+    string? Record { get; init; }
+    bool ReuseBaseline { get; init; }
+    HttpFileSnapshotOptions Run { get; init; }
+    required Uri Target { get; init; }
+    string? TargetEnvironment { get; init; }
+    bool Values { get; init; }
+
+  sealed record HttpFileFailure : IEquatable<HttpFileFailure>
+    HttpFileFailure(int Line, string Request, string Message)
+    int Line { get; init; }
+    string Message { get; init; }
+    string Request { get; init; }
+    HttpFileFailure <Clone>$()
+    void Deconstruct(out int Line, out string Request, out string Message)
+    string Describe(string file)
+    bool Equals(HttpFileFailure? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(HttpFileFailure? left, HttpFileFailure? right)
+    static bool operator !=(HttpFileFailure? left, HttpFileFailure? right)
+
+  static class HttpFileSnapshot
+    static HttpSnapshotFormat Format { get; }
+    static Task<SiteComparisonResult> CompareAsync(string httpFile, HttpCompareOptions options, CancellationToken cancellationToken = default, [CallerFilePath] string callerFilePath = "")
+    static IReadOnlyList<string> Find(string folder = "http", [CallerFilePath] string callerFilePath = "")
+    static SnapshotResult Match(HttpTranscript transcript, SnapshotOptions? options = null, string? because = null, TreeDiffOptions? diff = null)
+    static HttpFileMetadata Metadata(string httpFile, [CallerFilePath] string callerFilePath = "")
+    static Task<HttpTranscript> RunAsync(string httpFile, HttpFileSnapshotOptions? options = null, CancellationToken cancellationToken = default, [CallerFilePath] string callerFilePath = "")
+    static string? SkipReason(string httpFile, HttpFileSnapshotOptions options, [CallerFilePath] string callerFilePath = "")
+    static string? Unmet(string httpFile, HttpFileContext context, [CallerFilePath] string callerFilePath = "")
+
+  sealed class HttpFileSnapshotOptions
+    HttpFileSnapshotOptions()
+    Uri? BaseUrl { get; init; }
+    string? BuildType { get; init; }
+    HttpClient? Client { get; init; }
+    HttpFileContext Context { get; }
+    string? Env { get; init; }
+    string? Environment { get; init; }
+    IReadOnlySet<string> Features { get; init; }
+    IReadOnlyCollection<string> Headers { get; init; }
+    Random? Random { get; init; }
+    bool ReadOnly { get; init; }
+    Func<string, string?>? Secrets { get; init; }
+    Assembly? SecretsAssembly { get; init; }
+    TimeProvider TimeProvider { get; init; }
+    TranscriptMode Transcript { get; init; }
+    string? UserSecretsId { get; init; }
+    string? UserSecretsRoot { get; init; }
+    IReadOnlyDictionary<string, string> Variables { get; init; }
+    string? Variant { get; init; }
+
+  sealed class HttpRuleTargets : RuleTargets
+    HttpRuleTargets()
+    override string HeadingKey { get; }
+    static HttpRuleTargets Instance { get; }
+    override bool IsText(DifferenceFacts facts)
+    override IRuleTarget ParseTarget(RuleVerb verb, IReadOnlyList<RuleToken> target)
+    override IReadOnlyList<string> Suggest(DifferenceFacts facts)
+
+  static class HttpSnapshot
+    static HttpSnapshotFormat Format { get; }
+    static HttpSnapshotFormat FormatWith(TreeDiffOptions? diff)
+    static Task<string> RenderAsync(HttpResponseMessage response, HttpSnapshotOptions? options = null, CancellationToken cancellationToken = default)
+
+  sealed class HttpSnapshotFormat : TreeSnapshotFormat
+    HttpSnapshotFormat(TreeDiffOptions? options = null)
+    override string Extension { get; }
+    override string Name { get; }
+    override SnapshotComparison Compare(string verified, string actual)
+    override Node Parse(string text)
+
+  sealed class HttpSnapshotOptions
+    HttpSnapshotOptions()
+    IReadOnlyCollection<string> Headers { get; init; }
+    bool Shape { get; init; }
+
+  sealed record HttpTranscript : IEquatable<HttpTranscript>
+    HttpTranscript(string File, string Text, HttpFileFailure? Failure)
+    const string OriginToken = "{origin}"
+    HttpFileFailure? Failure { get; init; }
+    string File { get; init; }
+    TranscriptMode Mode { get; init; }
+    string Text { get; init; }
+    string? Variant { get; init; }
+    HttpTranscript <Clone>$()
+    void Deconstruct(out string File, out string Text, out HttpFileFailure? Failure)
+    bool Equals(HttpTranscript? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    static SeqNode Parse(string text)
+    static string Render(HttpFileRunResult result, IEnumerable<string>? headers = null, bool shape = false, Uri? baseUrl = null)
+    override string ToString()
+    static bool operator ==(HttpTranscript? left, HttpTranscript? right)
+    static bool operator !=(HttpTranscript? left, HttpTranscript? right)

@@ -1,0 +1,22 @@
+assembly Nullean.Snapshots.Http.Assertions
+using AwesomeAssertions: AndConstraint<>
+using AwesomeAssertions.Primitives: ObjectAssertions, StringAssertions
+using Nullean.HttpFileParser: HttpFileContext
+using Nullean.Snapshots: SnapshotFile, SnapshotOptions
+using Nullean.Snapshots.Http: HttpFileSnapshotOptions, HttpSnapshotOptions
+using Nullean.Snapshots.Trees: TreeDiffOptions
+using System.Runtime.CompilerServices: CallerFilePathAttribute, CallerLineNumberAttribute, CallerMemberNameAttribute
+using struct System.Threading: CancellationToken
+using System.Threading.Tasks: Task, Task<>
+
+namespace Nullean.Snapshots.Http
+  static class HttpAssertions
+    static AndConstraint<ObjectAssertions> MatchHttpFileSnapshot(this ObjectAssertions assertions, SnapshotOptions? options = null, string because = "", TreeDiffOptions? diff = null)
+    static Task<AndConstraint<ObjectAssertions>> MatchHttpSnapshot(this ObjectAssertions assertions, HttpSnapshotOptions? http = null, string? name = null, SnapshotOptions? options = null, string because = "", TreeDiffOptions? diff = null, [CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0)
+    static AndConstraint<StringAssertions> MatchHttpSnapshot(this StringAssertions assertions, string? name = null, SnapshotOptions? options = null, string because = "", TreeDiffOptions? diff = null, [CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0)
+
+  static class HttpFileTest
+    static Task RunAsync(SnapshotFile file, HttpFileSnapshotOptions? options = null, SnapshotOptions? snapshot = null, TreeDiffOptions? diff = null, CancellationToken cancellationToken = default, [CallerFilePath] string callerFilePath = "")
+    static Task RunAsync(string file, HttpFileSnapshotOptions? options = null, SnapshotOptions? snapshot = null, TreeDiffOptions? diff = null, CancellationToken cancellationToken = default, [CallerFilePath] string callerFilePath = "")
+    static string? SkipReason(SnapshotFile file, HttpFileSnapshotOptions options, [CallerFilePath] string callerFilePath = "")
+    static string? Unmet(SnapshotFile file, HttpFileContext context, [CallerFilePath] string callerFilePath = "")

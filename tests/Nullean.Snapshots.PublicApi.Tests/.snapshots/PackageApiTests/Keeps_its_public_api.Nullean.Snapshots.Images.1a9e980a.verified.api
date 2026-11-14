@@ -1,0 +1,33 @@
+assembly Nullean.Snapshots.Images
+using Nullean.Snapshots: BinarySnapshotComparison, BinarySnapshotFormat
+using struct System: ReadOnlySpan<>
+using interface System: IEquatable<>
+using System.Collections.Generic: IReadOnlyList<>
+
+namespace Nullean.Snapshots.Images
+  sealed class ImageSnapshotFormat : BinarySnapshotFormat
+    ImageSnapshotFormat(ImageSnapshotOptions? options = null)
+    const string DiffSuffix = "diff.png"
+    const string ZoomSuffix = "zoom.png"
+    override IReadOnlyList<string> AttachmentSuffixes { get; }
+    override string Extension { get; }
+    override string Name { get; }
+    override BinarySnapshotComparison Compare(ReadOnlySpan<byte> verified, ReadOnlySpan<byte> actual)
+    override void Validate(ReadOnlySpan<byte> actual)
+
+  sealed record ImageSnapshotOptions : IEquatable<ImageSnapshotOptions>
+    ImageSnapshotOptions()
+    static ImageSnapshotOptions Default { get; }
+    bool IncludeAntiAliasing { get; init; }
+    int MaxDifferentPixels { get; init; }
+    double MaxDifferentRatio { get; init; }
+    bool OutlineRegions { get; init; }
+    double Threshold { get; init; }
+    bool ZoomOnChanges { get; init; }
+    ImageSnapshotOptions <Clone>$()
+    bool Equals(ImageSnapshotOptions? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(ImageSnapshotOptions? left, ImageSnapshotOptions? right)
+    static bool operator !=(ImageSnapshotOptions? left, ImageSnapshotOptions? right)

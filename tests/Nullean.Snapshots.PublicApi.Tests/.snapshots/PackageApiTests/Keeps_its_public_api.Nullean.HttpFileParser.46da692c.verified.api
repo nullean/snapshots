@@ -1,0 +1,264 @@
+assembly Nullean.HttpFileParser
+using System: Exception, Func<,>, Random, TimeProvider, Uri, Version
+using struct System: TimeSpan
+using interface System: IEquatable<>
+using System.Collections.Generic: IEnumerable<>, IReadOnlyDictionary<,>, IReadOnlyList<>, IReadOnlySet<>
+using System.Net.Http: HttpClient
+using System.Reflection: Assembly
+using struct System.Threading: CancellationToken
+using System.Threading.Tasks: Task<>
+
+namespace Nullean.HttpFileParser
+  sealed class HttpEnvironment
+    const string FileName = "http-client.env.json"
+    const string PrivateFileName = "http-client.private.env.json"
+    const string SharedName = "$shared"
+    const string UserFileName = "http-client.env.json.user"
+    string? Directory { get; }
+    static HttpEnvironment Empty { get; }
+    string? Name { get; }
+    IReadOnlyList<string> Names { get; }
+    IReadOnlyDictionary<string, HttpEnvironmentValue> Variables { get; }
+    static HttpEnvironment Load(string httpFilePath, string? name = null)
+    static HttpEnvironment LoadFrom(string directory, string? name = null)
+
+  sealed class HttpEnvironmentValue
+    bool IsSensitive { get; }
+    int Line { get; }
+    string Name { get; }
+    string? Provider { get; }
+    string? ResourceId { get; }
+    string? SecretName { get; }
+    string Source { get; }
+    string? Value { get; }
+    override string ToString()
+
+  abstract class HttpExpectation
+    int Line { get; }
+    string Text { get; }
+    abstract string? Check(HttpFileResponse response)
+
+  sealed class HttpFile
+    HttpFileMetadata Metadata { get; }
+    string Path { get; }
+    IReadOnlyList<HttpFileRequest> Requests { get; }
+    IReadOnlyList<HttpFileVariable> Variables { get; }
+    static HttpFile Load(string path)
+    static HttpFile Parse(string text, string path = "request.http")
+    IReadOnlyList<HttpFileError> Validate(HttpEnvironment? environment = null, IReadOnlyDictionary<string, string>? variables = null)
+
+  sealed class HttpFileBody
+    string? FilePath { get; }
+    HttpFileBodyKind Kind { get; }
+    int Line { get; }
+    IReadOnlyList<HttpFileBodyPart> Parts { get; }
+    string? Text { get; }
+
+  enum HttpFileBodyKind
+    Text = 0
+    File = 1
+    FileWithVariables = 2
+    Mixed = 3
+
+  sealed class HttpFileBodyPart
+    string? Encoding { get; }
+    string? FilePath { get; }
+    string? FullPath { get; }
+    HttpFileBodyKind Kind { get; }
+    int Line { get; }
+    string? Text { get; }
+
+  sealed record HttpFileContext : IEquatable<HttpFileContext>
+    HttpFileContext(IReadOnlySet<string> Features, string? BuildType = null, string? Env = null)
+    string? BuildType { get; init; }
+    static HttpFileContext Empty { get; }
+    string? Env { get; init; }
+    IReadOnlySet<string> Features { get; init; }
+    HttpFileContext <Clone>$()
+    void Deconstruct(out IReadOnlySet<string> Features, out string? BuildType, out string? Env)
+    bool Equals(HttpFileContext? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(HttpFileContext? left, HttpFileContext? right)
+    static bool operator !=(HttpFileContext? left, HttpFileContext? right)
+
+  sealed class HttpFileDirectives
+    IReadOnlyList<HttpExpectation> Expectations { get; }
+    bool NoCookieJar { get; }
+    bool NoRedirect { get; }
+    bool ReadOnly { get; }
+    TimeSpan? Timeout { get; }
+
+  sealed class HttpFileError
+    int Line { get; }
+    string Message { get; }
+    string Path { get; }
+    override string ToString()
+
+  sealed class HttpFileExchange
+    IReadOnlyList<HttpRedirect> Redirects { get; }
+    HttpFileRequest Request { get; }
+    HttpFileResponse Response { get; }
+    HttpFileSentRequest Sent { get; }
+    override string ToString()
+
+  sealed class HttpFileHeader
+    int Line { get; }
+    string Name { get; }
+    string Value { get; }
+    override string ToString()
+
+  sealed record HttpFileMetadata : IEquatable<HttpFileMetadata>
+    HttpFileMetadata()
+    IReadOnlyList<string> Alerts { get; init; }
+    bool IsEmpty { get; }
+    HttpFileMonitor? Monitor { get; init; }
+    bool Mutates { get; init; }
+    static HttpFileMetadata None { get; }
+    IReadOnlyList<HttpFileRequirement> Requires { get; init; }
+    IReadOnlyList<string> Tags { get; init; }
+    HttpFileMetadata <Clone>$()
+    bool Equals(HttpFileMetadata? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    HttpFileRequirement? Unmet(HttpFileContext context)
+    static bool operator ==(HttpFileMetadata? left, HttpFileMetadata? right)
+    static bool operator !=(HttpFileMetadata? left, HttpFileMetadata? right)
+
+  sealed record HttpFileMonitor : IEquatable<HttpFileMonitor>
+    HttpFileMonitor(int? Schedule, IReadOnlyList<string> Locations)
+    IReadOnlyList<string> Locations { get; init; }
+    int? Schedule { get; init; }
+    HttpFileMonitor <Clone>$()
+    void Deconstruct(out int? Schedule, out IReadOnlyList<string> Locations)
+    bool Equals(HttpFileMonitor? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(HttpFileMonitor? left, HttpFileMonitor? right)
+    static bool operator !=(HttpFileMonitor? left, HttpFileMonitor? right)
+
+  sealed class HttpFileParseException : Exception
+    HttpFileParseException(IReadOnlyList<HttpFileError> errors)
+    IReadOnlyList<HttpFileError> Errors { get; }
+
+  sealed class HttpFileRequest
+    HttpFileBody? Body { get; }
+    HttpFileDirectives Directives { get; }
+    IReadOnlyList<HttpFileHeader> Headers { get; }
+    int Index { get; }
+    int Line { get; }
+    string Method { get; }
+    string? Name { get; }
+    string RequestLine { get; }
+    string UrlTemplate { get; }
+    string? Version { get; }
+    override string ToString()
+
+  sealed record HttpFileRequirement : IEquatable<HttpFileRequirement>
+    HttpFileRequirement(string Kind, IReadOnlyList<string> Values, bool Negated)
+    string Kind { get; init; }
+    bool Negated { get; init; }
+    IReadOnlyList<string> Values { get; init; }
+    HttpFileRequirement <Clone>$()
+    void Deconstruct(out string Kind, out IReadOnlyList<string> Values, out bool Negated)
+    bool Equals(HttpFileRequirement? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    bool IsMetBy(HttpFileContext context)
+    override string ToString()
+    static bool operator ==(HttpFileRequirement? left, HttpFileRequirement? right)
+    static bool operator !=(HttpFileRequirement? left, HttpFileRequirement? right)
+
+  sealed class HttpFileResponse
+    byte[] Body { get; }
+    string BodyText { get; }
+    string? CharSet { get; }
+    string? ContentEncoding { get; }
+    IReadOnlyList<HttpHeaderField> ContentHeaders { get; }
+    IReadOnlyList<HttpHeaderField> Headers { get; }
+    string? MediaType { get; }
+    string? ReasonPhrase { get; }
+    int StatusCode { get; }
+    Version Version { get; }
+    IEnumerable<string> GetHeaderValues(string name)
+    override string ToString()
+
+  sealed class HttpFileRunFailure
+    Exception? Exception { get; }
+    int Line { get; }
+    string Message { get; }
+    string Path { get; }
+    HttpFileRequest Request { get; }
+    override string ToString()
+
+  sealed class HttpFileRunOptions
+    HttpFileRunOptions()
+    string? Environment { get; init; }
+    int MaxRedirects { get; init; }
+    Random? Random { get; init; }
+    bool ReadOnly { get; init; }
+    Func<string, string?>? Secrets { get; init; }
+    Assembly? SecretsAssembly { get; init; }
+    TimeProvider TimeProvider { get; init; }
+    string? UserSecretsId { get; init; }
+    string? UserSecretsRoot { get; init; }
+    IReadOnlyDictionary<string, string> Variables { get; init; }
+
+  sealed class HttpFileRunResult
+    IReadOnlyList<HttpFileExchange> Exchanges { get; }
+    HttpFileRunFailure? Failure { get; }
+    HttpFile File { get; }
+    IReadOnlyList<HttpSensitiveValue> SensitiveValues { get; }
+    bool Succeeded { get; }
+    HttpFileExchange Redact(HttpFileExchange exchange)
+    string Redact(string text)
+
+  static class HttpFileRunner
+    static Task<HttpFileRunResult> RunAsync(HttpFile file, HttpClient? client = null, HttpFileRunOptions? options = null, CancellationToken cancellationToken = default)
+
+  sealed class HttpFileSentRequest
+    byte[]? Body { get; }
+    string? BodyText { get; }
+    IReadOnlyList<HttpHeaderField> Headers { get; }
+    string Method { get; }
+    Uri Uri { get; }
+    Version Version { get; }
+    override string ToString()
+
+  sealed class HttpFileVariable
+    int Line { get; }
+    string Name { get; }
+    string Value { get; }
+    override string ToString()
+
+  readonly struct HttpHeaderField : IEquatable<HttpHeaderField>
+    HttpHeaderField(string Name, string Value)
+    string Name { get; init; }
+    string Value { get; init; }
+    void Deconstruct(out string Name, out string Value)
+    bool Equals(HttpHeaderField other)
+    override bool Equals(object obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(HttpHeaderField left, HttpHeaderField right)
+    static bool operator !=(HttpHeaderField left, HttpHeaderField right)
+
+  readonly struct HttpRedirect : IEquatable<HttpRedirect>
+    HttpRedirect(int StatusCode, Uri Location)
+    Uri Location { get; init; }
+    int StatusCode { get; init; }
+    void Deconstruct(out int StatusCode, out Uri Location)
+    bool Equals(HttpRedirect other)
+    override bool Equals(object obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(HttpRedirect left, HttpRedirect right)
+    static bool operator !=(HttpRedirect left, HttpRedirect right)
+
+  sealed class HttpSensitiveValue
+    string Reference { get; }
+    string Value { get; }
+    override string ToString()
