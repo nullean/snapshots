@@ -1,0 +1,1 @@
+The verified file is not a valid .api file: a .api file starts with 'assembly <name>' (1:1)

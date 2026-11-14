@@ -1,0 +1,7 @@
+Public API did not match snapshot: tests/Acme.Tests/.snapshots/Rendering/HtmlTests/RendersTable.verified.api
+Suggested version change: Major (1 breaking)
+1 difference(s):
+Lib.Drawing › Widget › Name(int)  removed string Name(int index)  [major: breaks callers, compiled code and source]   (verified.api:12)
+Received: .artifacts/.snapshots/received/Acme.Tests/Rendering/HtmlTests/RendersTable.received.api
+Accept:   snap accept Acme.Tests/Rendering/HtmlTests/RendersTable   (or: dnx Nullean.Snapshots.Cli accept Acme.Tests/Rendering/HtmlTests/RendersTable)
+   or:    SNAPSHOT_ACCEPT=1 dotnet test --project tests/Acme.Tests --treenode-filter "/Acme.Tests/Acme.Tests.Rendering/HtmlTests/RendersTable"

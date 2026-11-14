@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="TUnit" />
+    <PackageReference Include="AwesomeAssertions" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+    <PackageReference Include="TestableIO.System.IO.Abstractions.TestingHelpers" />
+    <ProjectReference Include="../../src/Nullean.Snapshots.PublicApi/Nullean.Snapshots.PublicApi.csproj" />
+    <ProjectReference Include="../../src/Nullean.Snapshots.TUnit/Nullean.Snapshots.TUnit.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="../Nullean.Snapshots.Tests/TestProject.cs" Link="TestProject.cs" />
+  </ItemGroup>
+
+  <Import Project="../../src/Nullean.Snapshots/buildTransitive/Nullean.Snapshots.targets" />
+  <Import Project="../../src/Nullean.Snapshots.TUnit/buildTransitive/Nullean.Snapshots.TUnit.targets" />
+
+</Project>
