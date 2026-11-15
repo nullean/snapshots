@@ -7,22 +7,22 @@ using System.ComponentModel: EditorBrowsableAttribute
 using TUnit.Core: DataGeneratorMetadata, UntypedDataSourceGeneratorAttribute
 
 namespace Nullean.Snapshots.TUnit
-  [AttributeUsage((AttributeTargets)2112, AllowMultiple = false)]
+  [AttributeUsage(AttributeTargets.Method | AttributeTargets.Parameter, AllowMultiple = false)]
   sealed class HttpFilesAttribute : SnapshotFilesAttribute
     HttpFilesAttribute(string folder = "http")
 
-  [AttributeUsage((AttributeTargets)2112, AllowMultiple = false)]
+  [AttributeUsage(AttributeTargets.Method | AttributeTargets.Parameter, AllowMultiple = false)]
   sealed class JourneyFilesAttribute : SnapshotFilesAttribute
     JourneyFilesAttribute(string folder = "journeys")
 
-  [AttributeUsage((AttributeTargets)2112, AllowMultiple = false)]
+  [AttributeUsage(AttributeTargets.Method | AttributeTargets.Parameter, AllowMultiple = false)]
   class SnapshotFilesAttribute : UntypedDataSourceGeneratorAttribute
     SnapshotFilesAttribute(string folder, string pattern)
     string Folder { get; }
     string Pattern { get; }
     protected override IEnumerable<Func<object?[]?>> GenerateDataSources(DataGeneratorMetadata dataGeneratorMetadata)
 
-  [EditorBrowsable((EditorBrowsableState)1)]
+  [EditorBrowsable(EditorBrowsableState.Never)]
   static class TUnitRegistration
     static void Initialize()
 
