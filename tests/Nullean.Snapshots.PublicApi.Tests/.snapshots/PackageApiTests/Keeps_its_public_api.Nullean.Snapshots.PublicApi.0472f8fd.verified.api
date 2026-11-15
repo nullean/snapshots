@@ -10,7 +10,7 @@ using System.Runtime.CompilerServices: CallerFilePathAttribute, CallerLineNumber
 
 namespace Nullean.Snapshots.PublicApi
   static class PublicApiAssertions
-    static AndConstraint<AssemblyAssertions> MatchApiSnapshot(this AssemblyAssertions assertions, ApiSplit split = (ApiSplit)0, ApiComparisonOptions? comparison = null, string? name = null, SnapshotOptions? options = null, string because = "", [CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0)
+    static AndConstraint<AssemblyAssertions> MatchApiSnapshot(this AssemblyAssertions assertions, ApiSplit split = ApiSplit.None, ApiComparisonOptions? comparison = null, string? name = null, SnapshotOptions? options = null, string because = "", [CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0)
 
   static class PublicApiSnapshot
     static SnapshotFormat Format { get; }
