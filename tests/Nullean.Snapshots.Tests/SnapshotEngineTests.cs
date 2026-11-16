@@ -226,7 +226,7 @@ public class SnapshotEngineTests
 
 		p.Engine.FlushManifests();
 
-		var (files, started) = RunManifest.Read(p.Read(manifest));
+		var (files, started, _) = RunManifest.Read(p.Read(manifest));
 		files.Should().BeEquivalentTo(
 			"Rendering/HtmlTests/RendersTable.verified.txt",
 			"Rendering/HtmlTests/RendersTable.a.verified.txt",
@@ -250,6 +250,31 @@ public class SnapshotEngineTests
 			.And
 			.BeInAscendingOrder(StringComparer.Ordinal);
 		p.Fs.File.Exists(p.Fs.Path.Combine(p.Project.ReceivedDirectory, ReceivedMarker.FileName)).Should().BeTrue();
+	}
+
+	[Test]
+	public void ManifestOfAPartialRunSaysSo()
+	{
+		var p = new TestProject();
+		p.AddVerified(Key, "same\n");
+		p.Match("same");
+		p.Engine.MarkPartial("--treenode-filter\n/*/*/X/*");
+		p.Engine.MarkPartial("a later reason is ignored");
+
+		p.Engine.FlushManifests();
+
+		var (files, _, partial) = RunManifest.Read(p.Read(p.Fs.Path.Combine(p.Project.ReceivedDirectory, RunManifest.FileName)));
+		partial.Should().Be("--treenode-filter /*/*/X/*");
+		files.Should().BeEquivalentTo("Rendering/HtmlTests/RendersTable.verified.txt");
+	}
+
+	[Test]
+	public void ManifestOfACompleteRunHasNoPartialLine()
+	{
+		var p = new TestProject();
+		p.Match("x");
+		p.Engine.FlushManifests();
+		RunManifest.Read(p.Read(p.Fs.Path.Combine(p.Project.ReceivedDirectory, RunManifest.FileName))).PartialReason.Should().BeNull();
 	}
 
 	[Test]

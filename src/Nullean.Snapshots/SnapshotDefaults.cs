@@ -42,4 +42,13 @@ public static class SnapshotDefaults
 	/// for you. Without a provider a snapshot is named after its test file and calling member.
 	/// </summary>
 	public static void UseTestIdentity(ISnapshotTestIdentityProvider? provider) => Volatile.Write(ref IdentityProvider, provider);
+
+	/// <summary>
+	/// Declares that this test process does not run every test, so the verified files it touches are not the whole set. The
+	/// run manifest records the reason, and <c>snap orphans</c> skips a project whose latest run was partial instead of
+	/// calling every untouched snapshot an orphan. The <c>Nullean.Snapshots.TUnit</c> package calls this for a filtered
+	/// run or when tests were skipped; call it yourself from a runner that selects tests another way.
+	/// </summary>
+	/// <param name="reason">Why the run is partial, for example <c>--treenode-filter</c>. One line.</param>
+	public static void MarkRunPartial(string reason) => Snapshot.MarkRunPartial(reason);
 }

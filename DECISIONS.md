@@ -202,6 +202,13 @@ its verified file by the prefix swap. Half-written `*.tmp` files are ignored.
 - **`snap orphans`** lists verified files the manifest does not name and exits 1 when there are any; `--delete`
   removes them and is the only command that deletes verified files. A filtered run produces false orphans, so the
   output says to run the whole suite first. A project without a manifest is reported on stderr and skipped.
+- **A partial run says so.** `SnapshotDefaults.MarkRunPartial(reason)` makes the manifest carry a `# partial run: <reason>` line
+  (the first reason wins), and `snap orphans` treats that project like one without a manifest: a note on stderr, no orphans
+  reported, no `--delete`. The alternative, not writing the manifest, would leave the previous run's list in place, and the
+  stale-file clock (#38) reads the manifest too. A runner that selects tests knows it did, so callers never have to decide
+  how to run a part of a suite safely; `Nullean.Snapshots.TUnit` does this for a filter and for skipped tests.
+- **A verified file written after the run started is never an orphan of it.** A snapshot accepted or added after the run
+  was not left unused by it. The cost is that a dead snapshot someone edits after a run waits for the next run.
 - **`snap review`**, also bare `snap`: each pending snapshot with its diff, then accept, reject, skip or quit.
   Unknown answers are asked again; the end of input means quit. On a terminal it reads single keys; with redirected
   input one answer per line, so it can be scripted and is smoke-tested in CI. It exits 1 while anything is left

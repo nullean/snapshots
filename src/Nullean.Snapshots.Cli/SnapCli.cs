@@ -171,6 +171,14 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 			return left == 0 ? ExitCode.Ok : ExitCode.Pending;
 		});
 
+	private static DateTime? StartedAt(string? started) =>
+		DateTime.TryParse(
+			started,
+			System.Globalization.CultureInfo.InvariantCulture,
+			System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal,
+			out var when
+		) ? when : null;
+
 	/// <summary>
 	/// Lists verified files the latest test run did not touch, per the run manifest each project's received folder
 	/// keeps. Exits 1 when there are any; <paramref name="delete"/> removes them instead.
@@ -190,7 +198,14 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 
 				if (!context.Fs.Directory.Exists(root.VerifiedDirectory))
 					continue;
-				var (touched, started) = RunManifest.Read(context.Fs.File.ReadAllText(manifestPath, SnapshotText.Encoding));
+				var (touched, started, partial) = RunManifest.Read(context.Fs.File.ReadAllText(manifestPath, SnapshotText.Encoding));
+				if (partial is not null)
+				{
+					error.WriteLine($"The latest run of {root.Project} was partial ({partial}), so its orphans are unknown: run its whole suite to check.");
+					continue;
+				}
+
+				var runStarted = StartedAt(started);
 				foreach (var file in context
 					.Fs
 					.Directory
@@ -200,7 +215,11 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 					var name = context.Fs.Path.GetFileName(file);
 					if (!name.Contains(SnapshotPath.VerifiedInfix, StringComparison.Ordinal) || name.EndsWith(".tmp", StringComparison.Ordinal))
 						continue;
-					if (!touched.Contains(SnapshotPath.Relative(context.Fs, root.VerifiedDirectory, file)))
+					// A snapshot written after the run began (an accepted one, a new one) is not one the run left unused.
+					if (
+						!touched.Contains(SnapshotPath.Relative(context.Fs, root.VerifiedDirectory, file)) &&
+						!(runStarted is { } at && context.Fs.File.GetLastWriteTimeUtc(file) >= at)
+					)
 						orphans.Add((root, file, started));
 				}
 			}
