@@ -151,29 +151,17 @@ jobs:
         run: dotnet build tests/Nullean.Snapshots.Browser.Tests -c Release
 
       # DIAGNOSTIC (not to merge) (#64).
-      - name: Chrome version
+      - name: Test S10 with output to a file, then show and kill leftovers
         continue-on-error: true
         timeout-minutes: 3
         run: |
-          ls /Applications | head -30
-          "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --version
-
-      - name: Chrome headless once
-        continue-on-error: true
-        timeout-minutes: 3
-        run: |
-          perl -e 'alarm 120; exec @ARGV' -- "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --disable-gpu --no-first-run --user-data-dir="$RUNNER_TEMP/chrome-profile-1" --dump-dom about:blank
-
-      - name: Chrome headless twice
-        continue-on-error: true
-        timeout-minutes: 3
-        run: |
-          perl -e 'alarm 120; exec @ARGV' -- "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --disable-gpu --no-first-run --user-data-dir="$RUNNER_TEMP/chrome-profile-2" --dump-dom about:blank
-
-      - name: Test JourneyCompareTests S10 alone
-        continue-on-error: true
-        timeout-minutes: 3
-        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/(ThePreviewsExtraLinkIsExplainedByItsRule)" --maximum-parallel-tests 1 --timeout 2m
+          dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/(ThePreviewsExtraLinkIsExplainedByItsRule)" --maximum-parallel-tests 1 --timeout 2m > "$RUNNER_TEMP/test-out.txt" 2>&1
+          rc=$?
+          cat "$RUNNER_TEMP/test-out.txt"
+          echo "--- leftover chrome processes after the tests:"
+          ps -axo pid,ppid,etime,command | grep -i "[g]oogle chrome" | cut -c1-200 | head -20
+          pkill -f "Google Chrome" || true
+          exit $rc
 
       - name: Upload the diagnostic log
         if: always()
