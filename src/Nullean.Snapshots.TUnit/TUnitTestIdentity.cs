@@ -128,7 +128,7 @@ public static class TUnitRegistration
 	/// them: any of the Microsoft.Testing.Platform filter options (<c>--treenode-filter</c>, <c>--filter-uid</c>, <c>--filter</c>).
 	/// </summary>
 	internal static string? PartialRunReason(IEnumerable<string> args) =>
-		args.FirstOrDefault(a => a.StartsWith("--treenode-filter", StringComparison.Ordinal) || a.StartsWith("--filter", StringComparison.Ordinal)) is { } filter
-			? filter.Split('=')[0]
-			: null;
+		args.FirstOrDefault(
+			a => a.StartsWith("--treenode-filter", StringComparison.Ordinal) || a.StartsWith("--filter", StringComparison.Ordinal)
+		) is { } filter ? filter.Split('=')[0] : null;
 }
