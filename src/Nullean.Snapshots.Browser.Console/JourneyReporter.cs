@@ -20,6 +20,10 @@ public interface IJourneyReporter
 	/// <summary>A journey ended: it passed, failed or could not run.</summary>
 	void Finished(JourneyOutcome outcome);
 
+	/// <summary>An attempt of a journey failed and it runs again; <paramref name="failed"/> is that attempt, <paramref name="attempt"/> counts from 1.</summary>
+	void Retrying(JourneyRunFile file, JourneyOutcome failed, int attempt, int attempts)
+	{ }
+
 	/// <summary>Called once, after everything ended, with every outcome in order, skipped ones included.</summary>
 	void Complete(IReadOnlyList<JourneyOutcome> outcomes, TimeSpan elapsed);
 }
@@ -122,6 +126,20 @@ public sealed class ConsoleJourneyReporter : IJourneyReporter
 	}
 
 	/// <inheritdoc />
+	public void Retrying(JourneyRunFile file, JourneyOutcome failed, int attempt, int attempts)
+	{
+		lock (_gate)
+		{
+			ClearStatus();
+			var line =
+				$"retry   {file.Id} (attempt {attempt} of {attempts} failed{(failed.Transcript?.Failure is { } failure ? $" at line {failure.Line}" : "")})";
+			_output.WriteLine(_interactive ? Ansi.Yellow($"{Ansi.Retry} {line}") : line);
+			_running[file.Id] = "retrying";
+			DrawStatus(force: true);
+		}
+	}
+
+	/// <inheritdoc />
 	public void Complete(IReadOnlyList<JourneyOutcome> outcomes, TimeSpan elapsed)
 	{
 		lock (_gate)
@@ -148,6 +166,11 @@ public sealed class ConsoleJourneyReporter : IJourneyReporter
 					_output.WriteLine();
 				_output.Write(foot);
 			}
+			foreach (var outcome in outcomes.Where(o => o.Flaky))
+			{
+				_output.WriteLine();
+				_output.Write(FlakyBlock(outcome, _options.Rerun?.Replace("{id}", outcome.File.Id, StringComparison.Ordinal)));
+			}
 			if (_options.GitHubActions && !_interactive)
 				foreach (var annotation in GitHubActions.Annotations(outcomes))
 					_output.WriteLine(annotation);
@@ -155,7 +178,8 @@ public sealed class ConsoleJourneyReporter : IJourneyReporter
 			var passed = outcomes.Count(o => o.Passed);
 			var failed = outcomes.Count(o => o.Failed);
 			var skipped = outcomes.Count(o => o.Skipped);
-			_output.WriteLine(_interactive ? PrettyTotals(passed, failed, skipped, elapsed) : PlainTotals(passed, failed, skipped, elapsed));
+			var flaky = outcomes.Count(o => o.Flaky);
+			_output.WriteLine(_interactive ? PrettyTotals(passed, flaky, failed, skipped, elapsed) : PlainTotals(passed, flaky, failed, skipped, elapsed));
 			if (passed + failed == 0)
 				_output.WriteLine(
 					_options.AllowAllSkipped
@@ -199,16 +223,18 @@ public sealed class ConsoleJourneyReporter : IJourneyReporter
 	internal static string Line(JourneyOutcome outcome) =>
 		outcome.Skipped
 			? $"skipped {outcome.File.Id} ({outcome.SkipReason})"
-			: outcome.Passed ? $"ok      {outcome.File.Id} ({outcome.Elapsed.TotalSeconds:0.0}s)" : $"FAILED  {outcome.File.Id}";
+			: outcome.Flaky
+				? $"flaky   {outcome.File.Id} ({outcome.Elapsed.TotalSeconds:0.0}s, passed on attempt {outcome.Attempts})"
+				: outcome.Passed ? $"ok      {outcome.File.Id} ({outcome.Elapsed.TotalSeconds:0.0}s)" : $"FAILED  {outcome.File.Id}";
 
-	private string PlainTotals(int passed, int failed, int skipped, TimeSpan elapsed) =>
-		$"{passed} passed, {failed} failed, {skipped} skipped in {elapsed.TotalSeconds:0.0}s{(Site is null ? "" : $", against {Site}")}";
+	private string PlainTotals(int passed, int flaky, int failed, int skipped, TimeSpan elapsed) =>
+		$"{passed} passed{(flaky > 0 ? $" ({flaky} flaky)" : "")}, {failed} failed, {skipped} skipped in {elapsed.TotalSeconds:0.0}s{(Site is null ? "" : $", against {Site}")}";
 
-	private string PrettyTotals(int passed, int failed, int skipped, TimeSpan elapsed)
+	private string PrettyTotals(int passed, int flaky, int failed, int skipped, TimeSpan elapsed)
 	{
 		var counts = new List<string>
 		{
-			passed > 0 ? Ansi.Green($"{Ansi.Ok} {passed} passed") : $"{Ansi.Ok} {passed} passed",
+			passed > 0 ? Ansi.Green($"{Ansi.Ok} {passed} passed") + (flaky > 0 ? Ansi.Yellow($" ({flaky} flaky)") : "") : $"{Ansi.Ok} {passed} passed",
 			failed > 0 ? Ansi.BoldRed($"{Ansi.Fail} {failed} failed") : $"{Ansi.Fail} {failed} failed",
 			skipped > 0 ? Ansi.Blue($"{Ansi.Skip} {skipped} skipped") : $"{Ansi.Skip} {skipped} skipped"
 		};
@@ -244,6 +270,21 @@ public sealed class ConsoleJourneyReporter : IJourneyReporter
 		else
 			_ = text.AppendLine((outcome.Compared?.FailureMessage ?? $"Journey failed: {where}").TrimEnd());
 		return rerun is null ? text.ToString() : text.AppendLine("Rerun:".PadRight(Label) + rerun).ToString();
+	}
+
+	/// <summary>A journey that passed after failing: what each earlier attempt stopped at, so a flake is read like a failure.</summary>
+	internal string FlakyBlock(JourneyOutcome outcome, string? rerun)
+	{
+		var text = new StringBuilder();
+		_ = text.AppendLine(
+			CultureInfo.InvariantCulture,
+			$"FLAKY   {outcome.File.Id}: passed on attempt {outcome.Attempts}, after {outcome.Attempts - 1} failed {(outcome.Attempts == 2 ? "attempt" : "attempts")}"
+		);
+		for (var i = 0; i < outcome.EarlierAttempts.Count; i++)
+			_ = text.AppendLine(CultureInfo.InvariantCulture, $"Attempt {i + 1}:").Append(
+				FailureBlock(outcome.EarlierAttempts[i], i == outcome.EarlierAttempts.Count - 1 ? rerun : null)
+			);
+		return text.ToString();
 	}
 
 	/// <summary>A failure for a person: the journey's lines around the one that failed, the error wrapped, the page and the rerun command.</summary>
@@ -332,6 +373,8 @@ public sealed class ConsoleJourneyReporter : IJourneyReporter
 		var line = Line(outcome);
 		if (!_interactive)
 			return line;
+		if (outcome.Flaky)
+			return $"{Ansi.Yellow($"{Ansi.Retry} flaky")}   {outcome.File.Id} {Ansi.Dim($"({outcome.Elapsed.TotalSeconds:0.0}s, passed on attempt {outcome.Attempts})")}";
 		return outcome.Passed
 			? $"{Ansi.Green($"{Ansi.Ok} ok")}      {outcome.File.Id} {Ansi.Dim($"({outcome.Elapsed.TotalSeconds:0.0}s)")}"
 			: $"{Ansi.BoldRed($"{Ansi.Fail} FAILED")}  {Ansi.Bold(outcome.File.Id)}";

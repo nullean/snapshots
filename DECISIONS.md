@@ -674,6 +674,18 @@ image or a transcript is not something to read in a source file.
 - **On by detection, off by an option.** `GITHUB_ACTIONS` turns it on, and the tests clear it, so the output of the other
   tests does not change in CI.
 
+## Retries
+
+- **Off by default, per journey.** `Retries` (`--retries`) reruns only the journey that failed, in the same Chrome and in the
+  slot it already holds, so a run against a live site survives one stalled navigation without repeating the journeys that passed.
+- **A flake is reported, never hidden.** A journey that passes after a failure passes the run, but it prints `flaky` instead of
+  `ok`, counts as `(n flaky)` in the totals, shows what every failed attempt stopped at, is a warning annotation and a
+  summary section on GitHub Actions, and is a `flakyFailure` in the JUnit report (`rerunFailure` when it never passed), as
+  Surefire writes them. A journey that fails every attempt reports its last failure and carries the earlier ones.
+- **What is not retried:** a source with errors, Chrome failing to start, and a finished transcript that differs from the
+  verified one. Those are findings, not timing; a step that failed or threw is what a retry can fix.
+- `IJourneyReporter.Retrying` has an empty default, so a reporter written before it still compiles.
+
 ## Failure screenshots
 
 - **Off unless asked for.** A screenshot can show private data, so `ScreenshotOnFailure` and `--screenshot-on-failure` are opt-in,

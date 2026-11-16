@@ -10,6 +10,7 @@ internal static class Ansi
 
 	public static string Ok => Unicode ? "✓" : "+";
 	public static string Fail => Unicode ? "✗" : "x";
+	public static string Retry => Unicode ? "↻" : "~";
 	public static string Skip => Unicode ? "⊘" : "-";
 	public static string Pointer => Unicode ? "▶" : ">";
 	public static string Bar => Unicode ? "│" : "|";

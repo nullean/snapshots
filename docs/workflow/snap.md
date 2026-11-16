@@ -87,6 +87,12 @@ GET, HEAD or OPTIONS, skips journeys marked `# @mutates` (`--allow-mutations` ru
 (repeatable) set what every page of the run sends. `--parallel <n>` (default 4) sets how many journeys run at once in one
 Chrome, `--junit <file>` writes a JUnit report, and `--allow-all-skipped` exits with 0 when every journey was skipped.
 
+`--retries <n>` (default 0) runs a journey that fails again, up to `n` more times, so a stall on the network or in the browser
+does not fail a run against a live site. A journey that passes on a retry passes, and the run reports it as **flaky**: a
+`flaky` line instead of `ok`, what each failed attempt stopped at, a warning annotation on GitHub Actions, and a
+`flakyFailure` element in the JUnit report. A journey whose finished transcript differs from the verified one is not retried,
+since that is a difference and not a flake.
+
 `--screenshot-on-failure` takes a screenshot of the page when a step fails. It is written to `failure.png` in the journey's
 artifacts folder, named in the failure, and on a terminal that can show images (Kitty, Ghostty, iTerm2, WezTerm, Sixel, with
 half blocks as the fallback) drawn under the error. It is off unless asked for, because a page can show private data;
