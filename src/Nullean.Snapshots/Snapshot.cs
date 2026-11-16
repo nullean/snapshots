@@ -29,6 +29,8 @@ public static class Snapshot
 		return engine;
 	}
 
+	internal static void MarkRunPartial(string reason) => Engine.MarkPartial(reason);
+
 	/// <summary>Lets a test run the assertion packages against its own engine, without touching other tests.</summary>
 	internal static AsyncLocal<SnapshotEngine?> EngineOverride { get; } = new();
 
@@ -151,6 +153,7 @@ internal sealed partial class SnapshotEngine(
 	private readonly ConcurrentDictionary<SnapshotProject, IFileSystem> _scoped = new();
 	private readonly ConcurrentDictionary<SnapshotProject, RunManifest> _manifests = new();
 	private int _flushed;
+	private string? _partialReason;
 
 	// Projects whose received folder already has its marker in this process. Writing it once, from whichever failure
 	// gets there first, keeps parallel failures from replacing the same file at once, which Windows refuses.
@@ -599,6 +602,10 @@ internal sealed partial class SnapshotEngine(
 	/// the received folder's marker so the CLI finds the project even when nothing failed. Runs once; never throws, as
 	/// it runs while the process exits.
 	/// </summary>
+	internal void MarkPartial(string reason) => Interlocked.CompareExchange(ref _partialReason, SingleLine(reason), null);
+
+	private static string SingleLine(string text) => text.ReplaceLineEndings(" ").Trim();
+
 	internal void FlushManifests()
 	{
 		if (Interlocked.Exchange(ref _flushed, 1) == 1)
@@ -610,7 +617,7 @@ internal sealed partial class SnapshotEngine(
 				var fs = ScopeFor(project);
 				fs.Directory.CreateDirectory(project.ReceivedDirectory);
 				ReceivedMarker.For(fileSystem, project).EnsureWritten(fs, project.ReceivedDirectory);
-				AtomicFile.Write(fs, fs.Path.Combine(project.ReceivedDirectory, RunManifest.FileName), manifest.Render());
+				AtomicFile.Write(fs, fs.Path.Combine(project.ReceivedDirectory, RunManifest.FileName), manifest.Render(_partialReason));
 			}
 			catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Security.SecurityException)
 			{
@@ -703,29 +710,35 @@ internal sealed class RunManifest(DateTimeOffset started)
 {
 	public const string FileName = ".snapshots-manifest";
 	private const string HeaderPrefix = "# verified files touched by the test run that started ";
+	private const string PartialPrefix = "# partial run: ";
 
 	/// <summary>The touched files; a concurrent dictionary used as a lock-free set.</summary>
 	public ConcurrentDictionary<string, byte> Seen { get; } = new(StringComparer.Ordinal);
 
-	public string Render() => Header(started) + string.Concat(Seen.Keys.Order(StringComparer.Ordinal).Select(f => f + "\n"));
+	public string Render(string? partialReason = null) =>
+		Header(started) + (partialReason is { Length: > 0 } ? PartialPrefix + partialReason + "\n" : "") +
+		string.Concat(Seen.Keys.Order(StringComparer.Ordinal).Select(f => f + "\n"));
 
 	public static string Header(DateTimeOffset started) =>
 		HeaderPrefix + started.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture) + "\n";
 
-	/// <summary>The paths a manifest lists, and when its run started if the header says.</summary>
-	public static (IReadOnlySet<string> Files, string? Started) Read(string text)
+	/// <summary>The paths a manifest lists, when its run started if the header says, and why the run was partial, if it was.</summary>
+	public static (IReadOnlySet<string> Files, string? Started, string? PartialReason) Read(string text)
 	{
 		var files = new HashSet<string>(StringComparer.Ordinal);
 		string? started = null;
+		string? partial = null;
 		foreach (var raw in text.Split('\n'))
 		{
 			var line = raw.TrimEnd('\r');
 			if (line.StartsWith(HeaderPrefix, StringComparison.Ordinal))
 				started = line[HeaderPrefix.Length..];
+			else if (line.StartsWith(PartialPrefix, StringComparison.Ordinal))
+				partial = line[PartialPrefix.Length..];
 			else if (line.Length > 0 && !line.StartsWith('#'))
 				files.Add(line);
 		}
 
-		return (files, started);
+		return (files, started, partial);
 	}
 }

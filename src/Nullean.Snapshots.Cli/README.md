@@ -20,7 +20,7 @@ snap status --json                 # pending snapshots; exits 1 when there are a
 snap diff CatalogTests/Renders     # full key, unique suffix, or glob
 snap accept CatalogTests/Renders   # only after reading the diff
 snap reject --all                  # delete received files, keep verified
-snap orphans                       # verified files the last test run did not use
+snap orphans                       # verified files the last test run did not use; a partial run is skipped
 ```
 
 Without installing it: `dnx Nullean.Snapshots.Cli accept CatalogTests/Renders`.

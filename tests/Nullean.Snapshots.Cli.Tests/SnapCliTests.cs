@@ -323,6 +323,8 @@ public class SnapCliTests : IDisposable
 		_out.ToString().Should().Contain(Obj).And.NotContain(Changed);
 	}
 
+	private static readonly DateTime BeforeTheRun = new(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc);
+
 	private void Manifest(params string[] files) =>
 		_fs.File.WriteAllText(
 			Received(ReceivedMarker.FileName.Replace("project", "manifest", StringComparison.Ordinal)),
@@ -332,7 +334,7 @@ public class SnapCliTests : IDisposable
 	[Test]
 	public void OrphansAreVerifiedFilesTheLastRunDidNotTouch()
 	{
-		_fs.AddFile(Verified("Old", "Gone.verified.txt"), new("x"));
+		_fs.AddFile(Verified("Old", "Gone.verified.txt"), new MockFileData("x") { LastWriteTime = BeforeTheRun });
 		Manifest("Rendering/HtmlTests/RendersTable.verified.txt");
 		Cli().Orphans(json: false, delete: false).Should().Be(ExitCode.Pending);
 		_out.ToString().Replace("\r\n", "\n", StringComparison.Ordinal).Should().MatchSnapshot();
@@ -343,7 +345,7 @@ public class SnapCliTests : IDisposable
 	[Test]
 	public void OrphansJsonAndDelete()
 	{
-		_fs.AddFile(Verified("Old", "Gone.verified.txt"), new("x"));
+		_fs.AddFile(Verified("Old", "Gone.verified.txt"), new MockFileData("x") { LastWriteTime = BeforeTheRun });
 		Manifest("Rendering/HtmlTests/RendersTable.verified.txt");
 		Cli().Orphans(json: true, delete: false).Should().Be(ExitCode.Pending);
 		_out.ToString().Should().Contain("\"verified\": \"tests/Acme.Tests/.snapshots/Old/Gone.verified.txt\"");
@@ -351,6 +353,31 @@ public class SnapCliTests : IDisposable
 		Cli().Orphans(json: false, delete: true).Should().Be(ExitCode.Ok);
 		_fs.File.Exists(Verified("Old", "Gone.verified.txt")).Should().BeFalse();
 		_fs.File.Exists(Verified("Rendering", "HtmlTests", "RendersTable.verified.txt")).Should().BeTrue();
+	}
+
+	[Test]
+	public void OrphansSkipAProjectWhoseLatestRunWasPartial()
+	{
+		_fs.AddFile(Verified("Old", "Gone.verified.txt"), new MockFileData("x") { LastWriteTime = BeforeTheRun });
+		_fs.File.WriteAllText(
+			Received(ReceivedMarker.FileName.Replace("project", "manifest", StringComparison.Ordinal)),
+			"# verified files touched by the test run that started 2026-11-03T15:00:00Z\n# partial run: --treenode-filter\nRendering/HtmlTests/RendersTable.verified.txt\n"
+		);
+
+		Cli().Orphans(json: false, delete: false).Should().Be(ExitCode.Ok);
+
+		_out.ToString().Should().Contain("No orphaned snapshots.");
+		_err.ToString().Should().Contain("The latest run of Acme.Tests was partial (--treenode-filter)");
+		_fs.File.Exists(Verified("Old", "Gone.verified.txt")).Should().BeTrue();
+	}
+
+	[Test]
+	public void OrphansIgnoreAVerifiedFileWrittenAfterTheRunStarted()
+	{
+		_fs.AddFile(Verified("New", "Accepted.verified.txt"), new MockFileData("x") { LastWriteTime = new DateTime(2026, 11, 4, 0, 0, 0, DateTimeKind.Utc) });
+		Manifest("Rendering/HtmlTests/RendersTable.verified.txt");
+
+		Cli().Orphans(json: false, delete: false).Should().Be(ExitCode.Ok);
 	}
 
 	[Test]

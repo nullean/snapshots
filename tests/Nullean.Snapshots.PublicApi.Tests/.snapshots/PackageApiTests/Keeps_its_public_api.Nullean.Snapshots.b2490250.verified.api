@@ -116,6 +116,7 @@ namespace Nullean.Snapshots
     static void AddScrubber(Func<string, string> scrubber)
     static void AddScrubber(Regex pattern, string replacement)
     static void ClearScrubbers()
+    static void MarkRunPartial(string reason)
     static void UseTestIdentity(ISnapshotTestIdentityProvider? provider)
 
   readonly struct SnapshotEnvironment : IEquatable<SnapshotEnvironment>

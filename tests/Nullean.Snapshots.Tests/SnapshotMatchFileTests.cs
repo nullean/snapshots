@@ -96,7 +96,7 @@ public class SnapshotMatchFileTests
 		p.MatchFile("a", Journey(p, "journeys", "checkout.journey"));
 		p.Engine.FlushManifests();
 
-		var (files, _) = RunManifest.Read(p.Read(p.Fs.Path.Combine(p.Project.ReceivedDirectory, RunManifest.FileName)));
+		var (files, _, _) = RunManifest.Read(p.Read(p.Fs.Path.Combine(p.Project.ReceivedDirectory, RunManifest.FileName)));
 		files.Should().BeEquivalentTo(["journeys/checkout.verified.txt"]);
 	}
 
