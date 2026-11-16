@@ -29,7 +29,7 @@ public static class Snapshot
 		return engine;
 	}
 
-	internal static void MarkRunPartial(string reason) => Engine.MarkPartial(reason);
+	internal static void MarkRunPartial(string reason) => Current.MarkPartial(reason);
 
 	/// <summary>Lets a test run the assertion packages against its own engine, without touching other tests.</summary>
 	internal static AsyncLocal<SnapshotEngine?> EngineOverride { get; } = new();
@@ -602,6 +602,9 @@ internal sealed partial class SnapshotEngine(
 	/// the received folder's marker so the CLI finds the project even when nothing failed. Runs once; never throws, as
 	/// it runs while the process exits.
 	/// </summary>
+	/// <summary>Why the run is partial, or <see langword="null"/> when nothing said so.</summary>
+	internal string? PartialReason => Volatile.Read(ref _partialReason);
+
 	internal void MarkPartial(string reason) => Interlocked.CompareExchange(ref _partialReason, SingleLine(reason), null);
 
 	private static string SingleLine(string text) => text.ReplaceLineEndings(" ").Trim();

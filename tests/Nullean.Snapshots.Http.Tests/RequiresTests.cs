@@ -38,6 +38,25 @@ public class RequiresTests
 	}
 
 	[Test]
+	public void SkipReason_SkippedFile_MarksTheRunPartialAndAFileThatRunsDoesNot()
+	{
+		var engine = new SnapshotEngine(new System.IO.Abstractions.FileSystem(), Environment.GetEnvironmentVariable);
+		Snapshot.EngineOverride.Value = engine;
+		try
+		{
+			HttpFileSnapshot.SkipReason(File("GET https://example.test/\n"), new HttpFileSnapshotOptions { ReadOnly = true }).Should().BeNull();
+			engine.PartialReason.Should().BeNull();
+
+			HttpFileSnapshot.SkipReason(File("# @mutates\nPOST https://example.test/save\n"), new HttpFileSnapshotOptions { ReadOnly = true });
+			engine.PartialReason.Should().Be(".http file skipped: @mutates, and the run is read-only");
+		}
+		finally
+		{
+			Snapshot.EngineOverride.Value = null;
+		}
+	}
+
+	[Test]
 	public void SkipReason_FlagsOfTheRunDecideRequires()
 	{
 		var file = File("# @requires navigation-preview\nGET https://example.test/\n");

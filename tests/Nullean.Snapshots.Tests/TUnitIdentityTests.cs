@@ -8,6 +8,18 @@ namespace Nullean.Snapshots.Tests;
 public class TUnitIdentityTests
 {
 	[Test]
+	[Arguments("--treenode-filter", "--treenode-filter")]
+	[Arguments("--treenode-filter=/*/*/X/*", "--treenode-filter")]
+	[Arguments("--filter-uid", "--filter-uid")]
+	[Arguments("--filter", "--filter")]
+	public void PartialRunReason_AFilterOption_NamesIt(string arg, string expected) =>
+		TUnitRegistration.PartialRunReason(["/path/tests.dll", "--report-gh", arg, "/*/*/X/*"]).Should().Be(expected);
+
+	[Test]
+	public void PartialRunReason_NoFilter_IsNull() =>
+		TUnitRegistration.PartialRunReason(["/path/tests.dll", "--max-parallel-test-modules", "1", "--report-gh"]).Should().BeNull();
+
+	[Test]
 	public void ModuleInitializerRegisteredTUnit() => SnapshotDefaults.TestIdentity.Should().BeSameAs(TUnitTestIdentity.Instance);
 
 	[Test]

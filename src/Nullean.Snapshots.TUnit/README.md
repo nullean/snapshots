@@ -53,3 +53,7 @@ public class RenderTests
 - Documentation: https://snapshots.nullean.net
 - Layout of snapshot files: https://snapshots.nullean.net/reference/layout/
 - Source and issues: https://github.com/nullean/snapshots
+
+## Partial runs
+
+A test process started with a filter (`--treenode-filter`, `--filter-uid`, `--filter`) marks its run manifest partial, and so does a journey or `.http` file skipped by `SkipReason`. `snap orphans` then skips the project instead of reporting every untouched snapshot as an orphan. A runner that selects tests another way calls `SnapshotDefaults.MarkRunPartial(reason)`.

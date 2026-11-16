@@ -242,9 +242,13 @@ public static partial class HttpFileSnapshot
 		ArgumentException.ThrowIfNullOrEmpty(httpFile);
 		ArgumentNullException.ThrowIfNull(options);
 		var metadata = LoadMetadata(httpFile, callerFilePath);
-		if (metadata.Unmet(options.Context) is { } unmet)
-			return $"@requires {unmet}";
-		return metadata.Mutates && options.ReadOnly ? "@mutates, and the run is read-only" : null;
+		var reason = metadata.Unmet(options.Context) is { } unmet
+			? $"@requires {unmet}"
+			: metadata.Mutates && options.ReadOnly ? "@mutates, and the run is read-only" : null;
+		// A skipped file leaves its verified responses untouched, so the run cannot say which snapshots are unused.
+		if (reason is not null)
+			SnapshotDefaults.MarkRunPartial($".http file skipped: {reason}");
+		return reason;
 	}
 
 	/// <summary>The file's header directives: tags, requirements, monitor, alerts, <c># @mutates</c>.</summary>
