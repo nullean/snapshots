@@ -151,25 +151,29 @@ jobs:
         run: dotnet build tests/Nullean.Snapshots.Browser.Tests -c Release
 
       # DIAGNOSTIC (not to merge) (#64).
+      - name: Chrome version
+        continue-on-error: true
+        timeout-minutes: 3
+        run: |
+          ls /Applications | head -30
+          "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --version
+
+      - name: Chrome headless once
+        continue-on-error: true
+        timeout-minutes: 3
+        run: |
+          perl -e 'alarm 120; exec @ARGV' -- "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --disable-gpu --no-first-run --user-data-dir="$RUNNER_TEMP/chrome-profile-1" --dump-dom about:blank
+
+      - name: Chrome headless twice
+        continue-on-error: true
+        timeout-minutes: 3
+        run: |
+          perl -e 'alarm 120; exec @ARGV' -- "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --disable-gpu --no-first-run --user-data-dir="$RUNNER_TEMP/chrome-profile-2" --dump-dom about:blank
+
       - name: Test JourneyCompareTests S10 alone
         continue-on-error: true
         timeout-minutes: 3
         run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/(ThePreviewsExtraLinkIsExplainedByItsRule)" --maximum-parallel-tests 1 --timeout 2m
-
-      - name: Test JourneyCompareTests S11 alone
-        continue-on-error: true
-        timeout-minutes: 3
-        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/(WithoutARuleTheExtraLinkFailsAndTheSuggestionIsTheRule)" --maximum-parallel-tests 1 --timeout 2m
-
-      - name: Test JourneyCompareTests S12 alone
-        continue-on-error: true
-        timeout-minutes: 3
-        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/(ARuleForSomethingThatDidNotChangeIsStale)" --maximum-parallel-tests 1 --timeout 2m
-
-      - name: Test JourneyCompareTests P1 t10+t11
-        continue-on-error: true
-        timeout-minutes: 3
-        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/(ThePreviewsExtraLinkIsExplainedByItsRule)|(WithoutARuleTheExtraLinkFailsAndTheSuggestionIsTheRule)" --maximum-parallel-tests 1 --timeout 2m
 
       - name: Upload the diagnostic log
         if: always()
