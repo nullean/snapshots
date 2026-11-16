@@ -716,8 +716,9 @@ internal sealed class RunManifest(DateTimeOffset started)
 	public ConcurrentDictionary<string, byte> Seen { get; } = new(StringComparer.Ordinal);
 
 	public string Render(string? partialReason = null) =>
-		Header(started) + (partialReason is { Length: > 0 } ? PartialPrefix + partialReason + "\n" : "") +
-		string.Concat(Seen.Keys.Order(StringComparer.Ordinal).Select(f => f + "\n"));
+		Header(started) + (partialReason is { Length: > 0 } ? PartialPrefix + partialReason + "\n" : "") + string.Concat(
+			Seen.Keys.Order(StringComparer.Ordinal).Select(f => f + "\n")
+		);
 
 	public static string Header(DateTimeOffset started) =>
 		HeaderPrefix + started.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture) + "\n";

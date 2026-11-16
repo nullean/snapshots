@@ -216,7 +216,10 @@ internal sealed class SnapCli(IFileSystem fileSystem, string root, TextWriter ou
 					if (!name.Contains(SnapshotPath.VerifiedInfix, StringComparison.Ordinal) || name.EndsWith(".tmp", StringComparison.Ordinal))
 						continue;
 					// A snapshot written after the run began (an accepted one, a new one) is not one the run left unused.
-					if (!touched.Contains(SnapshotPath.Relative(context.Fs, root.VerifiedDirectory, file)) && !(runStarted is { } at && context.Fs.File.GetLastWriteTimeUtc(file) >= at))
+					if (
+						!touched.Contains(SnapshotPath.Relative(context.Fs, root.VerifiedDirectory, file)) &&
+						!(runStarted is { } at && context.Fs.File.GetLastWriteTimeUtc(file) >= at)
+					)
 						orphans.Add((root, file, started));
 				}
 			}
