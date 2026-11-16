@@ -160,6 +160,46 @@ public static class JourneyConsoleRunner
 
 		await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
 		reporter.Started(file);
+		try
+		{
+			var attempts = Math.Max(0, options.Retries) + 1;
+			var earlier = new List<JourneyOutcome>();
+			for (var attempt = 1; ; attempt++)
+			{
+				var outcome = await AttemptAsync(file, options, executor, reporter, launched, cancellationToken).ConfigureAwait(false);
+				// Chrome failing to start ends the run, and is never shown as a failed journey.
+				if (launched.Error is not null)
+					return outcome;
+				if (outcome.Passed || attempt == attempts || !Retryable(outcome))
+				{
+					var final = earlier.Count == 0 ? outcome : outcome with { EarlierAttempts = [.. earlier] };
+					reporter.Finished(final);
+					return final;
+				}
+
+				earlier.Add(outcome);
+				reporter.Retrying(file, outcome, attempt, attempts);
+			}
+		}
+		finally
+		{
+			_ = gate.Release();
+		}
+	}
+
+	/// <summary>A step that failed or an error while running is worth another try; a source with errors, or a finished transcript that differs from the verified one, is not a flake.</summary>
+	private static bool Retryable(JourneyOutcome outcome) =>
+		!outcome.IsParseError && (outcome.Error is not null || outcome.Transcript is not { Failure: null });
+
+	private static async Task<JourneyOutcome> AttemptAsync(
+		JourneyRunFile file,
+		JourneyRunOptions options,
+		IJourneyExecutor executor,
+		IJourneyReporter reporter,
+		LaunchFailure launched,
+		CancellationToken cancellationToken
+	)
+	{
 		var clock = Stopwatch.StartNew();
 		Uri? lastOpened = null;
 		try
@@ -173,7 +213,7 @@ public static class JourneyConsoleRunner
 			var transcript = await executor.RunAsync(file.Path, run, cancellationToken).ConfigureAwait(false);
 			// As in a test, a failed step still compares the partial transcript, so a received file is written for review.
 			var compared = options.Compare is { } compare ? compare(file, transcript) : null;
-			return Finish(new JourneyOutcome(file, transcript, compared, null, null, clock.Elapsed) { LastOpened = lastOpened });
+			return new JourneyOutcome(file, transcript, compared, null, null, clock.Elapsed) { LastOpened = lastOpened };
 		}
 		catch (BrowserLaunchException e)
 		{
@@ -182,21 +222,11 @@ public static class JourneyConsoleRunner
 		}
 		catch (JourneyParseException e)
 		{
-			return Finish(new JourneyOutcome(file, null, null, e.Message, null, clock.Elapsed) { IsParseError = true });
+			return new JourneyOutcome(file, null, null, e.Message, null, clock.Elapsed) { IsParseError = true };
 		}
 		catch (Exception e) when (e is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
 		{
-			return Finish(new JourneyOutcome(file, null, null, e.Message, null, clock.Elapsed) { LastOpened = lastOpened });
-		}
-		finally
-		{
-			_ = gate.Release();
-		}
-
-		JourneyOutcome Finish(JourneyOutcome outcome)
-		{
-			reporter.Finished(outcome);
-			return outcome;
+			return new JourneyOutcome(file, null, null, e.Message, null, clock.Elapsed) { LastOpened = lastOpened };
 		}
 	}
 

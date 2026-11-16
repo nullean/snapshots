@@ -18,6 +18,7 @@ namespace Nullean.Snapshots.Browser.Console
     static string ContextBlock(string lead, IReadOnlyList<ContextRow> rows, IReadOnlyList<string>? notes = null)
     void Finished(JourneyOutcome outcome)
     void Planned(IReadOnlyList<(JourneyRunFile File, string Reason)> skipped, int toRun)
+    void Retrying(JourneyRunFile file, JourneyOutcome failed, int attempt, int attempts)
     void Started(JourneyRunFile file)
     void StepStarted(JourneyRunFile file, JourneyStep journeyStep)
 
@@ -39,6 +40,7 @@ namespace Nullean.Snapshots.Browser.Console
     void Complete(IReadOnlyList<JourneyOutcome> outcomes, TimeSpan elapsed)
     void Finished(JourneyOutcome outcome)
     void Planned(IReadOnlyList<(JourneyRunFile File, string Reason)> skipped, int toRun)
+    void Retrying(JourneyRunFile file, JourneyOutcome failed, int attempt, int attempts) { … }
     void Started(JourneyRunFile file)
     void StepStarted(JourneyRunFile file, JourneyStep journeyStep)
 
@@ -53,11 +55,14 @@ namespace Nullean.Snapshots.Browser.Console
 
   sealed record JourneyOutcome : IEquatable<JourneyOutcome>
     JourneyOutcome(JourneyRunFile File, JourneyTranscript? Transcript, SnapshotResult? Compared, string? Error, string? SkipReason, TimeSpan Elapsed)
+    int Attempts { get; }
     SnapshotResult? Compared { get; init; }
+    IReadOnlyList<JourneyOutcome> EarlierAttempts { get; init; }
     TimeSpan Elapsed { get; init; }
     string? Error { get; init; }
     bool Failed { get; }
     JourneyRunFile File { get; init; }
+    bool Flaky { get; }
     bool IsParseError { get; init; }
     Uri? LastOpened { get; init; }
     bool Passed { get; }
@@ -110,6 +115,7 @@ namespace Nullean.Snapshots.Browser.Console
     int ParseErrorExitCode { get; init; }
     bool ReadOnly { get; init; }
     string? Rerun { get; init; }
+    int Retries { get; init; }
     bool ScreenshotOnFailure { get; init; }
     Uri? Site { get; init; }
     bool StepSummary { get; init; }

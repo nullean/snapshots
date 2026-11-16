@@ -257,6 +257,7 @@ are files, not part of the transcript: pixels differ between machines.
 | `ReadOnly`, `WritableUrls` | `--read-only`, `--writable` | refuse writes, except to these URL globs |
 | `Viewport` | `--viewport` | the size every journey starts with; Chrome's default is a phone layout on a responsive site |
 | `UserAgent`, `Headers` | `--user-agent`, `--header` | what every page of the run sends, such as the identity a site uses to tell a monitor from a visitor |
+| `Retries` | `--retries` | run a journey that fails again this many times; one that passes on a retry passes the run and is reported as flaky (`JourneyOutcome.Flaky`, `EarlierAttempts`) |
 | `ScreenshotOnFailure` | `--screenshot-on-failure` | take a screenshot of the viewport when a step fails (`JourneyFailure.Screenshot`), written to `failure.png` in the artifacts folder |
 | `OnStep` | | called before each step, for a progress display |
 

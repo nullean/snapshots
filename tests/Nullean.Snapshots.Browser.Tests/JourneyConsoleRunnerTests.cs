@@ -105,6 +105,118 @@ public partial class JourneyConsoleRunnerTests
 		);
 	}
 
+	private static JourneyTranscript Stopped(string file) =>
+		new(file, "", new JourneyFailure(2, "click #pay", "Timed out after 30s waiting for the URL to match '**/pay'."));
+
+	[Test]
+	public async Task AJourneyThatPassesOnARetryPassesTheRunAndIsReportedAsFlaky()
+	{
+		using var folder = new Folder();
+		var options = new JourneyRunOptions
+		{
+			Files = [folder.Add("shop/pay", "open /\nclick #pay")],
+			BaseUrl = new Uri("https://shop.test/"),
+			Rerun = "snap journey run --only {id}",
+			Retries = 2,
+			GitHubActions = false,
+		};
+		var runs = 0;
+
+		var (exit, output, _) = await RunAsync(options, (file, _) => ++runs == 1 ? Stopped(file) : new JourneyTranscript(file, "", null));
+
+		exit.Should().Be(JourneyExitCode.Ok);
+		runs.Should().Be(2);
+		output.Should().MatchInlineSnapshot(
+			"""
+			retry   shop/pay (attempt 1 of 3 failed at line 2)
+			flaky   shop/pay (<t>s, passed on attempt 2)
+
+			FLAKY   shop/pay: passed on attempt 2, after 1 failed attempt
+			Attempt 1:
+			Journey stopped at journeys/shop/pay.journey:2: click #pay
+			Timed out after 30s waiting for the URL to match '**/pay'.
+			Rerun:     snap journey run --only shop/pay
+
+			1 passed (1 flaky), 0 failed, 0 skipped in <t>s, against https://shop.test/
+			"""
+		);
+	}
+
+	[Test]
+	public async Task AJourneyThatKeepsFailingFailsAfterTheLastRetry()
+	{
+		using var folder = new Folder();
+		var options = new JourneyRunOptions { Files = [folder.Add("shop/pay", "open /\nclick #pay")], Retries = 1, GitHubActions = false };
+		var runs = 0;
+
+		var (exit, output, _) = await RunAsync(options, (file, _) =>
+		{
+			runs++;
+			return Stopped(file);
+		});
+
+		exit.Should().Be(JourneyExitCode.Failed);
+		runs.Should().Be(2);
+		output.Should().Contain("retry   shop/pay (attempt 1 of 2 failed at line 2)").And.Contain("FAILED  shop/pay").And.NotContain("FLAKY");
+	}
+
+	[Test]
+	public async Task NoRetriesByDefaultAndNoneForASourceThatCannotBeParsed()
+	{
+		using var folder = new Folder();
+		var plain = new JourneyRunOptions { Files = [folder.Add("a/one", "open /")], GitHubActions = false };
+		var broken = new JourneyRunOptions { Files = [folder.Add("a/broken", "frobnicate")], Retries = 3, GitHubActions = false };
+		var runs = 0;
+
+		var first = await RunAsync(plain, (file, _) =>
+		{
+			runs++;
+			return Stopped(file);
+		});
+		var second = await RunAsync(broken, (file, _) =>
+		{
+			runs++;
+			return new JourneyTranscript(file, "", null);
+		});
+
+		first.Exit.Should().Be(JourneyExitCode.Failed);
+		first.Output.Should().NotContain("retry");
+		second.Exit.Should().Be(JourneyExitCode.Usage);
+		runs.Should().Be(1);
+	}
+
+	[Test]
+	public async Task AFlakyJourneyIsAWarningAnnotationAndAFlakyFailureInJUnit()
+	{
+		using var folder = new Folder();
+		var junit = Path.Combine(folder.Path, "junit.xml");
+		var summary = Path.Combine(folder.Path, "summary.md");
+		var options = new JourneyRunOptions
+		{
+			Files = [folder.Add("shop/pay", "open /\nclick #pay")],
+			Retries = 1,
+			JUnitPath = junit,
+			StepSummaryPath = summary,
+			GitHubActions = true,
+		};
+		var runs = 0;
+
+		var (exit, output, _) = await RunAsync(options, (file, _) => ++runs == 1 ? Stopped(file) : new JourneyTranscript(file, "", null));
+
+		exit.Should().Be(JourneyExitCode.Ok);
+		output.Should().Contain("::warning file=journeys/shop/pay.journey,line=2,title=Journey flaky%3A shop/pay passed on attempt 2::");
+		var xml = File.ReadAllText(junit);
+		xml.Should().Contain("<flakyFailure message=\"click #pay\">").And.NotContain("<failure");
+		File
+			.ReadAllText(summary)
+			.Should()
+			.Contain("✅ **1 passed** (⚠️ 1 flaky)")
+			.And
+			.Contain("⚠️ flaky, passed on attempt 2")
+			.And
+			.Contain("#### ⚠️ shop/pay (flaky: attempt 1 failed, attempt 2 passed)");
+	}
+
 	[Test]
 	public async Task SkipsAreCollapsedPerReasonUnlessVerbose()
 	{

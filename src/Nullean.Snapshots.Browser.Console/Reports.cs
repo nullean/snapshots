@@ -30,31 +30,37 @@ internal static class JUnitReport
 				writer.WriteAttributeString("message", reason);
 				writer.WriteEndElement();
 			}
-			else if (outcome.Error is { } error)
+			else
 			{
-				writer.WriteStartElement("failure");
-				writer.WriteAttributeString("message", "journey did not run");
-				writer.WriteString(error);
-				writer.WriteEndElement();
-			}
-			else if (outcome.Transcript?.Failure is { } failure)
-			{
-				writer.WriteStartElement("failure");
-				writer.WriteAttributeString("message", failure.Command);
-				writer.WriteString(failure.Describe(outcome.File.Id));
-				writer.WriteEndElement();
-			}
-			else if (outcome.Compared is { Passed: false } compared)
-			{
-				writer.WriteStartElement("failure");
-				writer.WriteAttributeString("message", "transcript differs");
-				writer.WriteString(compared.FailureMessage ?? "");
-				writer.WriteEndElement();
+				// The attempts that failed come after the verdict, as Surefire writes them: flakyFailure when it passed in the end.
+				WriteFailure(writer, "failure", outcome);
+				foreach (var attempt in outcome.EarlierAttempts)
+					WriteFailure(writer, outcome.Passed ? "flakyFailure" : "rerunFailure", attempt);
 			}
 			writer.WriteEndElement();
 		}
 		writer.WriteEndElement();
 		writer.WriteEndDocument();
+	}
+
+	private static void WriteFailure(XmlWriter writer, string element, JourneyOutcome outcome)
+	{
+		if (outcome.Passed && element == "failure")
+			return;
+		if (outcome.Error is { } error)
+			Write(writer, element, "journey did not run", error);
+		else if (outcome.Transcript?.Failure is { } failure)
+			Write(writer, element, failure.Command, failure.Describe(outcome.File.Id));
+		else if (outcome.Compared is { Passed: false } compared)
+			Write(writer, element, "transcript differs", compared.FailureMessage ?? "");
+	}
+
+	private static void Write(XmlWriter writer, string element, string message, string text)
+	{
+		writer.WriteStartElement(element);
+		writer.WriteAttributeString("message", message);
+		writer.WriteString(text);
+		writer.WriteEndElement();
 	}
 
 	private static string Seconds(double value) => value.ToString("0.###", CultureInfo.InvariantCulture);

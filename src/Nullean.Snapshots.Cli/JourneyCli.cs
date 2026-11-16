@@ -426,6 +426,7 @@ internal sealed class JourneyCli(
 			Headers = headers,
 			Tags = new HashSet<string>(args.Tags, StringComparer.Ordinal),
 			Parallel = args.Parallel,
+			Retries = args.Retries,
 			// The baseline pass is not the run: a journey it skips is skipped in the comparison too, and it reports to no one.
 			AllowAllSkipped = seeding || args.AllowAllSkipped,
 			ScreenshotOnFailure = args.ScreenshotOnFailure,
@@ -666,6 +667,7 @@ internal sealed record JourneyRunArgs
 	public IReadOnlyList<string> Headers { get; init; } = [];
 	public string? Viewport { get; init; }
 	public int Parallel { get; init; } = 4;
+	public int Retries { get; init; }
 	public IReadOnlyList<string> Tags { get; init; } = [];
 	public string? JUnit { get; init; }
 	public bool Verbose { get; init; }
@@ -714,6 +716,7 @@ internal sealed class JourneyCommands
 	/// <param name="header">A request header every page sends (repeatable): "Name: value".</param>
 	/// <param name="viewport">The viewport every journey starts with: 1280x800. Chrome's default is a phone layout on a responsive site.</param>
 	/// <param name="parallel">-p, How many journeys run at once, in one shared browser. Default: 4.</param>
+	/// <param name="retries">How many times a journey that fails is run again, so a stall on the network or in the browser does not fail the run. One that passes on a retry passes and is reported as flaky. Default: 0.</param>
 	/// <param name="tag">-t, Only journeys with one of these '# @tags' (repeatable).</param>
 	/// <param name="junit">Write a JUnit XML report here.</param>
 	/// <param name="verbose">-v, List every skipped journey instead of collapsing a reason that many share.</param>
@@ -738,6 +741,7 @@ internal sealed class JourneyCommands
 		string[]? header = null,
 		string? viewport = null,
 		int parallel = 4,
+		int retries = 0,
 		string[]? tag = null,
 		string? junit = null,
 		bool verbose = false,
@@ -769,6 +773,7 @@ internal sealed class JourneyCommands
 				Headers = header ?? [],
 				Viewport = viewport,
 				Parallel = parallel,
+				Retries = retries,
 				Tags = tag ?? [],
 				JUnit = junit,
 				Verbose = verbose,

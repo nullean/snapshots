@@ -103,6 +103,14 @@ public sealed class JourneyRunOptions
 	/// <summary>How many journeys run at once, in one shared browser. Default: 4.</summary>
 	public int Parallel { get; init; } = 4;
 
+	/// <summary>
+	/// How many times a journey that fails is run again, so a stall on the network or in the browser does not fail a run. Default: 0.
+	/// A journey that passes on a retry passes the run and is reported as flaky, with what its earlier attempts failed on. A
+	/// journey whose source has errors, one that could not start Chrome and one whose finished transcript differs from the verified
+	/// one (a difference, not a flake) are not retried.
+	/// </summary>
+	public int Retries { get; init; }
+
 	/// <summary>Exit with 0 when every selected journey was skipped. A run that checked nothing otherwise exits with 1.</summary>
 	public bool AllowAllSkipped { get; init; }
 
@@ -158,6 +166,15 @@ public sealed record JourneyOutcome(
 {
 	/// <summary>The page the journey last opened, when it got that far.</summary>
 	public Uri? LastOpened { get; init; }
+
+	/// <summary>The attempts that failed before this one, oldest first; empty when it ran once. See <see cref="JourneyRunOptions.Retries"/>.</summary>
+	public IReadOnlyList<JourneyOutcome> EarlierAttempts { get; init; } = [];
+
+	/// <summary>How many times it ran.</summary>
+	public int Attempts => EarlierAttempts.Count + 1;
+
+	/// <summary>It passed, but only after an earlier attempt failed.</summary>
+	public bool Flaky => Passed && EarlierAttempts.Count > 0;
 
 	/// <summary>It did not run because it was not selected or does not apply.</summary>
 	public bool Skipped => SkipReason is not null;

@@ -39,17 +39,26 @@ internal static class GitHubActions
 		return full.StartsWith(root, StringComparison.Ordinal) ? Path.GetRelativePath(root, full).Replace('\\', '/') : null;
 	}
 
-	/// <summary>One error annotation per failed journey, at the failing step when there is one, and a warning for those past the limit. Skipped journeys have none.</summary>
+	/// <summary>
+	/// One error annotation per failed journey, at the failing step when there is one, and a warning for those past the limit; a
+	/// warning for each journey that passed only on a retry. Skipped journeys have none.
+	/// </summary>
 	internal static IReadOnlyList<string> Annotations(IReadOnlyList<JourneyOutcome> outcomes)
 	{
 		var failed = outcomes.Where(o => o.Failed).ToList();
-		var lines = failed.Take(MaxAnnotations).Select(Annotation).ToList();
+		var lines = failed.Take(MaxAnnotations).Select(o => Annotation(o, "error", $"Journey failed: {o.File.Id}")).ToList();
 		if (failed.Count > MaxAnnotations)
 			lines.Add($"::warning title=Journeys::{Escape($"{failed.Count - MaxAnnotations} more failed journeys have no annotation: see the step summary.")}");
+		lines.AddRange(
+			outcomes
+				.Where(o => o.Flaky)
+				.Take(MaxAnnotations)
+				.Select(o => Annotation(o.EarlierAttempts[0], "warning", $"Journey flaky: {o.File.Id} passed on attempt {o.Attempts}"))
+		);
 		return lines;
 	}
 
-	private static string Annotation(JourneyOutcome outcome)
+	private static string Annotation(JourneyOutcome outcome, string level, string title)
 	{
 		var failure = outcome.Transcript?.Failure;
 		var properties = new List<string>();
@@ -59,12 +68,12 @@ internal static class GitHubActions
 			if (failure is not null)
 				properties.Add($"line={failure.Line.ToString(CultureInfo.InvariantCulture)}");
 		}
-		properties.Add($"title={EscapeProperty($"Journey failed: {outcome.File.Id}")}");
+		properties.Add($"title={EscapeProperty(title)}");
 		var message = outcome.Error ??
 			(failure is null ? outcome.Compared?.FailureMessage ?? "The transcript differs." : $"{failure.Command}\n{failure.Message}");
 		if (failure?.Url is { Length: > 0 } url)
 			message += $"\nPage: {url}";
-		return $"::error {string.Join(',', properties)}::{Escape(message)}";
+		return $"::{level} {string.Join(',', properties)}::{Escape(message)}";
 	}
 
 	/// <summary>Opens a log group. A title is one line.</summary>
@@ -80,30 +89,40 @@ internal static class GitHubActions
 	{
 		var passed = outcomes.Count(o => o.Passed);
 		var failed = outcomes.Where(o => o.Failed).ToList();
+		var flaky = outcomes.Where(o => o.Flaky).ToList();
 		var skipped = outcomes.Where(o => o.Skipped).ToList();
 		var text = new StringBuilder();
 		_ = text.AppendLine(site is null ? "### Journeys" : $"### Journeys against {site}").AppendLine();
 		_ = text.AppendLine(
 			CultureInfo.InvariantCulture,
-			$"✅ **{passed} passed** · {(failed.Count > 0 ? $"❌ **{failed.Count} failed**" : "0 failed")} · ⊘ {skipped.Count} skipped"
+			$"✅ **{passed} passed**{(flaky.Count > 0 ? $" (⚠️ {flaky.Count} flaky)" : "")} · {(failed.Count > 0 ? $"❌ **{failed.Count} failed**" : "0 failed")} · ⊘ {skipped.Count} skipped"
 		);
 		if (skipped.Count > 0)
 			_ = text.AppendLine().AppendLine(SkippedLine(skipped));
 
 		var ran = outcomes.Where(o => !o.Skipped).ToList();
-		var listed = ran.Count <= ListedJourneys ? ran : failed;
+		var listed = ran.Count <= ListedJourneys ? ran : [.. failed, .. flaky];
 		if (listed.Count > 0)
 		{
 			_ = text.AppendLine().AppendLine("| Journey | Result | Time |").AppendLine("|---|---|---|");
 			foreach (var outcome in listed)
 				_ = text.AppendLine(
 					CultureInfo.InvariantCulture,
-					$"| `{outcome.File.Id}` | {(outcome.Passed ? "passed" : "**failed**")} | {outcome.Elapsed.TotalSeconds:0.0}s |"
+					$"| `{outcome.File.Id}` | {(outcome.Flaky ? $"⚠️ flaky, passed on attempt {outcome.Attempts}" : outcome.Passed ? "passed" : "**failed**")} | {outcome.Elapsed.TotalSeconds:0.0}s |"
 				);
 		}
 
 		foreach (var outcome in failed)
-			_ = text.AppendLine().Append(FailureSection(outcome, rerun?.Replace("{id}", outcome.File.Id, StringComparison.Ordinal)));
+			_ = text.AppendLine().Append(FailureSection(outcome, "❌", rerun?.Replace("{id}", outcome.File.Id, StringComparison.Ordinal)));
+		foreach (var outcome in flaky)
+			_ = text.AppendLine().Append(
+				FailureSection(
+					outcome.EarlierAttempts[0],
+					"⚠️",
+					rerun?.Replace("{id}", outcome.File.Id, StringComparison.Ordinal),
+					$"{outcome.File.Id} (flaky: attempt 1 failed, attempt {outcome.Attempts} passed)"
+				)
+			);
 		return text.ToString();
 	}
 
@@ -116,11 +135,11 @@ internal static class GitHubActions
 				skipped.GroupBy(o => o.SkipReason).OrderByDescending(g => g.Count()).Select(g => $"{g.Key} ({g.Count()})")
 			);
 
-	private static string FailureSection(JourneyOutcome outcome, string? rerun)
+	private static string FailureSection(JourneyOutcome outcome, string icon, string? rerun, string? heading = null)
 	{
 		var failure = outcome.Transcript?.Failure;
 		var text = new StringBuilder();
-		_ = text.AppendLine(CultureInfo.InvariantCulture, $"#### ❌ {outcome.File.Id}").AppendLine();
+		_ = text.AppendLine(CultureInfo.InvariantCulture, $"#### {icon} {heading ?? outcome.File.Id}").AppendLine();
 		if (failure is not null)
 			_ = text.AppendLine(
 				CultureInfo.InvariantCulture,
