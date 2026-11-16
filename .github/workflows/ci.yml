@@ -151,30 +151,25 @@ jobs:
         run: dotnet build tests/Nullean.Snapshots.Browser.Tests -c Release
 
       # DIAGNOSTIC (not to merge) (#64).
+      - name: Test JourneyCompareTests S10 alone
+        continue-on-error: true
+        timeout-minutes: 3
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/(ThePreviewsExtraLinkIsExplainedByItsRule)" --maximum-parallel-tests 1 --timeout 2m
+
+      - name: Test JourneyCompareTests S11 alone
+        continue-on-error: true
+        timeout-minutes: 3
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/(WithoutARuleTheExtraLinkFailsAndTheSuggestionIsTheRule)" --maximum-parallel-tests 1 --timeout 2m
+
+      - name: Test JourneyCompareTests S12 alone
+        continue-on-error: true
+        timeout-minutes: 3
+        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/(ARuleForSomethingThatDidNotChangeIsStale)" --maximum-parallel-tests 1 --timeout 2m
+
       - name: Test JourneyCompareTests P1 t10+t11
         continue-on-error: true
         timeout-minutes: 3
         run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/(ThePreviewsExtraLinkIsExplainedByItsRule)|(WithoutARuleTheExtraLinkFailsAndTheSuggestionIsTheRule)" --maximum-parallel-tests 1 --timeout 2m
-
-      - name: Test JourneyCompareTests P2 t11+t12
-        continue-on-error: true
-        timeout-minutes: 3
-        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/(WithoutARuleTheExtraLinkFailsAndTheSuggestionIsTheRule)|(ARuleForSomethingThatDidNotChangeIsStale)" --maximum-parallel-tests 1 --timeout 2m
-
-      - name: Test JourneyCompareTests P3 t10+t12
-        continue-on-error: true
-        timeout-minutes: 3
-        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/(ThePreviewsExtraLinkIsExplainedByItsRule)|(ARuleForSomethingThatDidNotChangeIsStale)" --maximum-parallel-tests 1 --timeout 2m
-
-      - name: Test JourneyCompareTests T13 alone
-        continue-on-error: true
-        timeout-minutes: 3
-        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/(EachSiteGetsItsOwnArtifactsFolderSoTheSecondRunDoesNotEmptyTheFirst)" --maximum-parallel-tests 1 --timeout 2m
-
-      - name: Test JourneyCompareTests R all three
-        continue-on-error: true
-        timeout-minutes: 3
-        run: dotnet test -c Release --no-build --project tests/Nullean.Snapshots.Browser.Tests --treenode-filter "/*/*/JourneyCompareTests/(ThePreviewsExtraLinkIsExplainedByItsRule)|(WithoutARuleTheExtraLinkFailsAndTheSuggestionIsTheRule)|(ARuleForSomethingThatDidNotChangeIsStale)" --maximum-parallel-tests 1 --timeout 2m
 
       - name: Upload the diagnostic log
         if: always()
