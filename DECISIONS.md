@@ -207,6 +207,11 @@ its verified file by the prefix swap. Half-written `*.tmp` files are ignored.
   reported, no `--delete`. The alternative, not writing the manifest, would leave the previous run's list in place, and the
   stale-file clock (#38) reads the manifest too. A runner that selects tests knows it did, so callers never have to decide
   how to run a part of a suite safely; `Nullean.Snapshots.TUnit` does this for a filter and for skipped tests.
+- **Who marks a run partial.** The runner that selects tests, never the project. `Nullean.Snapshots.TUnit` reads the process's
+  command line in its module initializer and marks the run when a Microsoft.Testing.Platform filter option is present
+  (`--treenode-filter`, `--filter-uid`, `--filter`); the journey and `.http` `SkipReason` methods mark it when they skip
+  one, since a skipped file leaves its verified snapshots untouched. A plain `[Skip]` test does not: the library cannot tell
+  whether it would have used a snapshot, and marking it would turn off orphan checks for every suite with one.
 - **A verified file written after the run started is never an orphan of it.** A snapshot accepted or added after the run
   was not left unused by it. The cost is that a dead snapshot someone edits after a run waits for the next run.
 - **`snap review`**, also bare `snap`: each pending snapshot with its diff, then accept, reject, skip or quit.

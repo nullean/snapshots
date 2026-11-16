@@ -56,6 +56,25 @@ public class RequiresTests
 	}
 
 	[Test]
+	public void SkipReason_SkippedJourney_MarksTheRunPartialAndAJourneyThatRunsDoesNot()
+	{
+		var engine = new SnapshotEngine(new System.IO.Abstractions.FileSystem(), Environment.GetEnvironmentVariable);
+		Snapshot.EngineOverride.Value = engine;
+		try
+		{
+			JourneySnapshot.SkipReason(Journey("open /\n"), new JourneySnapshotOptions { ReadOnly = true }).Should().BeNull();
+			engine.PartialReason.Should().BeNull();
+
+			JourneySnapshot.SkipReason(Journey("# @mutates\nopen /\n"), new JourneySnapshotOptions { ReadOnly = true });
+			engine.PartialReason.Should().Be("journey skipped: @mutates, and the run is read-only");
+		}
+		finally
+		{
+			Snapshot.EngineOverride.Value = null;
+		}
+	}
+
+	[Test]
 	public void SkipReason_UnmetRequirementComesBeforeMutates()
 	{
 		var file = Journey("# @requires navigation-preview\n# @mutates\nopen /\n");

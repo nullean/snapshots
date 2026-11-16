@@ -264,9 +264,13 @@ public static partial class JourneySnapshot
 		ArgumentException.ThrowIfNullOrEmpty(journeyFile);
 		ArgumentNullException.ThrowIfNull(options);
 		var metadata = Journey.Load(ResolveFile(journeyFile, callerFilePath)).Metadata;
-		if (metadata.Unmet(options.Context) is { } unmet)
-			return $"@requires {unmet}";
-		return metadata.Mutates && options.ReadOnly ? "@mutates, and the run is read-only" : null;
+		var reason = metadata.Unmet(options.Context) is { } unmet
+			? $"@requires {unmet}"
+			: metadata.Mutates && options.ReadOnly ? "@mutates, and the run is read-only" : null;
+		// A skipped journey leaves its verified transcripts untouched, so the run cannot say which snapshots are unused.
+		if (reason is not null)
+			SnapshotDefaults.MarkRunPartial($"journey skipped: {reason}");
+		return reason;
 	}
 
 	/// <summary>The journey's header directives: tags, requirements, monitor, alerts, <c>@mutates</c>.</summary>
