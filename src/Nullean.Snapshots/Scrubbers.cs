@@ -65,6 +65,39 @@ public static partial class Scrubbers
 		return text => scrubbers.Aggregate(text, (t, scrub) => scrub(t));
 	}
 
+	/// <summary>
+	/// A scrubber for values only known at test time, such as the names of the repositories a test discovered. Each value
+	/// is replaced with <c><paramref name="name"/>_1</c>, <c><paramref name="name"/>_2</c>, …, numbered in order of first appearance in
+	/// the text and the same value getting the same number, as <see cref="Guids"/> does. Matching is ordinal (case-sensitive), a longer value
+	/// wins over a shorter one that is its prefix, and a value matches only as a whole word: the characters next to it are not letters, digits or <c>_</c>.
+	/// Empty values are ignored, and with no values the text is returned unchanged. The set is read when this method is called.
+	/// </summary>
+	/// <exception cref="ArgumentException"><paramref name="name"/> is empty.</exception>
+	public static Func<string, string> Values(IEnumerable<string> values, string name)
+	{
+		ArgumentNullException.ThrowIfNull(values);
+		ArgumentException.ThrowIfNullOrEmpty(name);
+		var distinct = values
+			.Where(v => !string.IsNullOrEmpty(v))
+			.Distinct(StringComparer.Ordinal)
+			.OrderByDescending(v => v.Length)
+			.ThenBy(v => v, StringComparer.Ordinal)
+			.ToArray();
+		if (distinct.Length == 0)
+			return text => text ?? throw new ArgumentNullException(nameof(text));
+		var pattern = new System.Text.RegularExpressions.Regex(
+			@"(?<![0-9A-Za-z_])(?:" + string.Join('|', distinct.Select(System.Text.RegularExpressions.Regex.Escape)) + @")(?![0-9A-Za-z_])",
+			System.Text.RegularExpressions.RegexOptions.CultureInvariant,
+			TimeSpan.FromSeconds(5)
+		);
+		var prefix = name + "_";
+		return text =>
+		{
+			ArgumentNullException.ThrowIfNull(text);
+			return Number(text, pattern, prefix, StringComparer.Ordinal);
+		};
+	}
+
 	[GeneratedRegex(@"\\+")]
 	private static partial Regex BackslashRuns();
 
@@ -76,10 +109,10 @@ public static partial class Scrubbers
 		return text => pattern.Replace(text, replacement);
 	}
 
-	private static string Number(string text, Regex pattern, string prefix)
+	private static string Number(string text, Regex pattern, string prefix, StringComparer? comparer = null)
 	{
 		ArgumentNullException.ThrowIfNull(text);
-		var seen = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+		var seen = new Dictionary<string, int>(comparer ?? StringComparer.OrdinalIgnoreCase);
 		return pattern.Replace(text, match =>
 		{
 			if (!seen.TryGetValue(match.Value, out var n))

@@ -59,6 +59,7 @@ namespace Nullean.Snapshots
     static Func<string, string> Path(string root, string replacement)
     static Func<string, string> Regex(Regex pattern, string replacement)
     static Func<string, string> TempDirectory(string replacement = "{temp}")
+    static Func<string, string> Values(IEnumerable<string> values, string name)
 
   static class Snapshot
     static string ArtifactsDirectory(string sourceFile)
