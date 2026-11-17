@@ -22,6 +22,7 @@ toc:
       - file: html.md
       - file: json.md
       - file: yaml.md
+      - file: objects.md
       - file: images.md
       - file: browser.md
       - file: http.md

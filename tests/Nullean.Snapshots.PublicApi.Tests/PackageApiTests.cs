@@ -23,6 +23,7 @@ public class PackageApiTests
 			"Nullean.Snapshots.Images",
 			"Nullean.Snapshots.Images.Assertions",
 			"Nullean.Snapshots.Json",
+			"Nullean.Snapshots.Objects",
 			"Nullean.Snapshots.PublicApi",
 			"Nullean.Snapshots.TUnit",
 			"Nullean.Snapshots.Yaml",
