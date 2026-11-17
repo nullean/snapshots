@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="TUnit" />
+    <PackageReference Include="AwesomeAssertions" />
+    <PackageReference Include="CsCheck" />
+    <PackageReference Include="TestableIO.System.IO.Abstractions.TestingHelpers" />
+    <ProjectReference Include="../../src/Nullean.Snapshots.Objects/Nullean.Snapshots.Objects.csproj" />
+    <ProjectReference Include="../../src/Nullean.Snapshots.TUnit/Nullean.Snapshots.TUnit.csproj" />
+  </ItemGroup>
+
+  <Import Project="../../src/Nullean.Snapshots/buildTransitive/Nullean.Snapshots.targets" />
+  <Import Project="../../src/Nullean.Snapshots.TUnit/buildTransitive/Nullean.Snapshots.TUnit.targets" />
+
+</Project>

@@ -985,3 +985,22 @@ two sites. This change is the rules and what reads them; running the two sites i
 
 - `PackageApiTests` keeps a `.verified.api` per package, read from the net11.0 build. A pull request that changes an API then shows it as a diff of that file, and the failure before accepting says which version change it calls for, so the release label is not a guess. One test project references every package for it; the CLI is left out, since its contract is its commands, not its types.
 
+## Object snapshots
+
+- **A package of its own, `Nullean.Snapshots.Objects`**, reflection over public properties and fields written as YAML, then compared by the YAML format.
+  `MatchJsonSnapshot` already snapshots an object, but needs System.Text.Json to be able to write it: a cycle or a `System.Type` throws, and a set
+  comes out in hash order. This one is for those graphs; the JSON one stays the choice for a type that serialises.
+- **YAML, not JSON, as the text.** Maps compare by key and a path points at a line in a file a reviewer reads; the YAML package already does both.
+- **Reflection, and AOT.** The package keeps `IsAotCompatible` and its analyzers on; `Dump` and `MatchObjectSnapshot` are `[RequiresUnreferencedCode]`.
+  Checked with a native AOT app (osx-arm64, .NET 11 SDK) dumping nested records, a dictionary, a `HashSet<Uri>`, a property declared `object` and a cycle,
+  against the same program on the JIT: reading the *root* type's members worked, but (1) the members of every type reached only through another
+  object were gone (`Inner: {}`), and (2) a `HashSet<Uri>` came out unsorted, because trimming removes `ISet<>` and `IReadOnlySet<>` from
+  `Type.GetInterfaces()`. So: `Include<T>()` has `[DynamicallyAccessedMembers(PublicProperties | PublicFields)]` on `T`, which is what makes the trimmer
+  keep a type; the root type is included for you; sets are found by type (`HashSet<>`, `ImmutableHashSet<>`, `SortAsSet`) and never by interface, so a normal and an AOT run
+  give one text; and under AOT (`!RuntimeFeature.IsDynamicCodeSupported`) a type with no public members that was not included throws and says
+  which, rather than dumping `{}`. With every type included the AOT output was identical to the JIT's. A type that really has no members needs
+  `Include` under AOT too. Not done: a source generator for a warning-free path, as `JsonTypeInfo<T>` is for JSON.
+- **Cycles are a marker string,** `"<cycle to $.Path>"`, not a YAML anchor: the point is a stable, readable line, and an anchor would make the diff of two
+  graphs that differ in what they share much noisier. A shared object that is not a cycle is written in full each time.
+- **Exceptions from properties are named by type only.** The message differs between operating systems (and cultures), and a snapshot that differs by OS is the problem this
+  package should not add to.

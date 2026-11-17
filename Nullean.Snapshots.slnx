@@ -11,6 +11,7 @@
     <Project Path="src/Nullean.Snapshots.Images/Nullean.Snapshots.Images.csproj" />
     <Project Path="src/Nullean.Snapshots.Images.Assertions/Nullean.Snapshots.Images.Assertions.csproj" />
     <Project Path="src/Nullean.Snapshots.Json/Nullean.Snapshots.Json.csproj" />
+    <Project Path="src/Nullean.Snapshots.Objects/Nullean.Snapshots.Objects.csproj" />
     <Project Path="src/Nullean.Snapshots.PublicApi/Nullean.Snapshots.PublicApi.csproj" />
     <Project Path="src/Nullean.Snapshots.Yaml/Nullean.Snapshots.Yaml.csproj" />
     <Project Path="src/Nullean.HttpFileParser/Nullean.HttpFileParser.csproj" />
@@ -24,6 +25,7 @@
     <Project Path="tests/Nullean.Snapshots.Html.Tests/Nullean.Snapshots.Html.Tests.csproj" />
     <Project Path="tests/Nullean.Snapshots.Images.Tests/Nullean.Snapshots.Images.Tests.csproj" />
     <Project Path="tests/Nullean.Snapshots.Json.Tests/Nullean.Snapshots.Json.Tests.csproj" />
+    <Project Path="tests/Nullean.Snapshots.Objects.Tests/Nullean.Snapshots.Objects.Tests.csproj" />
     <Project Path="tests/Nullean.Snapshots.PublicApi.Tests/Nullean.Snapshots.PublicApi.Tests.csproj" />
     <Project Path="tests/Nullean.Snapshots.Yaml.Tests/Nullean.Snapshots.Yaml.Tests.csproj" />
     <Project Path="tests/Nullean.HttpFileParser.Tests/Nullean.HttpFileParser.Tests.csproj" />

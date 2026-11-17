@@ -5,6 +5,7 @@
     <PackageReference Include="AwesomeAssertions" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     <PackageReference Include="TestableIO.System.IO.Abstractions.TestingHelpers" />
+    <ProjectReference Include="../../src/Nullean.Snapshots.Objects/Nullean.Snapshots.Objects.csproj" />
     <ProjectReference Include="../../src/Nullean.Snapshots.PublicApi/Nullean.Snapshots.PublicApi.csproj" />
     <!-- every package, so PackageApiTests keeps each one's public API -->
     <ProjectReference Include="../../src/Nullean.HttpFileParser/Nullean.HttpFileParser.csproj" />

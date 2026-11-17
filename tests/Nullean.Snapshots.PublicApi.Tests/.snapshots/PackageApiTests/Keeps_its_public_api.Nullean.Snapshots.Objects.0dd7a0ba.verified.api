@@ -1,0 +1,27 @@
+assembly Nullean.Snapshots.Objects
+using AwesomeAssertions: AndConstraint<>
+using AwesomeAssertions.Primitives: ObjectAssertions
+using Nullean.Snapshots: SnapshotOptions
+using Nullean.Snapshots.Trees: TreeDiffOptions
+using System: Func<,>, Type
+using System.Diagnostics.CodeAnalysis: RequiresUnreferencedCodeAttribute
+using System.Runtime.CompilerServices: CallerFilePathAttribute, CallerLineNumberAttribute, CallerMemberNameAttribute
+
+namespace Nullean.Snapshots.Objects
+  sealed class ObjectDumpOptions
+    ObjectDumpOptions()
+    int MaxDepth { get; set; }
+    int MaxItems { get; set; }
+    ObjectDumpOptions IgnoreMember(string name)
+    ObjectDumpOptions IgnoreType<T>()
+    ObjectDumpOptions Include<T>()
+    ObjectDumpOptions Render<T>(Func<T, string?> render)
+    ObjectDumpOptions SortAsSet(Type type)
+
+  static class ObjectSnapshot
+    [RequiresUnreferencedCode("Reads the object's public members by reflection. Under trimming or native AOT the members of types that are only reached through other objects may be missing from the dump.")]
+    static string Dump<T>(T value, ObjectDumpOptions? options = null)
+
+  static class ObjectSnapshotAssertions
+    [RequiresUnreferencedCode("Reads the object's public members by reflection. Under trimming or native AOT the members of types that are only reached through other objects may be missing from the dump.")]
+    static AndConstraint<ObjectAssertions> MatchObjectSnapshot(this ObjectAssertions assertions, ObjectDumpOptions? dump = null, TreeDiffOptions? diff = null, string? name = null, SnapshotOptions? options = null, string because = "", [CallerFilePath] string callerFilePath = "", [CallerMemberName] string callerMemberName = "", [CallerLineNumber] int callerLineNumber = 0)

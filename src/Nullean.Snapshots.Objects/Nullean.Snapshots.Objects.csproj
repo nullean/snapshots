@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Nullean.Snapshots.Objects</RootNamespace>
+    <Description>Object-graph snapshots for Nullean.Snapshots: any object dumped by reflection as YAML, cycles and unordered sets handled, so a new property shows up as a diff by path.</Description>
+    <PackageTags>snapshot;approval;testing;object;reflection;yaml;awesomeassertions</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Nullean.Snapshots/Nullean.Snapshots.csproj" />
+    <ProjectReference Include="../Nullean.Snapshots.AwesomeAssertions/Nullean.Snapshots.AwesomeAssertions.csproj" />
+    <ProjectReference Include="../Nullean.Snapshots.Yaml/Nullean.Snapshots.Yaml.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Nullean.Snapshots.Objects.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -40,6 +40,7 @@ Accept:   snap accept Shop.Tests/CatalogTests/Serializes   (or: dnx Nullean.Snap
 | `Nullean.Snapshots.Html` | `MatchHtmlSnapshot`, `BeHtml`, `ContainHtml`, `NotContainHtml` |
 | `Nullean.Snapshots.Json` | `MatchJsonSnapshot` for JSON text and objects, `BeJson` |
 | `Nullean.Snapshots.Yaml` | `MatchYamlSnapshot`, `BeYaml` |
+| `Nullean.Snapshots.Objects` | `MatchObjectSnapshot`: any object graph, dumped by reflection as YAML |
 | `Nullean.Snapshots.TUnit` | the running TUnit test's class, method and arguments, so every case gets its own file |
 | `Nullean.Snapshots.Cli` | `snap`: review, accept, reject and find orphaned snapshots |
 
