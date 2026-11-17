@@ -39,6 +39,9 @@ public static class JourneyConsoleRunner
 
 		/// <summary>Runs one journey.</summary>
 		Task<JourneyTranscript> RunAsync(string file, JourneySnapshotOptions options, CancellationToken cancellationToken);
+
+		/// <summary>Waits until the site shows what <paramref name="precondition"/> names, or gives up.</summary>
+		Task<PreconditionResult> WaitAsync(JourneyPrecondition precondition, JourneyOptions options, CancellationToken cancellationToken);
 	}
 
 	internal static async Task<int> RunAsync(
@@ -50,7 +53,6 @@ public static class JourneyConsoleRunner
 		CancellationToken cancellationToken
 	)
 	{
-		_ = output;
 		var clock = Stopwatch.StartNew();
 		var plan = options.Files.Select(f => Plan(f, options)).ToList();
 		reporter.Planned([.. plan.Where(p => p.Skip is not null).Select(p => (p.File, p.Skip!))], plan.Count(p => p.Journey is not null && p.Skip is null));
@@ -65,6 +67,13 @@ public static class JourneyConsoleRunner
 			{
 				await error.WriteLineAsync(("Error: " + e.Message).AsMemory(), CancellationToken.None).ConfigureAwait(false);
 				return JourneyExitCode.Browser;
+			}
+
+			if (await UnmetPreconditionAsync(options, executor, reporter, cancellationToken).ConfigureAwait(false) is { } unmet)
+			{
+				await error.WriteLineAsync(("Error: " + unmet).AsMemory(), CancellationToken.None).ConfigureAwait(false);
+				WritePreconditionReports(options, output, unmet, clock.Elapsed);
+				return JourneyExitCode.Precondition;
 			}
 		}
 
@@ -93,6 +102,56 @@ public static class JourneyConsoleRunner
 					options.Rerun
 				);
 		return ExitCodeOf(outcomes, options);
+	}
+
+	// The message of the first precondition that was not met; null when all were.
+	private static async Task<string?> UnmetPreconditionAsync(
+		JourneyRunOptions options,
+		IJourneyExecutor executor,
+		IJourneyReporter reporter,
+		CancellationToken cancellationToken
+	)
+	{
+		var journeyOptions = new JourneyOptions
+		{
+			BaseUrl = options.BaseUrl,
+			AllowedHosts = options.AllowedHosts,
+			UserAgent = options.UserAgent,
+			Headers = options.Headers,
+			ReadOnly = options.ReadOnly,
+			WritableUrls = options.WritableUrls,
+			Viewport = options.Viewport,
+		};
+		foreach (var precondition in options.Preconditions)
+		{
+			reporter.Waiting(precondition);
+			var result = await executor.WaitAsync(precondition, journeyOptions, cancellationToken).ConfigureAwait(false);
+			reporter.Waited(precondition, result);
+			if (!result.Passed)
+				return result.Message;
+		}
+
+		return null;
+	}
+
+	// A run that never started still reports: one failed case for JUnit and the step summary, and an annotation on GitHub Actions.
+	private static void WritePreconditionReports(JourneyRunOptions options, TextWriter output, string message, TimeSpan elapsed)
+	{
+		var failed = new JourneyOutcome(new JourneyRunFile("preconditions/wait", "preconditions/wait"), null, null, message, null, elapsed);
+		if (options.JUnitPath is { } junit)
+			JUnitReport.Write(junit, options.Site?.Host ?? options.BaseUrl?.Host ?? "journeys", [failed]);
+		if (options.StepSummary)
+			Browser
+				.Console
+				.StepSummary
+				.Write(
+					options.StepSummaryPath ?? Environment.GetEnvironmentVariable("GITHUB_STEP_SUMMARY"),
+					options.Site ?? options.BaseUrl,
+					[failed],
+					options.Rerun
+				);
+		if (options.GitHubActions)
+			output.WriteLine($"::error title={GitHubActions.EscapeProperty("The site is not ready: no journey ran")}::{GitHubActions.Escape(message)}");
 	}
 
 	private static int ExitCodeOf(IReadOnlyList<JourneyOutcome> outcomes, JourneyRunOptions options)
@@ -260,6 +319,9 @@ public static class JourneyConsoleRunner
 
 		public async Task<JourneyTranscript> RunAsync(string file, JourneySnapshotOptions options, CancellationToken cancellationToken) =>
 			await JourneySnapshot.RunAsync(file, await _browser.Value.ConfigureAwait(false), options, cancellationToken).ConfigureAwait(false);
+
+		public async Task<PreconditionResult> WaitAsync(JourneyPrecondition precondition, JourneyOptions options, CancellationToken cancellationToken) =>
+			await JourneyPreconditions.WaitAsync(await _browser.Value.ConfigureAwait(false), precondition, options, cancellationToken).ConfigureAwait(false);
 
 		public async ValueTask DisposeAsync()
 		{

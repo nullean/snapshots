@@ -20,6 +20,14 @@ public interface IJourneyReporter
 	/// <summary>A journey ended: it passed, failed or could not run.</summary>
 	void Finished(JourneyOutcome outcome);
 
+	/// <summary>The run starts waiting for <paramref name="precondition"/>, before any journey runs.</summary>
+	void Waiting(JourneyPrecondition precondition)
+	{ }
+
+	/// <summary>Waiting for <paramref name="precondition"/> ended; a failed one ends the run.</summary>
+	void Waited(JourneyPrecondition precondition, PreconditionResult result)
+	{ }
+
 	/// <summary>An attempt of a journey failed and it runs again; <paramref name="failed"/> is that attempt, <paramref name="attempt"/> counts from 1.</summary>
 	void Retrying(JourneyRunFile file, JourneyOutcome failed, int attempt, int attempts)
 	{ }
@@ -122,6 +130,31 @@ public sealed class ConsoleJourneyReporter : IJourneyReporter
 			ClearStatus();
 			_output.WriteLine(Colour(outcome));
 			DrawStatus(force: true);
+		}
+	}
+
+	/// <inheritdoc />
+	public void Waiting(JourneyPrecondition precondition)
+	{
+		lock (_gate)
+			_output.WriteLine(
+				_interactive
+					? Ansi.Dim($"waiting for {precondition.Subject} ({precondition.Timeout.TotalSeconds:0.#}s)")
+					: $"waiting for {precondition.Subject} ({precondition.Timeout.TotalSeconds:0.#}s)"
+			);
+	}
+
+	/// <inheritdoc />
+	public void Waited(JourneyPrecondition precondition, PreconditionResult result)
+	{
+		lock (_gate)
+		{
+			if (!result.Passed)
+				return;
+			var line = $"ready   {result.Message} ({result.Attempts} {(result.Attempts == 1 ? "look" : "looks")}, {result.Elapsed.TotalSeconds:0.0}s)";
+			_output.WriteLine(_interactive ? Ansi.Green($"{Ansi.Ok} {line}") : line);
+			if (_interactive)
+				_output.WriteLine();
 		}
 	}
 

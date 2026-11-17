@@ -38,6 +38,9 @@ public static class JourneyExitCode
 
 	/// <summary>Chrome could not start.</summary>
 	public const int Browser = 3;
+
+	/// <summary>A site did not show what <see cref="JourneyRunOptions.Preconditions"/> wait for, so no journey ran.</summary>
+	public const int Precondition = 4;
 }
 
 /// <summary>What <see cref="JourneyConsoleRunner"/> runs, and how.</summary>
@@ -69,6 +72,14 @@ public sealed class JourneyRunOptions
 
 	/// <summary>Compares with <c>{journey}.{variant}.verified.journey</c>. Carried into the transcript for <see cref="Compare"/>.</summary>
 	public string? Variant { get; init; }
+
+	/// <summary>
+	/// What the site must show before any journey runs, such as the build a deploy just shipped: waited for one after the other, in
+	/// the shared Chrome, each within its own timeout and retries. When one is not met nothing runs: the run writes the reason and
+	/// ends with <see cref="JourneyExitCode.Precondition"/>, and <see cref="JourneyRunOptions.JUnitPath"/> gets a failed
+	/// <c>preconditions/wait</c> case. Not applied when every journey is skipped, and never retried by <see cref="Retries"/>.
+	/// </summary>
+	public IReadOnlyList<JourneyPrecondition> Preconditions { get; init; } = [];
 
 	/// <summary>The enabled feature flags of the site under test.</summary>
 	public IReadOnlySet<string> Features { get; init; } = new HashSet<string>(StringComparer.Ordinal);

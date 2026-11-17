@@ -93,6 +93,25 @@ does not fail a run against a live site. A journey that passes on a retry passes
 `flakyFailure` element in the JUnit report. A journey whose finished transcript differs from the verified one is not retried,
 since that is a difference and not a flake.
 
+`--wait-for <check>` (repeatable) makes the run wait until the site shows something before any journey runs, such as the build a
+deploy just shipped. A deploy that has not landed, or whose cache has not cleared, still shows the old value; the run then ends
+with exit code 4 and the reason, instead of failing every journey. A check is one of:
+
+```bash
+--wait-for "header:x-docs-build==1.74.1"                  # a response header of the page
+--wait-for "meta[name='docs:build']@content==1.74.1"       # an element's attribute
+--wait-for "h1#build==Ready"                               # an element's text
+--wait-for "header:Server=~^Amazon"                        # =~ matches a regular expression, =* contains
+```
+
+The operators `==`, `=~` and `=*` never occur in a CSS selector, so a selector needs no escaping. `--wait-path` is the page
+the checks look at, resolved against `--base-url` (default `./`). `--wait-timeout` (default `10s`; also `500ms`, `2m`) bounds the
+wait in all and `--wait-interval` (`500ms`) spaces the looks. `--wait-retries` (default 2) is how many looks that fail, because the
+page did not load or the connection dropped, are tried again before the wait gives up; a look that works and shows another
+value is not a failure, and the wait goes on until the timeout. Every look is a new browser context, so nothing is cached.
+`snap journey compare` waits for the target only, since the baseline is another release. With `--junit` an unmet check writes a
+failed `preconditions/wait` case; on GitHub Actions it is an error annotation.
+
 `--screenshot-on-failure` takes a screenshot of the page when a step fails. It is written to `failure.png` in the journey's
 artifacts folder, named in the failure, and on a terminal that can show images (Kitty, Ghostty, iTerm2, WezTerm, Sixel, with
 half blocks as the fallback) drawn under the error. It is off unless asked for, because a page can show private data;
