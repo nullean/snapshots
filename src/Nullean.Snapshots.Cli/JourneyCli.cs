@@ -1,6 +1,7 @@
 using System.IO.Abstractions;
 using System.Text.RegularExpressions;
 using Nullean.Argh;
+using Nullean.Cdp;
 using Nullean.Cdp.Journeys;
 using Nullean.Snapshots.Browser;
 using Nullean.Snapshots.Browser.Console;
@@ -20,6 +21,7 @@ namespace Nullean.Snapshots.Cli;
 /// <param name="run">Runs one journey file with its options; a real browser in the CLI, a fake in tests.</param>
 /// <param name="getVariable">Reads environment variables.</param>
 /// <param name="ensureReady">Starts the browser before the first journey, so a browser that cannot start ends the run once; none in tests.</param>
+/// <param name="wait">Waits for a precondition in the same browser; none in tests that run no preconditions.</param>
 internal sealed class JourneyCli(
 	IFileSystem fileSystem,
 	string root,
@@ -27,7 +29,8 @@ internal sealed class JourneyCli(
 	TextWriter error,
 	Func<string, JourneySnapshotOptions, CancellationToken, Task<JourneyTranscript>> run,
 	Func<string, string?> getVariable,
-	Func<CancellationToken, Task>? ensureReady = null
+	Func<CancellationToken, Task>? ensureReady = null,
+	Func<JourneyPrecondition, JourneyOptions, CancellationToken, Task<PreconditionResult>>? wait = null
 )
 {
 	private readonly string _root = fileSystem.Path.TrimEndingDirectorySeparator(fileSystem.Path.GetFullPath(root));
@@ -87,7 +90,10 @@ internal sealed class JourneyCli(
 			(site, _) => WithArtifactsReceived(fileSystem, projects.FromCallerFile(site.FilePath))
 		);
 		var args = more ?? new JourneyRunArgs();
-		if (!TryParseViewport(args.Viewport, out var viewport, out problem) || !TryParseHeaders(args.Headers, out var headers, out problem))
+		if (
+			!TryParseViewport(args.Viewport, out var viewport, out problem) || !TryParseHeaders(args.Headers, out var headers, out problem) ||
+			!TryParseWaits(args, out var preconditions, out problem)
+		)
 		{
 			error.WriteLine(problem);
 			return ExitCode.Usage;
@@ -105,7 +111,8 @@ internal sealed class JourneyCli(
 			viewport,
 			headers,
 			mode == TranscriptMode.Off ? null : (f, recorded) => engine.MatchFile(recorded.Text, JourneySnapshot.Format, f.Path, null, null, variant),
-			RerunCommand(baseUrl, variant, transcript, args)
+			RerunCommand(baseUrl, variant, transcript, args),
+			preconditions: preconditions
 		);
 		var interactive = args.Interactive ?? ConsoleJourneyReporter.UseInteractive;
 		if (interactive && baseUri is not null)
@@ -118,7 +125,7 @@ internal sealed class JourneyCli(
 			options,
 			output,
 			error,
-			new DelegateExecutor(run, ensureReady),
+			new DelegateExecutor(run, ensureReady, wait),
 			new ConsoleJourneyReporter(output, options, interactive),
 			cancellationToken
 		).ConfigureAwait(false);
@@ -172,7 +179,10 @@ internal sealed class JourneyCli(
 			return ExitCode.Usage;
 
 		var args = more ?? new JourneyRunArgs();
-		if (!TryParseViewport(args.Viewport, out var viewport, out problem) || !TryParseHeaders(args.Headers, out var headers, out problem))
+		if (
+			!TryParseViewport(args.Viewport, out var viewport, out problem) || !TryParseHeaders(args.Headers, out var headers, out problem) ||
+			!TryParseWaits(args, out var preconditions, out problem)
+		)
 		{
 			error.WriteLine(problem);
 			return ExitCode.Usage;
@@ -190,7 +200,7 @@ internal sealed class JourneyCli(
 		string? RulesFile(string? path, string journey) =>
 			path is null ? null : fileSystem.Path.GetFullPath(fileSystem.Path.Combine(_root, ExpandName(path, journey)));
 
-		var executor = new DelegateExecutor(run, ensureReady);
+		var executor = new DelegateExecutor(run, ensureReady, wait);
 		var interactive = args.Interactive ?? ConsoleJourneyReporter.UseInteractive;
 
 		// Pass one: the baseline site, written into the received tree. Nothing is shown unless it did not finish.
@@ -300,7 +310,8 @@ internal sealed class JourneyCli(
 			headers,
 			CompareOne,
 			$"snap journey compare {{id}}.journey --baseline {baselineUri} --target {targetUri} --reuse-baseline",
-			role: "target"
+			role: "target",
+			preconditions: preconditions
 		);
 		if (interactive)
 		{
@@ -396,10 +407,12 @@ internal sealed class JourneyCli(
 		Func<JourneyRunFile, JourneyTranscript, SnapshotResult>? compare,
 		string rerun,
 		bool seeding = false,
-		string? role = null
+		string? role = null,
+		IReadOnlyList<JourneyPrecondition>? preconditions = null
 	) =>
 		new()
 		{
+			Preconditions = seeding ? [] : preconditions ?? [],
 			Files = files,
 			BaseUrl = baseUri,
 			AllowedHosts = allow ?? [],
@@ -514,6 +527,131 @@ internal sealed class JourneyCli(
 		}
 
 		problem = $"Error: --viewport '{value}' is not a viewport: use --viewport <width>x<height>, e.g. 1280x800.";
+		return false;
+	}
+
+	/// <summary>
+	/// Reads each <c>--wait-for</c>: <c>header:Name==value</c> for a response header, <c>selector==value</c> for an element's text and
+	/// <c>selector@attribute==value</c> for an attribute. <c>=~</c> in place of <c>==</c> matches a regular expression and <c>=*</c> contains.
+	/// The operators never occur in a CSS selector, so a selector such as <c>meta[name='docs:build']</c> needs no escaping.
+	/// </summary>
+	internal static bool TryParseWaits(JourneyRunArgs args, out List<JourneyPrecondition> preconditions, out string problem)
+	{
+		problem = string.Empty;
+		preconditions = [];
+		if (args.WaitFor.Count == 0)
+		{
+			if (args.WaitPath is not null || args.WaitTimeout is not null || args.WaitInterval is not null || args.WaitRetries is not null)
+			{
+				problem = "Error: --wait-path, --wait-timeout, --wait-interval and --wait-retries describe a --wait-for; give one.";
+				return false;
+			}
+
+			return true;
+		}
+
+		if (
+			!TryParseDuration("--wait-timeout", args.WaitTimeout, TimeSpan.FromSeconds(10), out var timeout, out problem) ||
+			!TryParseDuration("--wait-interval", args.WaitInterval, TimeSpan.FromMilliseconds(500), out var interval, out problem)
+		)
+			return false;
+		if (args.WaitRetries is < 0)
+		{
+			problem = $"Error: --wait-retries {args.WaitRetries} is not zero or more.";
+			return false;
+		}
+
+		foreach (var value in args.WaitFor)
+		{
+			if (!TryParseWait(value, out var parsed, out problem))
+				return false;
+			preconditions.Add(parsed with
+			{
+				Path = args.WaitPath ?? "./",
+				Timeout = timeout,
+				Interval = interval,
+				Retries = args.WaitRetries ?? parsed.Retries,
+			});
+		}
+
+		return true;
+	}
+
+	private static bool TryParseWait(string value, out JourneyPrecondition precondition, out string problem)
+	{
+		problem = string.Empty;
+		precondition = null!;
+		var (index, length, match) = FindOperator(value);
+		var target = index < 0 ? string.Empty : value[..index];
+		var expected = index < 0 ? string.Empty : value[(index + length)..];
+		if (index < 0 || target.Length == 0 || expected.Length == 0)
+		{
+			problem =
+				$"Error: --wait-for '{value}' is not a wait: use header:Name==value, selector==value or selector@attribute==value ('=~' matches a regular expression, '=*' contains).";
+			return false;
+		}
+
+		if (target.StartsWith("header:", StringComparison.OrdinalIgnoreCase))
+		{
+			var name = target["header:".Length..];
+			if (name.Length == 0)
+			{
+				problem = $"Error: --wait-for '{value}' names no header.";
+				return false;
+			}
+
+			precondition = new JourneyPrecondition { Path = "./", Header = name, Expected = expected, Match = match };
+			return true;
+		}
+
+		var at = target.LastIndexOf('@');
+		string? attribute = null;
+		if (at >= 0)
+		{
+			attribute = target[(at + 1)..];
+			target = target[..at];
+		}
+
+		if (target.Length == 0 || attribute is { Length: 0 })
+		{
+			problem = $"Error: --wait-for '{value}' is not a wait: the selector or the attribute is empty.";
+			return false;
+		}
+
+		precondition = new JourneyPrecondition { Path = "./", Selector = target, Attribute = attribute, Expected = expected, Match = match };
+		return true;
+	}
+
+	private static (int Index, int Length, TextMatch Match) FindOperator(string value)
+	{
+		var best = (Index: -1, Length: 0, Match: TextMatch.Exact);
+		foreach (var (token, match) in new[] { ("==", TextMatch.Exact), ("=~", TextMatch.Regex), ("=*", TextMatch.Contains) })
+		{
+			var at = value.IndexOf(token, StringComparison.Ordinal);
+			if (at >= 0 && (best.Index < 0 || at < best.Index))
+				best = (at, token.Length, match);
+		}
+
+		return best;
+	}
+
+	/// <summary>Reads a duration: <c>10s</c>, <c>500ms</c>, <c>2m</c>, or a bare number of seconds.</summary>
+	internal static bool TryParseDuration(string flag, string? value, TimeSpan fallback, out TimeSpan duration, out string problem)
+	{
+		problem = string.Empty;
+		duration = fallback;
+		if (value is null)
+			return true;
+		var (digits, unit) = value.EndsWith("ms", StringComparison.Ordinal)
+			? (value[..^2], 0.001)
+			: value.EndsWith('s') ? (value[..^1], 1.0) : value.EndsWith('m') ? (value[..^1], 60.0) : (value, 1.0);
+		if (double.TryParse(digits, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var number) && number > 0)
+		{
+			duration = TimeSpan.FromSeconds(number * unit);
+			return true;
+		}
+
+		problem = $"Error: {flag} '{value}' is not a duration: use 10s, 500ms or 2m.";
 		return false;
 	}
 
@@ -673,6 +811,11 @@ internal sealed record JourneyRunArgs
 	public bool Verbose { get; init; }
 	public bool AllowAllSkipped { get; init; }
 	public bool ScreenshotOnFailure { get; init; }
+	public IReadOnlyList<string> WaitFor { get; init; } = [];
+	public string? WaitPath { get; init; }
+	public string? WaitTimeout { get; init; }
+	public string? WaitInterval { get; init; }
+	public int? WaitRetries { get; init; }
 
 	/// <summary>Colour, icons and the status line; decided from the terminal when <c>null</c>.</summary>
 	public bool? Interactive { get; init; }
@@ -681,9 +824,14 @@ internal sealed record JourneyRunArgs
 /// <summary>Runs journeys through the delegate the CLI was given: a real browser in the tool, a fake in tests.</summary>
 internal sealed class DelegateExecutor(
 	Func<string, JourneySnapshotOptions, CancellationToken, Task<JourneyTranscript>> run,
-	Func<CancellationToken, Task>? ensureReady
+	Func<CancellationToken, Task>? ensureReady,
+	Func<JourneyPrecondition, JourneyOptions, CancellationToken, Task<PreconditionResult>>? wait = null
 ) : JourneyConsoleRunner.IJourneyExecutor
 {
+	public Task<PreconditionResult> WaitAsync(JourneyPrecondition precondition, JourneyOptions options, CancellationToken cancellationToken) =>
+		wait?.Invoke(precondition, options, cancellationToken) ??
+			throw new InvalidOperationException("This run has no browser to wait for a precondition with.");
+
 	public Task EnsureReadyAsync(CancellationToken cancellationToken) => ensureReady?.Invoke(cancellationToken) ?? Task.CompletedTask;
 
 	public Task<JourneyTranscript> RunAsync(string file, JourneySnapshotOptions options, CancellationToken cancellationToken) =>
@@ -716,6 +864,11 @@ internal sealed class JourneyCommands
 	/// <param name="header">A request header every page sends (repeatable): "Name: value".</param>
 	/// <param name="viewport">The viewport every journey starts with: 1280x800. Chrome's default is a phone layout on a responsive site.</param>
 	/// <param name="parallel">-p, How many journeys run at once, in one shared browser. Default: 4.</param>
+	/// <param name="waitFor">Wait until the site shows this before any journey runs (repeatable): header:Name==value, selector==value (text) or selector@attribute==value. '=~' matches a regular expression and '=*' contains. A site that does not show it in time ends the run with exit code 4.</param>
+	/// <param name="waitPath">The page --wait-for looks at, resolved against the base URL. Default: ./</param>
+	/// <param name="waitTimeout">How long --wait-for waits in all: 10s, 500ms or 2m. Default: 10s.</param>
+	/// <param name="waitInterval">How long to wait between looks. Default: 500ms.</param>
+	/// <param name="waitRetries">How many looks that fail (the page did not load, the connection dropped) are tried again before the wait gives up. A look that works and shows another value is not one. Default: 2.</param>
 	/// <param name="retries">How many times a journey that fails is run again, so a stall on the network or in the browser does not fail the run. One that passes on a retry passes and is reported as flaky. Default: 0.</param>
 	/// <param name="tag">-t, Only journeys with one of these '# @tags' (repeatable).</param>
 	/// <param name="junit">Write a JUnit XML report here.</param>
@@ -741,6 +894,11 @@ internal sealed class JourneyCommands
 		string[]? header = null,
 		string? viewport = null,
 		int parallel = 4,
+		string[]? waitFor = null,
+		string? waitPath = null,
+		string? waitTimeout = null,
+		string? waitInterval = null,
+		int? waitRetries = null,
 		int retries = 0,
 		string[]? tag = null,
 		string? junit = null,
@@ -759,7 +917,13 @@ internal sealed class JourneyCommands
 				Console.Error,
 				async (file, options, ct) => await JourneySnapshot.RunAsync(file, await browser.Value.ConfigureAwait(false), options, ct).ConfigureAwait(false),
 				Environment.GetEnvironmentVariable,
-				_ => browser.Value
+				_ => browser.Value,
+				async (precondition, options, ct) => await JourneyPreconditions.WaitAsync(
+					await browser.Value.ConfigureAwait(false),
+					precondition,
+					options,
+					ct
+				).ConfigureAwait(false)
 			);
 			var args = new JourneyRunArgs
 			{
@@ -773,6 +937,11 @@ internal sealed class JourneyCommands
 				Headers = header ?? [],
 				Viewport = viewport,
 				Parallel = parallel,
+				WaitFor = waitFor ?? [],
+				WaitPath = waitPath,
+				WaitTimeout = waitTimeout,
+				WaitInterval = waitInterval,
+				WaitRetries = waitRetries,
 				Retries = retries,
 				Tags = tag ?? [],
 				JUnit = junit,
@@ -815,6 +984,11 @@ internal sealed class JourneyCommands
 	/// <param name="header">A request header every page sends (repeatable): "Name: value".</param>
 	/// <param name="viewport">The viewport every journey starts with: 1280x800.</param>
 	/// <param name="parallel">-p, How many journeys run at once, in one shared browser. Default: 4.</param>
+	/// <param name="waitFor">Wait until the site shows this before any journey runs (repeatable): header:Name==value, selector==value (text) or selector@attribute==value. '=~' matches a regular expression and '=*' contains. A site that does not show it in time ends the run with exit code 4. Only the target is waited for: the baseline is another release.</param>
+	/// <param name="waitPath">The page --wait-for looks at, resolved against the base URL. Default: ./</param>
+	/// <param name="waitTimeout">How long --wait-for waits in all: 10s, 500ms or 2m. Default: 10s.</param>
+	/// <param name="waitInterval">How long to wait between looks. Default: 500ms.</param>
+	/// <param name="waitRetries">How many looks that fail (the page did not load, the connection dropped) are tried again before the wait gives up. A look that works and shows another value is not one. Default: 2.</param>
 	/// <param name="tag">-t, Only journeys with one of these '# @tags' (repeatable).</param>
 	/// <param name="junit">Write a JUnit XML report of the comparison here.</param>
 	/// <param name="verbose">-v, List every skipped journey instead of collapsing a reason that many share.</param>
@@ -842,6 +1016,11 @@ internal sealed class JourneyCommands
 		string[]? header = null,
 		string? viewport = null,
 		int parallel = 4,
+		string[]? waitFor = null,
+		string? waitPath = null,
+		string? waitTimeout = null,
+		string? waitInterval = null,
+		int? waitRetries = null,
 		string[]? tag = null,
 		string? junit = null,
 		bool verbose = false,
@@ -860,7 +1039,13 @@ internal sealed class JourneyCommands
 				Console.Error,
 				async (file, options, ct) => await JourneySnapshot.RunAsync(file, await browser.Value.ConfigureAwait(false), options, ct).ConfigureAwait(false),
 				Environment.GetEnvironmentVariable,
-				_ => browser.Value
+				_ => browser.Value,
+				async (precondition, options, ct) => await JourneyPreconditions.WaitAsync(
+					await browser.Value.ConfigureAwait(false),
+					precondition,
+					options,
+					ct
+				).ConfigureAwait(false)
 			);
 			var args = new JourneyRunArgs
 			{
@@ -874,6 +1059,11 @@ internal sealed class JourneyCommands
 				Headers = header ?? [],
 				Viewport = viewport,
 				Parallel = parallel,
+				WaitFor = waitFor ?? [],
+				WaitPath = waitPath,
+				WaitTimeout = waitTimeout,
+				WaitInterval = waitInterval,
+				WaitRetries = waitRetries,
 				Tags = tag ?? [],
 				JUnit = junit,
 				Verbose = verbose,

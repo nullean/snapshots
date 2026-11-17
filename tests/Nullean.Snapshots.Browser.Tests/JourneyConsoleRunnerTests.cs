@@ -12,9 +12,15 @@ namespace Nullean.Snapshots.Browser.Tests;
 [NotInParallel("console-runner")]
 public partial class JourneyConsoleRunnerTests
 {
-	private sealed class Fake(Func<string, JourneySnapshotOptions, JourneyTranscript> run) : JourneyConsoleRunner.IJourneyExecutor
+	private sealed class Fake(
+		Func<string, JourneySnapshotOptions, JourneyTranscript> run,
+		Func<JourneyPrecondition, PreconditionResult>? wait = null
+	) : JourneyConsoleRunner.IJourneyExecutor
 	{
 		public Task EnsureReadyAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+		public Task<PreconditionResult> WaitAsync(JourneyPrecondition precondition, JourneyOptions options, CancellationToken cancellationToken) =>
+			Task.FromResult(wait?.Invoke(precondition) ?? new PreconditionResult(true, "ok", 1, TimeSpan.Zero));
 
 		public Task<JourneyTranscript> RunAsync(string file, JourneySnapshotOptions options, CancellationToken cancellationToken) =>
 			Task.FromResult(run(file, options));
@@ -40,7 +46,8 @@ public partial class JourneyConsoleRunnerTests
 	private static async Task<(int Exit, string Output, string Error)> RunAsync(
 		JourneyRunOptions options,
 		Func<string, JourneySnapshotOptions, JourneyTranscript>? run = null,
-		bool interactive = false
+		bool interactive = false,
+		Func<JourneyPrecondition, PreconditionResult>? wait = null
 	)
 	{
 		var output = new StringWriter();
@@ -50,7 +57,7 @@ public partial class JourneyConsoleRunnerTests
 			options,
 			output,
 			error,
-			new Fake(run),
+			new Fake(run, wait),
 			new ConsoleJourneyReporter(output, options, interactive),
 			CancellationToken.None
 		);
@@ -215,6 +222,135 @@ public partial class JourneyConsoleRunnerTests
 			.Contain("⚠️ flaky, passed on attempt 2")
 			.And
 			.Contain("#### ⚠️ shop/pay (flaky: attempt 1 failed, attempt 2 passed)");
+	}
+
+	private static readonly JourneyPrecondition Build = new()
+	{
+		Path = "/docs",
+		Selector = "meta[name='docs:build']",
+		Attribute = "content",
+		Expected = "1.74.1",
+	};
+
+	[Test]
+	public async Task AMetPreconditionIsWaitedForBeforeTheJourneysRun()
+	{
+		using var folder = new Folder();
+		var options = new JourneyRunOptions { Files = [folder.Add("shop/basket", "open /")], Preconditions = [Build], GitHubActions = false };
+		var order = new List<string>();
+
+		var (exit, output, _) = await RunAsync(options, (file, _) =>
+		{
+			order.Add("journey");
+			return new JourneyTranscript(file, "", null);
+		}, wait: p =>
+		{
+			order.Add("wait");
+			return new PreconditionResult(true, "The content attribute of meta[name='docs:build'] on /docs is \"1.74.1\".", 2, TimeSpan.FromSeconds(1.5));
+		});
+
+		exit.Should().Be(JourneyExitCode.Ok);
+		order.Should().Equal("wait", "journey");
+		output.Should().MatchInlineSnapshot(
+			"""
+			waiting for the content attribute of meta[name='docs:build'] on /docs (10s)
+			ready   The content attribute of meta[name='docs:build'] on /docs is "1.74.1". (2 looks, <t>s)
+			ok      shop/basket (<t>s)
+
+			1 passed, 0 failed, 0 skipped in <t>s
+			"""
+		);
+	}
+
+	[Test]
+	public async Task AnUnmetPreconditionEndsTheRunWithItsOwnExitCodeAndRunsNoJourney()
+	{
+		using var folder = new Folder();
+		var junit = Path.Combine(folder.Path, "junit.xml");
+		var options = new JourneyRunOptions
+		{
+			Files = [folder.Add("shop/basket", "open /")],
+			Preconditions = [Build],
+			JUnitPath = junit,
+			StepSummary = false,
+			GitHubActions = true,
+		};
+		var ran = false;
+
+		var (exit, output, error) = await RunAsync(
+			options,
+			(file, _) =>
+			{
+				ran = true;
+				return new JourneyTranscript(file, "", null);
+			},
+			wait: _ => new PreconditionResult(
+				false,
+				"Timed out after 10s waiting for the content attribute of meta[name='docs:build'] on /docs to equal \"1.74.1\": last saw \"1.73.0\" in 20 looks.",
+				20,
+				TimeSpan.FromSeconds(10)
+			)
+		);
+
+		exit.Should().Be(JourneyExitCode.Precondition);
+		ran.Should().BeFalse();
+		error.Should().StartWith("Error: Timed out after 10s waiting for the content attribute").And.Contain("last saw \"1.73.0\"");
+		output.Should().Contain("::error title=The site is not ready%3A no journey ran::Timed out after 10s");
+		var xml = File.ReadAllText(junit);
+		xml
+			.Should()
+			.Contain("name=\"wait\"")
+			.And
+			.Contain("classname=\"preconditions\"")
+			.And
+			.Contain("<failure")
+			.And
+			.Contain("<failure message=\"journey did not run\">Timed out after 10s")
+			.And
+			.Contain("last saw \"1.73.0\"");
+	}
+
+	[Test]
+	public async Task PreconditionsAreWaitedForInOrderAndTheFirstUnmetOneStopsTheRun()
+	{
+		using var folder = new Folder();
+		var second = Build with { Header = null, Selector = "h1", Attribute = null, Expected = "x" };
+		var options = new JourneyRunOptions { Files = [folder.Add("a/one", "open /")], Preconditions = [Build, second, Build], GitHubActions = false };
+		var asked = new List<string?>();
+
+		var (exit, _, error) = await RunAsync(options, wait: p =>
+		{
+			asked.Add(p.Selector);
+			return p == second ? new PreconditionResult(false, "second is not met", 1, TimeSpan.Zero) : new PreconditionResult(true, "ok", 1, TimeSpan.Zero);
+		});
+
+		exit.Should().Be(JourneyExitCode.Precondition);
+		asked.Should().Equal("meta[name='docs:build']", "h1");
+		error.Should().Be("Error: second is not met" + Environment.NewLine);
+	}
+
+	[Test]
+	public async Task NoPreconditionIsWaitedForWhenEveryJourneyIsSkipped()
+	{
+		using var folder = new Folder();
+		var options = new JourneyRunOptions
+		{
+			Files = [folder.Add("a/needs", "# @requires build-type:isolated\nopen /")],
+			BuildType = "assembler",
+			Preconditions = [Build],
+			AllowAllSkipped = true,
+			GitHubActions = false,
+		};
+		var waited = false;
+
+		var (exit, _, _) = await RunAsync(options, wait: _ =>
+		{
+			waited = true;
+			return new PreconditionResult(false, "never", 1, TimeSpan.Zero);
+		});
+
+		exit.Should().Be(JourneyExitCode.Ok);
+		waited.Should().BeFalse();
 	}
 
 	[Test]

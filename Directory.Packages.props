@@ -18,8 +18,8 @@
     <PackageVersion Include="SharpYaml" Version="3.17.0" />
     <PackageVersion Include="Nullean.PublicApi.Diff" Version="1.2.0" />
     <!-- The browser for journeys. 0.x and unpublished while this is a draft; see DECISIONS.md, "Browser". -->
-    <PackageVersion Include="Nullean.Cdp" Version="0.12.0" />
-    <PackageVersion Include="Nullean.Cdp.Journeys" Version="0.12.0" />
+    <PackageVersion Include="Nullean.Cdp" Version="0.13.0" />
+    <PackageVersion Include="Nullean.Cdp.Journeys" Version="0.13.0" />
     <PackageVersion Include="Nullean.TerminalImages" Version="0.2.2" />
     <!-- Adapters build against the latest stable release, which is also their minimum. -->
     <PackageVersion Include="TUnit.Core" Version="1.83.8" />

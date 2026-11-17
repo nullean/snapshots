@@ -1,5 +1,5 @@
 assembly Nullean.Snapshots.Browser.Console
-using Nullean.Cdp.Journeys: Journey, JourneyStep, JourneyViewport
+using Nullean.Cdp.Journeys: Journey, JourneyPrecondition, JourneyStep, JourneyViewport, PreconditionResult
 using Nullean.Snapshots: SnapshotResult
 using Nullean.Snapshots.Browser: JourneyTranscript
 using System: Func<,,>, Func<,>, Uri
@@ -21,6 +21,8 @@ namespace Nullean.Snapshots.Browser.Console
     void Retrying(JourneyRunFile file, JourneyOutcome failed, int attempt, int attempts)
     void Started(JourneyRunFile file)
     void StepStarted(JourneyRunFile file, JourneyStep journeyStep)
+    void Waited(JourneyPrecondition precondition, PreconditionResult result)
+    void Waiting(JourneyPrecondition precondition)
 
   sealed record ContextRow : IEquatable<ContextRow>
     ContextRow(string Label, string Value, string? Source = null)
@@ -43,6 +45,8 @@ namespace Nullean.Snapshots.Browser.Console
     void Retrying(JourneyRunFile file, JourneyOutcome failed, int attempt, int attempts) { … }
     void Started(JourneyRunFile file)
     void StepStarted(JourneyRunFile file, JourneyStep journeyStep)
+    void Waited(JourneyPrecondition precondition, PreconditionResult result) { … }
+    void Waiting(JourneyPrecondition precondition) { … }
 
   static class JourneyConsoleRunner
     static Task<int> RunAsync(JourneyRunOptions options, TextWriter output, TextWriter error, CancellationToken cancellationToken = default)
@@ -51,6 +55,7 @@ namespace Nullean.Snapshots.Browser.Console
     const int Browser = 3
     const int Failed = 1
     const int Ok = 0
+    const int Precondition = 4
     const int Usage = 2
 
   sealed record JourneyOutcome : IEquatable<JourneyOutcome>
@@ -113,6 +118,7 @@ namespace Nullean.Snapshots.Browser.Console
     Func<string, Journey>? Load { get; init; }
     int Parallel { get; init; }
     int ParseErrorExitCode { get; init; }
+    IReadOnlyList<JourneyPrecondition> Preconditions { get; init; }
     bool ReadOnly { get; init; }
     string? Rerun { get; init; }
     int Retries { get; init; }

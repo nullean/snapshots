@@ -693,6 +693,23 @@ image or a transcript is not something to read in a source file.
   verified one. Those are findings, not timing; a step that failed or threw is what a retry can fix.
 - `IJourneyReporter.Retrying` has an empty default, so a reporter written before it still compiles.
 
+## Preconditions
+
+- **A run waits for the site before it starts.** `JourneyRunOptions.Preconditions` (`--wait-for`) are waited for one after the other
+  in the shared Chrome, after it started and before any journey is planned to run, with Nullean.Cdp's
+  `JourneyPreconditions`. A site that shows the old build, or whose cache has not cleared, then fails the run once and says so,
+  instead of failing every journey or looking like a flake.
+- **Its own exit code, `Precondition` (4).** It is neither a failed journey (1) nor a usage error (2), so a workflow can tell "the deploy
+  is not live" from "the site is wrong". Nothing runs, `--retries` does not apply, and the run still reports: the reason on
+  stderr, a failed `preconditions/wait` case in JUnit and the step summary, and an error annotation on GitHub Actions.
+- **Not applied when every journey is skipped**, like Chrome itself: a run that checks nothing needs no site.
+- **`--wait-for` is `target==value`, not `target=value`.** A CSS selector may hold `=`, `~=` and `*=` (`meta[name='docs:build']`,
+  `a[href*='x']`), but never `==`, `=~` or `=*`, so those three are the operators and nothing needs escaping. `header:` marks a
+  response header, `@attribute` an attribute, and no `@` means the element's text.
+- **`compare` waits for the target only.** The baseline is another release, so the value that proves the target deployed is
+  not the baseline's.
+- `IJourneyReporter.Waiting` and `Waited` have empty defaults, so a reporter written before them still compiles.
+
 ## Failure screenshots
 
 - **Off unless asked for.** A screenshot can show private data, so `ScreenshotOnFailure` and `--screenshot-on-failure` are opt-in,
