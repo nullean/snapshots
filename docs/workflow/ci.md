@@ -33,3 +33,21 @@ tree consistent too, add this to `.gitattributes`:
 ```text
 *.verified.* text eol=lf
 ```
+
+## Windows
+
+Three things differ on a Windows runner, and only the first is handled for you:
+
+- **Snapshot text.** Line endings are normalised before comparing (above), so a CRLF checkout of a verified file passes.
+- **Text your test reads from source.** A raw string literal in a `.cs` file takes that file's line endings, so on a Windows checkout with
+  `core.autocrlf` a fixture written inline is CRLF. The snapshot of what you produce from it is still normalised, but the fixture itself is
+  not: anything that depends on its exact text, such as character offsets in a parser's error message, differs from Linux and macOS. Keep source files LF:
+
+  ```text
+  *.cs text eol=lf
+  ```
+
+  (A multi-line string passed as a test argument is read as `\n` for the file-name hash, so cases keep their names.)
+- **Paths.** Absolute paths, drive letters from an in-memory file system and JSON-escaped backslashes are for a scrubber:
+  `Scrubbers.Path(root, "{repo}")` and `Scrubbers.TempDirectory()`, or `Scrubbers.Path("C:/docs", "/docs")` for a mock file system's
+  `C:\docs\...`. See [scrubbing](../formats/index.md#scrubbing-volatile-values).

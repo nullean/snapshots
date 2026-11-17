@@ -24,6 +24,18 @@ $[1].v (actual $[2].v)   expected "b"   actual "B"   (verified.json:1:31)
 
 A property that appears twice in one object is an error, and so is invalid JSON.
 
+## Snapshotting an object graph
+
+`MatchJsonSnapshot` on an object serialises it with System.Text.Json and compares the JSON, so a property added to a record shows up in the
+next run as an added path, with nothing else to write. Two things come from System.Text.Json itself, not from the snapshot:
+
+- A **cycle** throws (`A possible object cycle was detected`). Set `ReferenceHandler = ReferenceHandler.IgnoreCycles` in the serializer options and
+  the repeated reference is written as `null`.
+- A member System.Text.Json cannot serialise, such as a `System.Type`, throws (`Serialization … of 'System.Type' instances is not supported`).
+  Mark it `[JsonIgnore]`, or give the options a converter for it.
+
+The overload that takes serializer options uses reflection, so it is not trim or native AOT safe; pass a generated `JsonTypeInfo<T>` where that matters.
+
 ## Options
 
 ```csharp
