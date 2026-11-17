@@ -54,28 +54,33 @@ public static class JourneyConsoleRunner
 	)
 	{
 		var clock = Stopwatch.StartNew();
-		var plan = options.Files.Select(f => Plan(f, options)).ToList();
-		reporter.Planned([.. plan.Where(p => p.Skip is not null).Select(p => (p.File, p.Skip!))], plan.Count(p => p.Journey is not null && p.Skip is null));
-
-		if (plan.Any(p => p.Journey is not null && p.Skip is null))
+		var browserStarted = false;
+		// What the site must show comes first, and before the journeys are planned: a deploy that has just landed can change the
+		// flags and build type they are judged against, so the caller gets to read them again once the site is as expected.
+		if (options.Preconditions.Count > 0)
 		{
-			try
-			{
-				await executor.EnsureReadyAsync(cancellationToken).ConfigureAwait(false);
-			}
-			catch (BrowserLaunchException e)
-			{
-				await error.WriteLineAsync(("Error: " + e.Message).AsMemory(), CancellationToken.None).ConfigureAwait(false);
+			if (!await StartBrowserAsync(executor, error, cancellationToken).ConfigureAwait(false))
 				return JourneyExitCode.Browser;
-			}
-
+			browserStarted = true;
 			if (await UnmetPreconditionAsync(options, executor, reporter, cancellationToken).ConfigureAwait(false) is { } unmet)
 			{
 				await error.WriteLineAsync(("Error: " + unmet).AsMemory(), CancellationToken.None).ConfigureAwait(false);
 				WritePreconditionReports(options, output, unmet, clock.Elapsed);
 				return JourneyExitCode.Precondition;
 			}
+
+			if (options.RefreshAfterPreconditions is { } refresh)
+				options = await refresh(options, cancellationToken).ConfigureAwait(false);
 		}
+
+		var plan = options.Files.Select(f => Plan(f, options)).ToList();
+		reporter.Planned([.. plan.Where(p => p.Skip is not null).Select(p => (p.File, p.Skip!))], plan.Count(p => p.Journey is not null && p.Skip is null));
+
+		if (
+			!browserStarted && plan.Any(p => p.Journey is not null && p.Skip is null) &&
+			!await StartBrowserAsync(executor, error, cancellationToken).ConfigureAwait(false)
+		)
+			return JourneyExitCode.Browser;
 
 		using var gate = new SemaphoreSlim(Math.Max(1, options.Parallel));
 		var launched = new LaunchFailure();
@@ -102,6 +107,21 @@ public static class JourneyConsoleRunner
 					options.Rerun
 				);
 		return ExitCodeOf(outcomes, options);
+	}
+
+	// Starts Chrome; false after writing why when it cannot start.
+	private static async Task<bool> StartBrowserAsync(IJourneyExecutor executor, TextWriter error, CancellationToken cancellationToken)
+	{
+		try
+		{
+			await executor.EnsureReadyAsync(cancellationToken).ConfigureAwait(false);
+			return true;
+		}
+		catch (BrowserLaunchException e)
+		{
+			await error.WriteLineAsync(("Error: " + e.Message).AsMemory(), CancellationToken.None).ConfigureAwait(false);
+			return false;
+		}
 	}
 
 	// The message of the first precondition that was not met; null when all were.

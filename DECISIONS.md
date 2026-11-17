@@ -706,9 +706,16 @@ image or a transcript is not something to read in a source file.
 - **Its own exit code, `Precondition` (4).** It is neither a failed journey (1) nor a usage error (2), so a workflow can tell "the deploy
   is not live" from "the site is wrong". Nothing runs, `--retries` does not apply, and the run still reports: the reason on
   stderr, a failed `preconditions/wait` case in JUnit and the step summary, and an error annotation on GitHub Actions.
-- **Not applied when every journey is skipped**, like Chrome itself: a run that checks nothing needs no site.
+- **They come before the journeys are planned.** A deploy that has just landed can change the flags and the build type that `@requires`
+  and `feature` blocks are judged against, so `JourneyRunOptions.RefreshAfterPreconditions` lets the caller read them again once the
+  wait is met, and the plan, the skips and the run use the refreshed options. The wait therefore also happens when every journey
+  would be skipped; Chrome starts for it.
+- **The flags are parsed here, once.** `JourneyWait.Parse` (`JourneyWaitFlags` in, `JourneyWaitParse` out) is what `snap journey run`
+  and any tool on `JourneyConsoleRunner` call, so the syntax cannot drift between them. `==`, `=~` and `=*` are found outside quotes
+  and brackets, and the last `@` outside them starts the attribute: `a[href='mailto:docs@elastic.co']==Contact` is a selector
+  with no attribute. A problem is plain text naming the flag; the caller adds its own prefix.
 - **`--wait-for` is `target==value`, not `target=value`.** A CSS selector may hold `=`, `~=` and `*=` (`meta[name='docs:build']`,
-  `a[href*='x']`), but never `==`, `=~` or `=*`, so those three are the operators and nothing needs escaping. `header:` marks a
+  `a[href*='x']`), and quoted text may hold anything, so `==`, `=~` and `=*` outside quotes and brackets are the operators. `header:` marks a
   response header, `@attribute` an attribute, and no `@` means the element's text.
 - **`compare` waits for the target only.** The baseline is another release, so the value that proves the target deployed is
   not the baseline's.

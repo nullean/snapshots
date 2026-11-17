@@ -104,7 +104,7 @@ with exit code 4 and the reason, instead of failing every journey. A check is on
 --wait-for "header:Server=~^Amazon"                        # =~ matches a regular expression, =* contains
 ```
 
-The operators `==`, `=~` and `=*` never occur in a CSS selector, so a selector needs no escaping. `--wait-path` is the page
+The operators `==`, `=~` and `=*` are read outside quotes and brackets, and the last `@` outside them starts the attribute, so a selector such as `a[href='mailto:docs@elastic.co']` needs no escaping. `--wait-path` is the page
 the checks look at, resolved against `--base-url` (default `./`). `--wait-timeout` (default `10s`; also `500ms`, `2m`) bounds the
 wait in all and `--wait-interval` (`500ms`) spaces the looks. `--wait-retries` (default 2) is how many looks that fail, because the
 page did not load or the connection dropped, are tried again before the wait gives up; a look that works and shows another
