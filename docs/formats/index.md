@@ -47,4 +47,14 @@ new SnapshotOptions().Scrub(Scrubbers.Path(repoRoot, "{repo}")).Scrub(Scrubbers.
 A drive letter from an in-memory file system (`C:\docs\docset.yml` against `/docs/docset.yml`) is not a root of this machine: scrub it with
 `Scrubbers.Path("C:/docs", "/docs")`, or a regex.
 
+`Scrubbers.Values(values, name)` is for values the test discovers at run time, such as the repositories it cloned. Each one becomes
+`name_1`, `name_2`, … in order of first appearance, the same value always getting the same number:
+
+```csharp
+new SnapshotOptions().Scrub(Scrubbers.Values(repositories.Select(r => r.Name), "Repo"));
+```
+
+Matching is case-sensitive and by whole word (`abc` is not found in `abcd`), and the longer of two overlapping values wins. The set is read when
+you call `Values`.
+
 Nothing is scrubbed unless you ask for it.

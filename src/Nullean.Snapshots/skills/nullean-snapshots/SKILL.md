@@ -25,6 +25,9 @@ internal static void Init()
 }
 ```
 
+Values only known at test time: `new SnapshotOptions().Scrub(Scrubbers.Values(names, "Repo"))` gives `Repo_1`, `Repo_2`, …
+(case-sensitive, whole words, longest value first).
+
 Scrub for one call, or skip the global scrubbers:
 
 ```csharp

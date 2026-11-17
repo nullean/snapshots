@@ -53,6 +53,45 @@ public partial class ScrubberTests
 		Gen.String[Gen.Char["ab/\\ ."], 0, 20].Sample(t => Scrubbers.Path("/a/b", "{r}")(Scrubbers.Path("/a/b", "{r}")(t)) == Scrubbers.Path("/a/b", "{r}")(t));
 
 	[Test]
+	public void ValuesNumberEachValueInOrderOfFirstAppearance() =>
+		Scrubbers.Values(["beta", "alpha"], "Repo")("alpha, beta, alpha and beta").Should().Be("Repo_1, Repo_2, Repo_1 and Repo_2");
+
+	[Test]
+	public void ValuesPreferTheLongerOfTwoOverlappingValues() =>
+		Scrubbers.Values(["docs", "docs-private"], "Repo")("docs-private and docs").Should().Be("Repo_1 and Repo_2");
+
+	[Test]
+	public void ValuesMatchWholeWordsAndCaseSensitively() =>
+		Scrubbers.Values(["abc"], "V")("abc abcd xabc ABC abc_ (abc)").Should().Be("V_1 abcd xabc ABC abc_ (V_1)");
+
+	[Test]
+	public void ValuesTakeRegexMetacharactersLiterally() => Scrubbers.Values(["a.b", "c+d"], "V")("a.b axb c+d ccd").Should().Be("V_1 axb V_2 ccd");
+
+	[Test]
+	public void ValuesWithNoValuesLeaveTheTextAlone() => Scrubbers.Values([], "V")("a b").Should().Be("a b");
+
+	[Test]
+	public void ValuesIgnoreEmptyValues() => Scrubbers.Values([""], "V")("a b").Should().Be("a b");
+
+	[Test]
+	public void ValuesRejectAnEmptyName()
+	{
+		var act = () => Scrubbers.Values(["a"], "");
+		act.Should().Throw<ArgumentException>();
+	}
+
+	[System.Text.RegularExpressions.GeneratedRegex("(?<![0-9A-Za-z_])(a|ab|b)(?![0-9A-Za-z_])")]
+	private static partial System.Text.RegularExpressions.Regex SetMember();
+
+	[Test]
+	public void ValuesLeaveNoneOfTheSetBehind() =>
+		Gen.String[Gen.Char["ab "], 0, 20].Sample(t =>
+		{
+			var scrubbed = Scrubbers.Values(["a", "ab", "b"], "V")(t);
+			return !SetMember().IsMatch(scrubbed);
+		});
+
+	[Test]
 	public void GuidsAreIdempotent() => Text.Sample(t => Scrubbers.Guids(Scrubbers.Guids(t)) == Scrubbers.Guids(t));
 
 	[Test]

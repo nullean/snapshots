@@ -107,6 +107,9 @@ its verified file by the prefix swap. Half-written `*.tmp` files are ignored.
   `snap reject`'s job.
 - **Scrubbers are opt-in**, globally (`SnapshotDefaults.AddScrubber`) or per call. Line endings are always normalised;
   that is not a scrubber.
+- **`Scrubbers.Values`** matches ordinally and by whole word, tries longer values first, and reads its set when created. A set known
+  only at test time cannot be a regex the author writes, and numbering reuses what `Guids` does. Case-sensitive, unlike `Guids`, because
+  `Repo` and `repo` can be different repositories.
 - **Message caps.** At most 20 differences and 80 lines. A difference that does not fit in the remaining lines is
   left out whole rather than cut mid-hunk, except a first difference longer than the cap on its own, which is cut so
   something shows. Either way it counts in "(+N more, see received)".
