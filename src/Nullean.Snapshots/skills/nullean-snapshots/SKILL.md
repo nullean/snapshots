@@ -28,6 +28,9 @@ internal static void Init()
 Values only known at test time: `new SnapshotOptions().Scrub(Scrubbers.Values(names, "Repo"))` gives `Repo_1`, `Repo_2`, …
 (case-sensitive, whole words, longest value first).
 
+Fail instead of scrub when a value must never appear (secrets, private names): `new SnapshotOptions().Forbid(values)`, or
+`SnapshotDefaults.Forbid(values)` for every snapshot. The message gives line numbers, never the values, and writes no received file.
+
 Scrub for one call, or skip the global scrubbers:
 
 ```csharp

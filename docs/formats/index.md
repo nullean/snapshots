@@ -57,4 +57,17 @@ new SnapshotOptions().Scrub(Scrubbers.Values(repositories.Select(r => r.Name), "
 Matching is case-sensitive and by whole word (`abc` is not found in `abcd`), and the longer of two overlapping values wins. The set is read when
 you call `Values`.
 
+## Forbidding values
+
+A scrubber hides a value; `Forbid` makes sure it never shows up at all, such as a secret or the name of a private repository:
+
+```csharp
+new SnapshotOptions().Forbid(secrets);   // one call
+SnapshotDefaults.Forbid(secrets);         // every snapshot, from a module initializer
+```
+
+A snapshot fails when the scrubbed value, or its verified file, contains one of them (ordinal match). The message gives the
+line numbers and never the values, and no received file is written, so a forbidden value does not reach the disk. Accepting does not get
+around it, and `IgnoreDefaultScrubbers` does not skip the default list.
+
 Nothing is scrubbed unless you ask for it.

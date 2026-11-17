@@ -9,6 +9,7 @@ namespace Nullean.Snapshots;
 public static class SnapshotDefaults
 {
 	private static Func<string, string>[] AllScrubbers = [];
+	private static string[] AllForbidden = [];
 	private static ISnapshotTestIdentityProvider? IdentityProvider;
 
 	/// <summary>Scrubbers applied to every snapshot, in the order they were added.</summary>
@@ -36,6 +37,28 @@ public static class SnapshotDefaults
 
 	/// <summary>Removes every scrubber added through <see cref="AddScrubber(Func{string, string})"/>.</summary>
 	public static void ClearScrubbers() => Volatile.Write(ref AllScrubbers, []);
+
+	internal static IReadOnlyList<string> Forbidden => Volatile.Read(ref AllForbidden);
+
+	/// <summary>
+	/// Fails every snapshot that, after scrubbing, or whose verified file, contains any of <paramref name="values"/>. See
+	/// <see cref="SnapshotOptions.Forbid"/>; the values are never shown in a message. A guard is not a scrubber, so <see cref="SnapshotOptions.IgnoreDefaultScrubbers"/> does not skip it.
+	/// </summary>
+	public static void Forbid(IEnumerable<string> values)
+	{
+		ArgumentNullException.ThrowIfNull(values);
+		var added = values.Where(v => !string.IsNullOrEmpty(v)).ToArray();
+		string[] current, next;
+		do
+		{
+			current = Volatile.Read(ref AllForbidden);
+			next = [.. current, .. added];
+		}
+		while (Interlocked.CompareExchange(ref AllForbidden, next, current) != current);
+	}
+
+	/// <summary>Removes every value added through <see cref="Forbid"/>.</summary>
+	public static void ClearForbidden() => Volatile.Write(ref AllForbidden, []);
 
 	/// <summary>
 	/// Registers where the current test's identity comes from. The <c>Nullean.Snapshots.TUnit</c> package does this
