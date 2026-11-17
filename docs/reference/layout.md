@@ -24,6 +24,23 @@ tests/Shop.Tests/
   argument are read as `\n`, so a multi-line string from a source file hashes the same on a Windows checkout (CRLF) as on
   Linux and macOS.
 
+### Readable names for data-driven cases
+
+The hash keeps `[Arguments]` cases apart but says nothing about them. One test can name its cases instead: pass a `name` for the case and set
+`NameReplacesArguments`, and the file is `{Method}.{name}` with no hash.
+
+```csharp
+[Test]
+[Arguments("empty", "")]
+[Arguments("one-link", "[a](b.md)")]
+public void Renders(string name, string markdown) =>
+    Render(markdown).Should().MatchSnapshot(name, new SnapshotOptions { NameReplacesArguments = true });
+```
+
+The name may hold letters, digits, `-`, `_` and inner `.`; `SnapshotPath.Sanitize` makes one from free text. Two cases with the same name fail
+as two assertions resolving to one snapshot. The option is off by default so no existing file is renamed. It applies to text, JSON, YAML and HTML
+snapshots, which take options; image snapshots do not.
+
 A snapshot can also belong to a file rather than a test. `Snapshot.MatchFile` keys it by the file's path in the
 project, without the extension, so every runner of that file shares one verified file:
 

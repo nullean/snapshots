@@ -164,7 +164,7 @@ internal sealed partial class SnapshotEngine(
 	{
 		ArgumentNullException.ThrowIfNull(actual);
 		ArgumentNullException.ThrowIfNull(format);
-		var (project, key, identity) = ResolveTestKey(callSite, name);
+		var (project, key, identity) = ResolveTestKey(callSite, name, options?.NameReplacesArguments ?? false);
 		ClaimKey(key, identity, callSite);
 		return Compare(actual, format, project, key, identity?.TreeNodeFilter, options, because);
 	}
@@ -179,10 +179,16 @@ internal sealed partial class SnapshotEngine(
 	}
 
 	/// <summary>The project and key of a snapshot named after the calling test.</summary>
-	private (SnapshotProject Project, string Key, SnapshotTestIdentity? Identity) ResolveTestKey(SnapshotCallSite callSite, string? name)
+	private (SnapshotProject Project, string Key, SnapshotTestIdentity? Identity) ResolveTestKey(
+		SnapshotCallSite callSite,
+		string? name,
+		bool nameReplacesArguments = false
+	)
 	{
 		if (name is not null && !SnapshotPath.IsValidName(name))
 			throw new ArgumentException($"Snapshot name '{name}' may only hold letters, digits, '-', '_' and inner '.'.", nameof(name));
+		if (nameReplacesArguments && name is null)
+			throw new ArgumentException("SnapshotOptions.NameReplacesArguments names the file after the case, so the call needs a name.", nameof(name));
 
 		var identity = (identityProvider is null ? SnapshotDefaults.TestIdentity : identityProvider())?.Current;
 		var project = projectResolver is null
@@ -195,7 +201,7 @@ internal sealed partial class SnapshotEngine(
 			identity?.ClassName ?? fileSystem.Path.GetFileNameWithoutExtension(callSite.FilePath),
 			identity?.MethodName ?? callSite.MemberName,
 			name,
-			identity is null ? null : SnapshotPath.ArgumentsHash(identity.Arguments)
+			identity is null || nameReplacesArguments ? null : SnapshotPath.ArgumentsHash(identity.Arguments)
 		);
 		return (project, key, identity);
 	}

@@ -36,5 +36,6 @@ JSON and YAML differences are reported by a JSONPath-like path:
 
 ## SnapshotOptions
 
-Per call: `Scrub(Func<string, string>)`, `Scrub(Regex, string)` and `IgnoreDefaultScrubbers`. See
-[scrubbing](../formats/index.md#scrubbing-volatile-values).
+Per call: `Scrub(Func<string, string>)`, `Scrub(Regex, string)`, `IgnoreDefaultScrubbers` and `NameReplacesArguments`. See
+[scrubbing](../formats/index.md#scrubbing-volatile-values) and
+[readable names for cases](layout.md#readable-names-for-data-driven-cases).

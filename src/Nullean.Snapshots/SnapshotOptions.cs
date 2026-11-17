@@ -17,6 +17,13 @@ public sealed class SnapshotOptions
 	/// <summary>Skip the scrubbers registered in <see cref="SnapshotDefaults"/> for this call.</summary>
 	public bool IgnoreDefaultScrubbers { get; set; }
 
+	/// <summary>
+	/// Names the snapshot file after the call's <c>name</c> alone, leaving out the hash of the test's arguments, so the cases of one
+	/// <c>[Arguments]</c> test get readable files: <c>{Method}.{name}</c> instead of <c>{Method}.{name}.{hash}</c>. The call must pass a name,
+	/// and two cases with the same name fail as two assertions resolving to the same snapshot. Off by default, which keeps existing file names.
+	/// </summary>
+	public bool NameReplacesArguments { get; set; }
+
 	/// <summary>Adds a scrubber for this call.</summary>
 	public SnapshotOptions Scrub(Func<string, string> scrubber)
 	{

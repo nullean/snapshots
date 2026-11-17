@@ -176,6 +176,7 @@ namespace Nullean.Snapshots
   sealed class SnapshotOptions
     SnapshotOptions()
     bool IgnoreDefaultScrubbers { get; set; }
+    bool NameReplacesArguments { get; set; }
     IReadOnlyList<Func<string, string>> Scrubbers { get; }
     SnapshotOptions Forbid(IEnumerable<string> values)
     SnapshotOptions Scrub(Func<string, string> scrubber)
