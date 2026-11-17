@@ -114,6 +114,10 @@ its verified file by the prefix swap. Half-written `*.tmp` files are ignored.
   before a received file is written (a forbidden value must not land on disk, where `snap` and CI artifacts would carry it), reports line
   numbers only, and cannot be accepted away. The default list ignores `IgnoreDefaultScrubbers`, since turning scrubbers off is not
   permission to leak. The values are held internally and never exposed through a property.
+- **`NameReplacesArguments`** is an option, off by default, not a change to the key. The hash exists so that data rows never collide without
+  the author doing anything; dropping it silently would rename every existing file and let two rows with one name overwrite each other.
+  With the option a name is required and a collision is the usual duplicate-key failure. It is a per-call option because only the call knows
+  which argument is the case name; a TUnit attribute would tie it to one runner.
 - **Message caps.** At most 20 differences and 80 lines. A difference that does not fit in the remaining lines is
   left out whole rather than cut mid-hunk, except a first difference longer than the cap on its own, which is cut so
   something shows. Either way it counts in "(+N more, see received)".

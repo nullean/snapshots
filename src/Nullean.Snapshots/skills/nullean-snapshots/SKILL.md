@@ -31,6 +31,9 @@ Values only known at test time: `new SnapshotOptions().Scrub(Scrubbers.Values(na
 Fail instead of scrub when a value must never appear (secrets, private names): `new SnapshotOptions().Forbid(values)`, or
 `SnapshotDefaults.Forbid(values)` for every snapshot. The message gives line numbers, never the values, and writes no received file.
 
+One `[Arguments]` test, readable files per case: `MatchSnapshot(caseName, new SnapshotOptions { NameReplacesArguments = true })` writes
+`{Method}.{caseName}` instead of `{Method}.{caseName}.{hash}`. The name must be unique per case and a valid snapshot name.
+
 Scrub for one call, or skip the global scrubbers:
 
 ```csharp

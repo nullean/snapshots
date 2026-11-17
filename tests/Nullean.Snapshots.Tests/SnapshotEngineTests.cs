@@ -151,6 +151,41 @@ public class SnapshotEngineTests
 	}
 
 	[Test]
+	public void AGivenNameReplacesTheArgumentsHashWhenAsked()
+	{
+		var p = new TestProject { Identity = TestProject.TUnitLike("HtmlTests", "RendersTable", 1, "a") };
+
+		var named = p.Match("x", name: "empty", options: new SnapshotOptions { NameReplacesArguments = true });
+		var hashed = p.Match("x", name: "other");
+
+		named.Key.Should().Be("Acme.Tests/Rendering/HtmlTests/RendersTable.empty");
+		hashed.Key.Should().Be($"Acme.Tests/Rendering/HtmlTests/RendersTable.other.{SnapshotPath.ArgumentsHash([1, "a"])}");
+	}
+
+	[Test]
+	public void NameReplacesArgumentsNeedsAName()
+	{
+		var p = new TestProject { Identity = TestProject.TUnitLike("HtmlTests", "RendersTable", 1) };
+
+		var act = () => p.Match("x", options: new SnapshotOptions { NameReplacesArguments = true });
+
+		act.Should().Throw<ArgumentException>().WithMessage("*needs a name*");
+	}
+
+	[Test]
+	public void TwoCasesWithTheSameNameAreADuplicate()
+	{
+		var p = new TestProject { Identity = TestProject.TUnitLike("HtmlTests", "RendersTable", 1) };
+		var options = new SnapshotOptions { NameReplacesArguments = true };
+		p.Match("x", name: "same", options: options);
+		p.Identity = TestProject.TUnitLike("HtmlTests", "RendersTable", 2);
+
+		var act = () => p.Match("x", name: "same", options: options);
+
+		act.Should().Throw<InvalidOperationException>().WithMessage("*resolve to*same*");
+	}
+
+	[Test]
 	public void IdentityGivesTheRuntimeClassAndArgumentsHash()
 	{
 		var p = new TestProject { Identity = TestProject.TUnitLike("DerivedHtmlTests", "RendersTable", 1, "a") };
