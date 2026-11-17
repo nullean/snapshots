@@ -1,7 +1,6 @@
 using System.IO.Abstractions;
 using System.Text.RegularExpressions;
 using Nullean.Argh;
-using Nullean.Cdp;
 using Nullean.Cdp.Journeys;
 using Nullean.Snapshots.Browser;
 using Nullean.Snapshots.Browser.Console;
@@ -530,129 +529,20 @@ internal sealed class JourneyCli(
 		return false;
 	}
 
-	/// <summary>
-	/// Reads each <c>--wait-for</c>: <c>header:Name==value</c> for a response header, <c>selector==value</c> for an element's text and
-	/// <c>selector@attribute==value</c> for an attribute. <c>=~</c> in place of <c>==</c> matches a regular expression and <c>=*</c> contains.
-	/// The operators never occur in a CSS selector, so a selector such as <c>meta[name='docs:build']</c> needs no escaping.
-	/// </summary>
+	/// <summary>Reads <c>--wait-for</c> and its options with <see cref="JourneyWait"/>; a problem is a usage error.</summary>
 	internal static bool TryParseWaits(JourneyRunArgs args, out List<JourneyPrecondition> preconditions, out string problem)
 	{
-		problem = string.Empty;
-		preconditions = [];
-		if (args.WaitFor.Count == 0)
+		var parsed = JourneyWait.Parse(new JourneyWaitFlags
 		{
-			if (args.WaitPath is not null || args.WaitTimeout is not null || args.WaitInterval is not null || args.WaitRetries is not null)
-			{
-				problem = "Error: --wait-path, --wait-timeout, --wait-interval and --wait-retries describe a --wait-for; give one.";
-				return false;
-			}
-
-			return true;
-		}
-
-		if (
-			!TryParseDuration("--wait-timeout", args.WaitTimeout, TimeSpan.FromSeconds(10), out var timeout, out problem) ||
-			!TryParseDuration("--wait-interval", args.WaitInterval, TimeSpan.FromMilliseconds(500), out var interval, out problem)
-		)
-			return false;
-		if (args.WaitRetries is < 0)
-		{
-			problem = $"Error: --wait-retries {args.WaitRetries} is not zero or more.";
-			return false;
-		}
-
-		foreach (var value in args.WaitFor)
-		{
-			if (!TryParseWait(value, out var parsed, out problem))
-				return false;
-			preconditions.Add(parsed with
-			{
-				Path = args.WaitPath ?? "./",
-				Timeout = timeout,
-				Interval = interval,
-				Retries = args.WaitRetries ?? parsed.Retries,
-			});
-		}
-
-		return true;
-	}
-
-	private static bool TryParseWait(string value, out JourneyPrecondition precondition, out string problem)
-	{
-		problem = string.Empty;
-		precondition = null!;
-		var (index, length, match) = FindOperator(value);
-		var target = index < 0 ? string.Empty : value[..index];
-		var expected = index < 0 ? string.Empty : value[(index + length)..];
-		if (index < 0 || target.Length == 0 || expected.Length == 0)
-		{
-			problem =
-				$"Error: --wait-for '{value}' is not a wait: use header:Name==value, selector==value or selector@attribute==value ('=~' matches a regular expression, '=*' contains).";
-			return false;
-		}
-
-		if (target.StartsWith("header:", StringComparison.OrdinalIgnoreCase))
-		{
-			var name = target["header:".Length..];
-			if (name.Length == 0)
-			{
-				problem = $"Error: --wait-for '{value}' names no header.";
-				return false;
-			}
-
-			precondition = new JourneyPrecondition { Path = "./", Header = name, Expected = expected, Match = match };
-			return true;
-		}
-
-		var at = target.LastIndexOf('@');
-		string? attribute = null;
-		if (at >= 0)
-		{
-			attribute = target[(at + 1)..];
-			target = target[..at];
-		}
-
-		if (target.Length == 0 || attribute is { Length: 0 })
-		{
-			problem = $"Error: --wait-for '{value}' is not a wait: the selector or the attribute is empty.";
-			return false;
-		}
-
-		precondition = new JourneyPrecondition { Path = "./", Selector = target, Attribute = attribute, Expected = expected, Match = match };
-		return true;
-	}
-
-	private static (int Index, int Length, TextMatch Match) FindOperator(string value)
-	{
-		var best = (Index: -1, Length: 0, Match: TextMatch.Exact);
-		foreach (var (token, match) in new[] { ("==", TextMatch.Exact), ("=~", TextMatch.Regex), ("=*", TextMatch.Contains) })
-		{
-			var at = value.IndexOf(token, StringComparison.Ordinal);
-			if (at >= 0 && (best.Index < 0 || at < best.Index))
-				best = (at, token.Length, match);
-		}
-
-		return best;
-	}
-
-	/// <summary>Reads a duration: <c>10s</c>, <c>500ms</c>, <c>2m</c>, or a bare number of seconds.</summary>
-	internal static bool TryParseDuration(string flag, string? value, TimeSpan fallback, out TimeSpan duration, out string problem)
-	{
-		problem = string.Empty;
-		duration = fallback;
-		if (value is null)
-			return true;
-		var (digits, unit) = value.EndsWith("ms", StringComparison.Ordinal)
-			? (value[..^2], 0.001)
-			: value.EndsWith('s') ? (value[..^1], 1.0) : value.EndsWith('m') ? (value[..^1], 60.0) : (value, 1.0);
-		if (double.TryParse(digits, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var number) && number > 0)
-		{
-			duration = TimeSpan.FromSeconds(number * unit);
-			return true;
-		}
-
-		problem = $"Error: {flag} '{value}' is not a duration: use 10s, 500ms or 2m.";
-		return false;
+			Checks = args.WaitFor,
+			Path = args.WaitPath,
+			Timeout = args.WaitTimeout,
+			Interval = args.WaitInterval,
+			Retries = args.WaitRetries,
+		});
+		preconditions = [.. parsed.Preconditions];
+		problem = parsed.Problem is null ? string.Empty : "Error: " + parsed.Problem;
+		return parsed.Valid;
 	}
 
 	/// <summary>Reads each <c>--header</c>: <c>"Name: value"</c>.</summary>

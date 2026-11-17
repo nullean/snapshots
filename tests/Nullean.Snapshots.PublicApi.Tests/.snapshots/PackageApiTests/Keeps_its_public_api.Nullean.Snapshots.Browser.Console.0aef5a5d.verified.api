@@ -120,6 +120,7 @@ namespace Nullean.Snapshots.Browser.Console
     int ParseErrorExitCode { get; init; }
     IReadOnlyList<JourneyPrecondition> Preconditions { get; init; }
     bool ReadOnly { get; init; }
+    Func<JourneyRunOptions, CancellationToken, Task<JourneyRunOptions>>? RefreshAfterPreconditions { get; init; }
     string? Rerun { get; init; }
     int Retries { get; init; }
     bool ScreenshotOnFailure { get; init; }
@@ -132,6 +133,38 @@ namespace Nullean.Snapshots.Browser.Console
     bool Verbose { get; init; }
     JourneyViewport? Viewport { get; init; }
     IReadOnlyList<string> WritableUrls { get; init; }
+
+  static class JourneyWait
+    static JourneyWaitParse Parse(JourneyWaitFlags flags)
+
+  sealed record JourneyWaitFlags : IEquatable<JourneyWaitFlags>
+    JourneyWaitFlags()
+    IReadOnlyList<string> Checks { get; init; }
+    string? Interval { get; init; }
+    string? Path { get; init; }
+    int? Retries { get; init; }
+    string? Timeout { get; init; }
+    JourneyWaitFlags <Clone>$()
+    bool Equals(JourneyWaitFlags? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(JourneyWaitFlags? left, JourneyWaitFlags? right)
+    static bool operator !=(JourneyWaitFlags? left, JourneyWaitFlags? right)
+
+  sealed record JourneyWaitParse : IEquatable<JourneyWaitParse>
+    JourneyWaitParse(IReadOnlyList<JourneyPrecondition> Preconditions, string? Problem = null)
+    IReadOnlyList<JourneyPrecondition> Preconditions { get; init; }
+    string? Problem { get; init; }
+    bool Valid { get; }
+    JourneyWaitParse <Clone>$()
+    void Deconstruct(out IReadOnlyList<JourneyPrecondition> Preconditions, out string? Problem)
+    bool Equals(JourneyWaitParse? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool operator ==(JourneyWaitParse? left, JourneyWaitParse? right)
+    static bool operator !=(JourneyWaitParse? left, JourneyWaitParse? right)
 
   static class TerminalPicture
     const int ZoomColumns = 60

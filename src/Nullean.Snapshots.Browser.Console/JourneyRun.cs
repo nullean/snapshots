@@ -75,11 +75,18 @@ public sealed class JourneyRunOptions
 
 	/// <summary>
 	/// What the site must show before any journey runs, such as the build a deploy just shipped: waited for one after the other, in
-	/// the shared Chrome, each within its own timeout and retries. When one is not met nothing runs: the run writes the reason and
-	/// ends with <see cref="JourneyExitCode.Precondition"/>, and <see cref="JourneyRunOptions.JUnitPath"/> gets a failed
-	/// <c>preconditions/wait</c> case. Not applied when every journey is skipped, and never retried by <see cref="Retries"/>.
+	/// the shared Chrome, each within its own timeout and retries. They come first, before the journeys are planned. When one is not
+	/// met nothing runs: the run writes the reason and ends with <see cref="JourneyExitCode.Precondition"/>, and
+	/// <see cref="JourneyRunOptions.JUnitPath"/> gets a failed <c>preconditions/wait</c> case. Never retried by <see cref="Retries"/>.
 	/// </summary>
 	public IReadOnlyList<JourneyPrecondition> Preconditions { get; init; } = [];
+
+	/// <summary>
+	/// Called once every precondition is met and before the journeys are planned, with these options, to return the options the run
+	/// uses: a deploy that has just landed can change the flags and build type that <c>@requires</c> and <c>feature</c> blocks are
+	/// judged against, so a caller that read them before the wait reads them again here. Not called without preconditions.
+	/// </summary>
+	public Func<JourneyRunOptions, CancellationToken, Task<JourneyRunOptions>>? RefreshAfterPreconditions { get; init; }
 
 	/// <summary>The enabled feature flags of the site under test.</summary>
 	public IReadOnlySet<string> Features { get; init; } = new HashSet<string>(StringComparer.Ordinal);

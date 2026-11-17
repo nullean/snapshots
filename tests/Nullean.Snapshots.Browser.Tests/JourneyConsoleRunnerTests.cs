@@ -330,7 +330,67 @@ public partial class JourneyConsoleRunnerTests
 	}
 
 	[Test]
-	public async Task NoPreconditionIsWaitedForWhenEveryJourneyIsSkipped()
+	public async Task OptionsAreRefreshedOnceThePreconditionsAreMetSoTheJourneysAreJudgedAgainstTheNewBuild()
+	{
+		using var folder = new Folder();
+		// The deploy that the wait is for turns a flag on: before it the journey is skipped, after it the journey runs.
+		var stale = new JourneyRunOptions
+		{
+			Files = [folder.Add("a/needs", "# @requires navigation-preview\nopen /")],
+			Preconditions = [Build],
+			GitHubActions = false,
+			RefreshAfterPreconditions =
+				(current, _) => Task.FromResult(new JourneyRunOptions
+				{
+					Files = current.Files,
+					Features = new HashSet<string> { "navigation-preview" },
+					GitHubActions = false
+				}),
+		};
+		var waited = false;
+
+		var (exit, output, _) = await RunAsync(stale, wait: _ =>
+		{
+			waited = true;
+			return new PreconditionResult(true, "ok", 1, TimeSpan.Zero);
+		});
+
+		exit.Should().Be(JourneyExitCode.Ok);
+		waited.Should().BeTrue();
+		output.Should().Contain("ok      a/needs").And.NotContain("skipped a/needs");
+	}
+
+	[Test]
+	public async Task OptionsAreNotRefreshedWhenAPreconditionIsNotMetOrThereIsNone()
+	{
+		using var folder = new Folder();
+		var refreshed = 0;
+
+		Task<JourneyRunOptions> Refresh(JourneyRunOptions current, CancellationToken _)
+		{
+			refreshed++;
+			return Task.FromResult(current);
+		}
+
+		var unmet = new JourneyRunOptions
+		{
+			Files = [folder.Add("a/one", "open /")],
+			Preconditions = [Build],
+			RefreshAfterPreconditions = Refresh,
+			GitHubActions = false
+		};
+		var none = new JourneyRunOptions { Files = [folder.Add("a/two", "open /")], RefreshAfterPreconditions = Refresh, GitHubActions = false };
+
+		var first = await RunAsync(unmet, wait: _ => new PreconditionResult(false, "no", 1, TimeSpan.Zero));
+		var second = await RunAsync(none);
+
+		first.Exit.Should().Be(JourneyExitCode.Precondition);
+		second.Exit.Should().Be(JourneyExitCode.Ok);
+		refreshed.Should().Be(0);
+	}
+
+	[Test]
+	public async Task APreconditionIsWaitedForBeforeThePlanEvenWhenEveryJourneyIsSkipped()
 	{
 		using var folder = new Folder();
 		var options = new JourneyRunOptions
@@ -341,16 +401,12 @@ public partial class JourneyConsoleRunnerTests
 			AllowAllSkipped = true,
 			GitHubActions = false,
 		};
-		var waited = false;
 
-		var (exit, _, _) = await RunAsync(options, wait: _ =>
-		{
-			waited = true;
-			return new PreconditionResult(false, "never", 1, TimeSpan.Zero);
-		});
+		var (exit, output, error) = await RunAsync(options, wait: _ => new PreconditionResult(false, "not yet", 1, TimeSpan.Zero));
 
-		exit.Should().Be(JourneyExitCode.Ok);
-		waited.Should().BeFalse();
+		exit.Should().Be(JourneyExitCode.Precondition);
+		error.Should().StartWith("Error: not yet");
+		output.Should().NotContain("skipped a/needs");
 	}
 
 	[Test]
