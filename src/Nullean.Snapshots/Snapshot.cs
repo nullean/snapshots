@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.IO.Abstractions;
 using System.Reflection;
+using System.Text;
 using Nullean.ScopedFileSystem;
 
 namespace Nullean.Snapshots;
@@ -221,6 +222,8 @@ internal sealed partial class SnapshotEngine(
 
 		var value = SnapshotText.Normalize(Scrub(actual, options));
 		var expectedText = expected is null ? null : SnapshotText.Normalize(expected);
+		if (GuardForbidden(target, format.Name, value, expectedText, options, "the expected literal") is { } forbidden)
+			return forbidden;
 		var comparison = expectedText is null ? null : format.Compare(expectedText, value);
 		if (comparison is { IsMatch: true })
 		{
@@ -463,6 +466,8 @@ internal sealed partial class SnapshotEngine(
 		var fs = target.Fs;
 		var value = SnapshotText.Normalize(Scrub(actual, options));
 		var verified = fs.File.Exists(target.VerifiedPath) ? SnapshotText.Normalize(fs.File.ReadAllText(target.VerifiedPath, SnapshotText.Encoding)) : null;
+		if (GuardForbidden(target, format.Name, value, verified, options) is { } forbidden)
+			return forbidden;
 		var comparison = verified is null ? null : format.Compare(verified, value);
 
 		if (comparison is { IsMatch: true })
@@ -641,6 +646,39 @@ internal sealed partial class SnapshotEngine(
 		var existing = _owners.GetOrAdd(key, owner);
 		if (!string.Equals(existing, owner, StringComparison.Ordinal))
 			throw new InvalidOperationException($"Two snapshot assertions resolve to {key}; pass a name to tell them apart.");
+	}
+
+	/// <summary>
+	/// Fails, without writing a received file, when the new value or the stored one holds a forbidden value. The message says where and never what.
+	/// </summary>
+	private static SnapshotResult? GuardForbidden(
+		SnapshotTarget target,
+		string formatName,
+		string value,
+		string? stored,
+		SnapshotOptions? options,
+		string storedName = "the verified file"
+	)
+	{
+		var values = ForbiddenValues.Collect(options);
+		if (values.Count == 0)
+			return null;
+		var received = ForbiddenValues.Lines(value, values);
+		var existing = stored is null ? [] : ForbiddenValues.Lines(stored, values);
+		if (received.Count == 0 && existing.Count == 0)
+			return null;
+		var message = new StringBuilder();
+		message
+			.Append(formatName)
+			.Append(" snapshot ")
+			.Append(target.Key)
+			.Append(" holds forbidden values. They are not shown, and no received file was written.\n");
+		if (received.Count > 0)
+			message.Append("  In the value: ").Append(ForbiddenValues.Describe(received)).Append('\n');
+		if (existing.Count > 0)
+			message.Append("  In ").Append(storedName).Append(": ").Append(ForbiddenValues.Describe(existing)).Append('\n');
+		message.Append("Scrub them or remove them from the code under test; accepting does not get around this.");
+		return new SnapshotResult(false, message.ToString(), target.Key, target.VerifiedPath, target.ReceivedPath);
 	}
 
 	private static string Scrub(string value, SnapshotOptions? options)

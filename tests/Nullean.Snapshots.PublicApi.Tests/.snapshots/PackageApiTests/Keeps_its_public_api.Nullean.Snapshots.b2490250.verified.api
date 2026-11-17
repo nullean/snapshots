@@ -116,7 +116,9 @@ namespace Nullean.Snapshots
     static ISnapshotTestIdentityProvider? TestIdentity { get; }
     static void AddScrubber(Func<string, string> scrubber)
     static void AddScrubber(Regex pattern, string replacement)
+    static void ClearForbidden()
     static void ClearScrubbers()
+    static void Forbid(IEnumerable<string> values)
     static void MarkRunPartial(string reason)
     static void UseTestIdentity(ISnapshotTestIdentityProvider? provider)
 
@@ -175,6 +177,7 @@ namespace Nullean.Snapshots
     SnapshotOptions()
     bool IgnoreDefaultScrubbers { get; set; }
     IReadOnlyList<Func<string, string>> Scrubbers { get; }
+    SnapshotOptions Forbid(IEnumerable<string> values)
     SnapshotOptions Scrub(Func<string, string> scrubber)
     SnapshotOptions Scrub(Regex pattern, string replacement)
 

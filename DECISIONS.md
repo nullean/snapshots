@@ -110,6 +110,10 @@ its verified file by the prefix swap. Half-written `*.tmp` files are ignored.
 - **`Scrubbers.Values`** matches ordinally and by whole word, tries longer values first, and reads its set when created. A set known
   only at test time cannot be a regex the author writes, and numbering reuses what `Guids` does. Case-sensitive, unlike `Guids`, because
   `Repo` and `repo` can be different repositories.
+- **`Forbid` is a guard, not a scrubber.** It checks the scrubbed value and the verified file (a secret already committed is caught), fails
+  before a received file is written (a forbidden value must not land on disk, where `snap` and CI artifacts would carry it), reports line
+  numbers only, and cannot be accepted away. The default list ignores `IgnoreDefaultScrubbers`, since turning scrubbers off is not
+  permission to leak. The values are held internally and never exposed through a property.
 - **Message caps.** At most 20 differences and 80 lines. A difference that does not fit in the remaining lines is
   left out whole rather than cut mid-hunk, except a first difference longer than the cap on its own, which is cut so
   something shows. Either way it counts in "(+N more, see received)".
