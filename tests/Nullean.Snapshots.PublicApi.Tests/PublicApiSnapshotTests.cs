@@ -28,6 +28,26 @@ public class PublicApiSnapshotTests
 	public void An_unchanged_api_matches() => PublicApiSnapshot.Compare(Api(Widget), Api(Widget)).IsMatch.Should().BeTrue();
 
 	[Test]
+	public void The_version_a_generator_records_is_not_part_of_the_api()
+	{
+		// System.Text.Json's source generator stamps its SDK's version on the code it writes: another patch release of
+		// the SDK must not read as a change
+		const string Generated =
+			"""
+			using System.CodeDom.Compiler;
+			namespace Lib;
+			[GeneratedCode("Generator", "VERSION")] public partial class Context { public int Value => 1; }
+			""";
+
+		var comparison = PublicApiSnapshot.Compare(
+			Api(Generated.Replace("VERSION", "10.0.15.2326", StringComparison.Ordinal)),
+			Api(Generated.Replace("VERSION", "10.0.15.3000", StringComparison.Ordinal))
+		);
+
+		comparison.IsMatch.Should().BeTrue();
+	}
+
+	[Test]
 	public void A_changed_api_lists_each_change_with_who_it_breaks()
 	{
 		var changed = Widget

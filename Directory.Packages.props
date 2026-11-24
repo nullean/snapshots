@@ -16,7 +16,7 @@
     <PackageVersion Include="AngleSharp" Version="1.10.2" />
     <PackageVersion Include="AngleSharp.Diffing" Version="1.1.1" />
     <PackageVersion Include="SharpYaml" Version="3.17.0" />
-    <PackageVersion Include="Nullean.PublicApi.Diff" Version="1.2.0" />
+    <PackageVersion Include="Nullean.PublicApi.Diff" Version="1.3.0" />
     <!-- The browser for journeys. 0.x and unpublished while this is a draft; see DECISIONS.md, "Browser". -->
     <PackageVersion Include="Nullean.Cdp" Version="0.13.0" />
     <PackageVersion Include="Nullean.Cdp.Journeys" Version="0.13.0" />
