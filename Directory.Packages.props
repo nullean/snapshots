@@ -10,10 +10,10 @@
   <ItemGroup>
     <!-- Runtime dependencies -->
     <PackageVersion Include="DiffPlex" Version="1.9.0" />
-    <PackageVersion Include="System.IO.Abstractions" Version="23.0.0" />
+    <PackageVersion Include="System.IO.Abstractions" Version="23.0.1" />
     <PackageVersion Include="Nullean.ScopedFileSystem" Version="0.7.2" />
-    <PackageVersion Include="Nullean.Argh" Version="0.30.0" />
-    <PackageVersion Include="AngleSharp" Version="1.10.2" />
+    <PackageVersion Include="Nullean.Argh" Version="0.30.1" />
+    <PackageVersion Include="AngleSharp" Version="1.10.4" />
     <PackageVersion Include="AngleSharp.Diffing" Version="1.1.1" />
     <PackageVersion Include="SharpYaml" Version="3.17.0" />
     <PackageVersion Include="Nullean.PublicApi.Diff" Version="1.3.0" />
@@ -22,21 +22,21 @@
     <PackageVersion Include="Nullean.Cdp.Journeys" Version="0.13.0" />
     <PackageVersion Include="Nullean.TerminalImages" Version="0.2.2" />
     <!-- Adapters build against the latest stable release, which is also their minimum. -->
-    <PackageVersion Include="TUnit.Core" Version="1.83.8" />
+    <PackageVersion Include="TUnit.Core" Version="1.86.6" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- Test dependencies. TUnit and AwesomeAssertions track the latest stable release only. -->
-    <PackageVersion Include="TUnit" Version="1.83.8" />
+    <PackageVersion Include="TUnit" Version="1.86.6" />
     <PackageVersion Include="AwesomeAssertions" Version="9.6.0" />
     <PackageVersion Include="CsCheck" Version="5.0.1" />
-    <PackageVersion Include="TestableIO.System.IO.Abstractions.TestingHelpers" Version="23.0.0" />
+    <PackageVersion Include="TestableIO.System.IO.Abstractions.TestingHelpers" Version="23.0.1" />
     <!-- The JSON oracle for the tree differ's property tests. Test-only, never a runtime dependency. -->
     <PackageVersion Include="SystemTextJson.JsonDiffPatch" Version="2.0.0" />
     <!-- The PNG oracle for the decoder's tests (a C# port of stb_image). Test-only, never a runtime dependency. -->
     <!-- The oracle for the inline snapshot rewriter's tests: Roslyn must parse what it writes back to the same value.
          Test-only, never a runtime dependency; the CLI lexes C# itself to stay small and AOT. -->
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.12.0" />
     <PackageVersion Include="StbImageSharp" Version="2.30.16" />
     <!-- ASP.NET Core's in-memory server, for the HTTP tests' WebApplicationFactory-style case. Test-only, and the
          tests run on net11.0, which 11.0 targets. -->
